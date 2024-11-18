@@ -1,7 +1,21 @@
-import { vertexColor, fragmentColor, vertexRaycast, fragmentRaycast } from './point.glsl.js';
+import {
+  vertexColor,
+  fragmentColor,
+  vertexRaycast,
+  fragmentRaycast,
+} from "./point.glsl";
 
-import { Globals } from './Globals.js';
-import { BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, ShaderMaterial, Vector2, Vector3, type Texture } from 'three';
+import { Globals } from "./Globals";
+import {
+  BufferAttribute,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
+  Mesh,
+  ShaderMaterial,
+  Vector2,
+  Vector3,
+  type Texture,
+} from "three";
 
 type AtlasTexture = {
   name: string;
@@ -9,7 +23,7 @@ type AtlasTexture = {
   y: number;
   width: number;
   height: number;
-}
+};
 
 export class Point {
   static instances: Point[] = [];
@@ -20,9 +34,11 @@ export class Point {
   static atlasTexture: Texture;
   static atlasData: { [key: string]: AtlasTexture };
 
+  public data: any;
+
   private _position = new Vector3();
   private _size = 10;
-  private _image = '';
+  private _image = "";
 
   constructor(public index: number) {
     this.index = index;
@@ -31,7 +47,7 @@ export class Point {
 
   // Set matrix values
   private set(indices: number[], values: number[]) {
-    if (this.index === -1) throw new Error('Point is deleted');
+    if (this.index === -1) throw new Error("Point is deleted");
 
     const i = this.index * 16;
     const points = Point.geometry.attributes.point.array;
@@ -55,7 +71,15 @@ export class Point {
 
   set image(imageName) {
     const image = Point.atlasData[imageName];
-    this.set([4, 5, 6, 7], [image.x, Point.atlasTexture.image.height - image.y, image.width, -image.height]);
+    this.set(
+      [4, 5, 6, 7],
+      [
+        image.x,
+        Point.atlasTexture.image.height - image.y,
+        image.width,
+        -image.height,
+      ]
+    );
     this._image = imageName;
   }
 
@@ -72,7 +96,7 @@ export class Point {
   }
 
   changeIndex(index: number) {
-    if (this.index === -1) throw new Error('Point is deleted');
+    if (this.index === -1) throw new Error("Point is deleted");
 
     const j = index * 16;
     const k = this.index * 16;
@@ -103,7 +127,11 @@ export class Point {
     this.index = -1;
   }
 
-  static init(atlasTexture: Texture, atlasData: AtlasTexture[], maxPointCount = 65536) {
+  static init(
+    atlasTexture: Texture,
+    atlasData: AtlasTexture[],
+    maxPointCount = 65536
+  ) {
     const geometry = new InstancedBufferGeometry();
 
     geometry.instanceCount = 0;
@@ -117,7 +145,10 @@ export class Point {
     const pointIndices = new Float32Array(maxPointCount);
 
     // position of a plane
-    positions.set([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0, -100000, -100000, -100000, 100000, 100000, 100000]);
+    positions.set([
+      -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0, -100000, -100000, -100000, 100000,
+      100000, 100000,
+    ]);
 
     // uv of a plane
     uvs.set([0, 0, 1, 0, 1, 1, 0, 1]);
@@ -136,12 +167,14 @@ export class Point {
       Point.atlasData[name] = { name, x, y, width, height };
     });
 
+    geometry.setAttribute("position", new BufferAttribute(positions, 3));
+    geometry.setAttribute("uvs", new BufferAttribute(uvs, 2));
 
-    geometry.setAttribute('position', new BufferAttribute(positions, 3));
-    geometry.setAttribute('uvs', new BufferAttribute(uvs, 2));
-
-    geometry.setAttribute('point', new InstancedBufferAttribute(points, 16));
-    geometry.setAttribute('pointIndex', new InstancedBufferAttribute(pointIndices, 1));
+    geometry.setAttribute("point", new InstancedBufferAttribute(points, 16));
+    geometry.setAttribute(
+      "pointIndex",
+      new InstancedBufferAttribute(pointIndices, 1)
+    );
     geometry.setIndex(new BufferAttribute(indices, 1));
 
     const colorMaterial = new ShaderMaterial({
@@ -159,7 +192,7 @@ export class Point {
         resolution: { value: new Vector2() },
         atlas: { value: atlasTexture },
         atlasSize: { value: new Vector2() },
-        tolerance: { value: 0 }
+        tolerance: { value: 0 },
       },
       vertexShader: vertexRaycast,
       fragmentShader: fragmentRaycast,
@@ -167,8 +200,14 @@ export class Point {
 
     colorMaterial.uniforms.resolution.value.copy(Globals.resolution);
     raycastMaterial.uniforms.resolution.value.copy(Globals.resolution);
-    colorMaterial.uniforms.atlasSize.value = new Vector2(atlasTexture.image.width, atlasTexture.image.height);
-    raycastMaterial.uniforms.atlasSize.value = new Vector2(atlasTexture.image.width, atlasTexture.image.height);
+    colorMaterial.uniforms.atlasSize.value = new Vector2(
+      atlasTexture.image.width,
+      atlasTexture.image.height
+    );
+    raycastMaterial.uniforms.atlasSize.value = new Vector2(
+      atlasTexture.image.width,
+      atlasTexture.image.height
+    );
 
     colorMaterial.transparent = true;
 

@@ -38,6 +38,8 @@ void main() {
   vec4 color = texture2D(atlas, (vUv * vImage.zw + vImage.xy) / atlasSize);
 
   if(color.a < 0.01) discard;
+
+  color.rgb = vec3(color.r + color.b + color.g) / 3.0;
   
   gl_FragColor = color;
 }`;

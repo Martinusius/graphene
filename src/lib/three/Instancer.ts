@@ -2,11 +2,14 @@ import { Globals } from "./Globals";
 
 import { Bezier } from "./Bezier";
 import { Point } from "./Point";
-import { FloatType, RGBAFormat, Vector2, WebGLRenderTarget } from "three";
+import {
+  FloatType,
+  RGBAFormat,
+  Vector2,
+  Vector3,
+  WebGLRenderTarget,
+} from "three";
 // import { BezierArrows } from "./BezierArrows";
-
-
-
 
 const size = 30;
 
@@ -33,15 +36,25 @@ pixelPositions.sort((a, b) => {
 
 console.log(pixelPositions);
 
+export type InstancerRaycastResult =
+  | {
+      type: "Point";
+      object: Point;
+      position: Vector3;
+    }
+  | {
+      type: "Bezier";
+      object: Bezier;
+      t: number;
+      position: Vector3;
+    };
 
 export class Instancer {
-
   /**
    * Raycast the scene by rendering it to a texture and reading the pixel values
    * The information about the object is stored in the red and green channels (red = object type, green = object id)
    */
-  static raycast(pointer: Vector2) {
-
+  static raycast(pointer: Vector2): InstancerRaycastResult | null {
     Globals.raycastRaycaster.setFromCamera(pointer, Globals.camera);
     // Globals.raycastCamera.copy(Globals.camera);
 
@@ -63,16 +76,13 @@ export class Instancer {
       Globals.raycastTarget,
       Math.floor(Globals.resolution.x / 2 - size / 2),
       Math.floor(Globals.resolution.y / 2 - size / 2),
-      size, size,
+      size,
+      size,
       pixelBuffer
     );
 
     Globals.renderer.setRenderTarget(null);
     //const dx = (Globals.resolution.x + 1) % 2, dy = (Globals.resolution.y + 1) % 2;
-
-
-
-
 
     let type, id;
 
@@ -87,23 +97,21 @@ export class Instancer {
       break;
     }
 
+    if (id === undefined) return null;
 
-
-    if (id === undefined) return id;
-
-
-
-    if (type === 2) return {
-      type: 'Point',
-      object: Point.instances[id],
-      position: Point.instances[id].position
-    };
-    else if (type === 3) return {
-      type: 'Bezier',
-      object: Bezier.instances[id],
-      t: pixelBuffer[2],
-      position: Bezier.instances[id].getPoint(pixelBuffer[2])
-    };
+    if (type === 2)
+      return {
+        type: "Point",
+        object: Point.instances[id],
+        position: Point.instances[id].position,
+      };
+    else if (type === 3)
+      return {
+        type: "Bezier",
+        object: Bezier.instances[id],
+        t: pixelBuffer[2],
+        position: Bezier.instances[id].getPoint(pixelBuffer[2]),
+      };
     // else if (type === 4) return {
     //   type: 'BezierArrows',
     //   object: BezierArrows.instances[id],
@@ -112,13 +120,15 @@ export class Instancer {
     // };
 
     throw new Error(`Unknown type ${type}`);
-
-
   }
 
   static resize() {
     Globals.raycastTarget.dispose();
-    Globals.raycastTarget = new WebGLRenderTarget(Globals.resolution.x, Globals.resolution.y, { format: RGBAFormat, type: FloatType });
+    Globals.raycastTarget = new WebGLRenderTarget(
+      Globals.resolution.x,
+      Globals.resolution.y,
+      { format: RGBAFormat, type: FloatType }
+    );
 
     Bezier.resize();
     Point.resize();

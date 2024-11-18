@@ -4,10 +4,11 @@ import {
   Plane,
   Raycaster,
   Vector2,
-  Vector3
-} from 'three';
+  Vector3,
+} from "three";
 
-import { Instancer } from './Instancer.js';
+import { Instancer, type InstancerRaycastResult } from "./Instancer";
+import { Globals } from "./Globals";
 
 const _plane = new Plane();
 const _raycaster = new Raycaster();
@@ -18,65 +19,77 @@ const _intersection = new Vector3();
 const _worldPosition = new Vector3();
 const _inverseMatrix = new Matrix4();
 
-class Drag extends EventDispatcher {
+type InstancerObject = InstancerRaycastResult["object"];
+type DragEventMap = {
+  drag: {
+    object: InstancerObject;
+    position?: Vector3;
+  };
+  hoveroff: {
+    object: InstancerObject;
+  };
+  hoveron: {
+    object: InstancerObject;
+  };
+  dragstart: {
+    object: InstancerObject;
+  };
+  dragend: {
+    object: InstancerObject;
+  };
+};
+
+/**
+ * Adapted from Three.js DragControls
+ * Allows instanced objects to be dragged
+ */
+class Drag extends EventDispatcher<DragEventMap> {
+  enabled = true;
+  activate: () => void;
+  deactivate: () => void;
+  dispose: () => void;
+  getRaycaster: () => Raycaster;
 
   constructor() {
     const _camera = Globals.camera;
-    const _domElement = Globals.renderer.domElement;
-
+    const _domElement = Globals.renderer.domElement.parentElement!;
 
     super();
 
-    _domElement.style.touchAction = 'none'; // disable touch scroll
+    _domElement.style.touchAction = "none"; // disable touch scroll
 
-    let _selected = null, _hovered = null;
+    let _selected: InstancerObject | null = null,
+      _hovered: InstancerObject | null = null;
 
-    const _intersections = [];
-
-    //
+    const _intersections: InstancerRaycastResult[] = [];
 
     const scope = this;
 
     function activate() {
-
-      _domElement.addEventListener('pointermove', onPointerMove);
-      _domElement.addEventListener('pointerdown', onPointerDown);
-      _domElement.addEventListener('pointerup', onPointerCancel);
-      _domElement.addEventListener('pointerleave', onPointerCancel);
-
+      _domElement.addEventListener("pointermove", onPointerMove);
+      _domElement.addEventListener("pointerdown", onPointerDown);
+      _domElement.addEventListener("pointerup", onPointerCancel);
+      _domElement.addEventListener("pointerleave", onPointerCancel);
     }
 
     function deactivate() {
+      _domElement.removeEventListener("pointermove", onPointerMove);
+      _domElement.removeEventListener("pointerdown", onPointerDown);
+      _domElement.removeEventListener("pointerup", onPointerCancel);
+      _domElement.removeEventListener("pointerleave", onPointerCancel);
 
-      _domElement.removeEventListener('pointermove', onPointerMove);
-      _domElement.removeEventListener('pointerdown', onPointerDown);
-      _domElement.removeEventListener('pointerup', onPointerCancel);
-      _domElement.removeEventListener('pointerleave', onPointerCancel);
-
-      _domElement.style.cursor = '';
-
+      _domElement.style.cursor = "";
     }
 
     function dispose() {
-
       deactivate();
-
-    }
-
-    function getObjects() {
-
-      return _objects;
-
     }
 
     function getRaycaster() {
-
       return _raycaster;
-
     }
 
-    function onPointerMove(event) {
-
+    function onPointerMove(event: PointerEvent) {
       if (scope.enabled === false) return;
 
       updatePointer(event);
@@ -84,23 +97,20 @@ class Drag extends EventDispatcher {
       _raycaster.setFromCamera(_pointer, _camera);
 
       if (_selected) {
-
         let position;
 
         if (_raycaster.ray.intersectPlane(_plane, _intersection)) {
-          position = _intersection.sub(_offset).clone()
+          position = _intersection.sub(_offset).clone();
         }
 
-        scope.dispatchEvent({ type: 'drag', object: _selected, position });
+        scope.dispatchEvent({ type: "drag", object: _selected, position });
 
         return;
-
       }
 
       // hover support
 
-      if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
-
+      if (event.pointerType === "mouse" || event.pointerType === "pen") {
         _intersections.length = 0;
 
         _raycaster.setFromCamera(_pointer, _camera);
@@ -109,47 +119,38 @@ class Drag extends EventDispatcher {
         if (raycast) _intersections.push(raycast);
 
         if (_intersections.length > 0) {
-
           const object = _intersections[0].object;
 
-          _plane.setFromNormalAndCoplanarPoint(_camera.getWorldDirection(_plane.normal), _worldPosition.copy(object.position));
+          _plane.setFromNormalAndCoplanarPoint(
+            _camera.getWorldDirection(_plane.normal),
+            _worldPosition.copy(object.position)
+          );
 
           if (_hovered !== object && _hovered !== null) {
+            scope.dispatchEvent({ type: "hoveroff", object: _hovered });
 
-            scope.dispatchEvent({ type: 'hoveroff', object: _hovered });
-
-            _domElement.style.cursor = 'auto';
+            _domElement.style.cursor = "auto";
             _hovered = null;
-
           }
 
           if (_hovered !== object) {
+            scope.dispatchEvent({ type: "hoveron", object: object });
 
-            scope.dispatchEvent({ type: 'hoveron', object: object });
-
-            _domElement.style.cursor = 'pointer';
+            _domElement.style.cursor = "pointer";
             _hovered = object;
-
           }
-
         } else {
-
           if (_hovered !== null) {
-            scope.dispatchEvent({ type: 'hoveroff', object: _hovered });
+            scope.dispatchEvent({ type: "hoveroff", object: _hovered });
 
-            _domElement.style.cursor = 'auto';
+            _domElement.style.cursor = "auto";
             _hovered = null;
-
           }
-
         }
-
       }
-
     }
 
-    function onPointerDown(event) {
-
+    function onPointerDown(event: PointerEvent) {
       if (scope.enabled === false) return;
 
       updatePointer(event);
@@ -162,49 +163,43 @@ class Drag extends EventDispatcher {
       if (raycast) _intersections.push(raycast);
 
       if (_intersections.length > 0) {
-
         _selected = _intersections[0].object;
+        console.log("selected", _selected);
 
-        _plane.setFromNormalAndCoplanarPoint(_camera.getWorldDirection(_plane.normal), _worldPosition.copy(_selected.position));
+        _plane.setFromNormalAndCoplanarPoint(
+          _camera.getWorldDirection(_plane.normal),
+          _worldPosition.copy(_selected.position)
+        );
 
         if (_raycaster.ray.intersectPlane(_plane, _intersection)) {
-
-          _offset.copy(_intersection).sub(_worldPosition.copy(_selected.position));
-
+          _offset
+            .copy(_intersection)
+            .sub(_worldPosition.copy(_selected.position));
         }
 
-        _domElement.style.cursor = 'move';
+        _domElement.style.cursor = "move";
 
-        scope.dispatchEvent({ type: 'dragstart', object: _selected });
-
+        scope.dispatchEvent({ type: "dragstart", object: _selected });
       }
-
-
     }
 
     function onPointerCancel() {
-
       if (scope.enabled === false) return;
 
       if (_selected) {
-
-        scope.dispatchEvent({ type: 'dragend', object: _selected });
+        scope.dispatchEvent({ type: "dragend", object: _selected });
 
         _selected = null;
-
       }
 
-      _domElement.style.cursor = _hovered ? 'pointer' : 'auto';
-
+      _domElement.style.cursor = _hovered ? "pointer" : "auto";
     }
 
-    function updatePointer(event) {
-
+    function updatePointer(event: PointerEvent) {
       const rect = _domElement.getBoundingClientRect();
 
-      _pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1;
-      _pointer.y = - (event.clientY - rect.top) / rect.height * 2 + 1;
-
+      _pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      _pointer.y = (-(event.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
     activate();
@@ -212,16 +207,12 @@ class Drag extends EventDispatcher {
     // API
 
     this.enabled = true;
-    this.transformGroup = false;
 
     this.activate = activate;
     this.deactivate = deactivate;
     this.dispose = dispose;
-    this.getObjects = getObjects;
     this.getRaycaster = getRaycaster;
-
   }
-
 }
 
 export { Drag };

@@ -1,22 +1,36 @@
-import { InstancedBufferGeometry, Vector3, BufferAttribute, InstancedBufferAttribute, ShaderMaterial, Vector2, Color, Mesh } from 'three';
-import { vertexColor, fragmentColor, vertexRaycast, fragmentRaycast } from './bezier.glsl.js';
+import {
+  InstancedBufferGeometry,
+  Vector3,
+  BufferAttribute,
+  InstancedBufferAttribute,
+  ShaderMaterial,
+  Vector2,
+  Color,
+  Mesh,
+} from "three";
+import {
+  vertexColor,
+  fragmentColor,
+  vertexRaycast,
+  fragmentRaycast,
+} from "./bezier.glsl";
 
-import { Globals } from './Globals.js';
+import { Globals } from "./Globals";
 
 /**
  * Beziers drawn via instancing
- * 
+ *
  * Each bezier is defined by a 4x4 matrix:
  * p0.x p0.y p0.z lineWidth
  * p1.x p1.y p1.z colorR
  * p2.x p2.y p2.z colorG
  * p3.x p3.y p3.z colorB
- * 
+ *
  * p0 - start point
  * p1 - control point 1
  * p2 - control point 2
  * p3 - end point
-*/
+ */
 export class Bezier {
   static instances: Bezier[] = [];
   static geometry: InstancedBufferGeometry;
@@ -32,13 +46,15 @@ export class Bezier {
   private _color = new Color();
   private _width = 1;
 
+  public data: any;
+
   constructor(public index: number) {
     Bezier.instances.push(this);
   }
 
   // Set matrix values
   private set(indices: number[], values: number[]) {
-    if (this.index === -1) throw new Error('Bezier is deleted');
+    if (this.index === -1) throw new Error("Bezier is deleted");
 
     const i = this.index * 16;
     const beziers = Bezier.geometry.attributes.bezier.array;
@@ -76,7 +92,7 @@ export class Bezier {
   }
 
   set width(width) {
-    this.set([3], [width])
+    this.set([3], [width]);
     this._width = width;
   }
 
@@ -123,14 +139,16 @@ export class Bezier {
     const t2 = t * t;
     const t3 = t2 * t;
 
-    return this._p0.clone().multiplyScalar(k3)
+    return this._p0
+      .clone()
+      .multiplyScalar(k3)
       .add(this._p1.clone().multiplyScalar(3.0 * t * k2))
       .add(this._p2.clone().multiplyScalar(3.0 * t2 * k))
       .add(this._p3.clone().multiplyScalar(t3));
   }
 
   changeIndex(index: number) {
-    if (this.index === -1) throw new Error('Bezier is deleted');
+    if (this.index === -1) throw new Error("Bezier is deleted");
 
     const j = index * 16;
     const k = this.index * 16;
@@ -168,15 +186,15 @@ export class Bezier {
 
     const ts = new Float32Array(pointCount);
     const sides = new Float32Array(pointCount);
-    const indices = new Uint16Array(((pointCount / 2) - 1) * 6);
+    const indices = new Uint16Array((pointCount / 2 - 1) * 6);
 
     const beziers = new Float32Array(maxBezierCount * 16);
     const bezierIndices = new Float32Array(maxBezierCount);
 
-    // set all indices to 0, 1, 2, 3, ...
+    // set t parameter to 0, 0, 1, 1, ...
     for (let i = 0; i < ts.length; i += 2) {
-      ts[i] = i / (ts.length - 1);
-      ts[i + 1] = i / (ts.length - 1);
+      ts[i] = i / (ts.length - 2);
+      ts[i + 1] = i / (ts.length - 2);
     }
 
     // set sides to -1, 1, -1, 1, ...
@@ -198,17 +216,26 @@ export class Bezier {
       bezierIndices[i] = i;
     }
 
-    geometry.setAttribute('position', new BufferAttribute(new Float32Array([-100000, -100000, -100000, 100000, 100000, 100000]), 3));
-    geometry.setAttribute('t', new BufferAttribute(ts, 1));
-    geometry.setAttribute('side', new BufferAttribute(sides, 1));
+    geometry.setAttribute(
+      "position",
+      new BufferAttribute(
+        new Float32Array([-100000, -100000, -100000, 100000, 100000, 100000]),
+        3
+      )
+    );
+    geometry.setAttribute("t", new BufferAttribute(ts, 1));
+    geometry.setAttribute("side", new BufferAttribute(sides, 1));
 
-    geometry.setAttribute('bezier', new InstancedBufferAttribute(beziers, 16));
-    geometry.setAttribute('bezierIndex', new InstancedBufferAttribute(bezierIndices, 1));
+    geometry.setAttribute("bezier", new InstancedBufferAttribute(beziers, 16));
+    geometry.setAttribute(
+      "bezierIndex",
+      new InstancedBufferAttribute(bezierIndices, 1)
+    );
     geometry.setIndex(new BufferAttribute(indices, 1));
 
     const colorMaterial = new ShaderMaterial({
       uniforms: {
-        resolution: { value: new Vector2() }
+        resolution: { value: new Vector2() },
       },
       vertexShader: vertexColor,
       fragmentShader: fragmentColor,
@@ -217,7 +244,7 @@ export class Bezier {
     const raycastMaterial = new ShaderMaterial({
       uniforms: {
         resolution: { value: new Vector2() },
-        tolerance: { value: 0 }
+        tolerance: { value: 0 },
       },
       vertexShader: vertexRaycast,
       fragmentShader: fragmentRaycast,
@@ -241,7 +268,14 @@ export class Bezier {
     Bezier.raycastMaterial.uniforms.resolution.value.copy(Globals.resolution);
   }
 
-  static create(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, color = new Color(1, 1, 1), width = 1) {
+  static create(
+    p0: Vector3,
+    p1: Vector3,
+    p2: Vector3,
+    p3: Vector3,
+    color = new Color(1, 1, 1),
+    width = 1
+  ) {
     const bezier = new Bezier(Bezier.geometry.instanceCount++);
 
     bezier.p0 = p0;

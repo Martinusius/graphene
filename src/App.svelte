@@ -10,14 +10,16 @@
     SphereGeometry,
     TextureLoader,
     Texture,
+    Color,
   } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
-  import { ThreeGraph } from "./lib/threeGraph";
+  import { ThreeEdge, ThreeGraph } from "./lib/threeGraph";
   import { Instancer } from "./lib/three/Instancer";
   import { Globals } from "./lib/three/Globals";
   import { Bezier } from "./lib/three/Bezier";
   import { Point } from "./lib/three/Point";
+  import { Drag } from "./lib/three/Drag";
 
   let container: HTMLDivElement;
 
@@ -133,6 +135,57 @@
     Point.init(texture, atlasData);
     Bezier.init();
 
+    const drag = new Drag();
+
+    drag.addEventListener("hoveron", (event) => {
+      if (event.object instanceof Point) {
+        event.object.image = "node-hovered";
+      } else if (event.object instanceof Bezier) {
+        event.object.color = new Color(0.5, 0.5, 0.5);
+      }
+    });
+
+    drag.addEventListener("hoveroff", (event) => {
+      //console.log(event);
+
+      if (event.object instanceof Point) {
+        event.object.image = "node-base";
+      } else if (event.object instanceof Bezier) {
+        event.object.color = new Color(0, 0, 0);
+      }
+    });
+
+    drag.addEventListener("dragstart", (event) => {
+      if (event.object instanceof Point) {
+        event.object.image = "node-selected";
+      }
+    });
+
+    drag.addEventListener("dragend", (event) => {
+      if (event.object instanceof Point) {
+        event.object.image = "node-base";
+      }
+    });
+
+    drag.addEventListener("drag", (event) => {
+      if (event.object instanceof Bezier) {
+        const delta = event.position?.clone().sub(event.object.position);
+
+        const edges = new Set<ThreeEdge>();
+        event.object.data.vertices.forEach((vertex: any) => {
+          vertex.point.position = vertex.point.position.clone().add(delta);
+          vertex._edges.forEach((edge: any) => edges.add(edge));
+        });
+
+        edges.forEach((edge) => {
+          edge.recalculate();
+        });
+      } else if (event.object instanceof Point) {
+        event.object.position = event.position!;
+        event.object.data._edges.forEach((edge: any) => edge.recalculate());
+      }
+    });
+
     const graph = new ThreeGraph(scene);
 
     const a = graph.createVertex();
@@ -141,6 +194,10 @@
     const d = graph.createVertex();
 
     graph.createEdge(a, b);
+    graph.createEdge(b, a);
+    graph.createEdge(a, b);
+    graph.createEdge(b, a);
+
     graph.createEdge(b, c);
     graph.createEdge(c, d);
     graph.createEdge(d, a);

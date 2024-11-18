@@ -1,4 +1,4 @@
-import { Graph, Vertex, Edge, type VertexAttributes } from './graph';
+import { Graph, Vertex, Edge, type VertexAttributes } from "./graph";
 
 // Internal graph implementation
 export abstract class InternalVertex extends Vertex {
@@ -8,7 +8,10 @@ export abstract class InternalVertex extends Vertex {
   _edges = new Set<InternalEdge>();
 
   override get edges() {
-    if (this.deleted) throw new Error('Trying to access edges of a vertex that has been deleted');
+    if (this.deleted)
+      throw new Error(
+        "Trying to access edges of a vertex that has been deleted"
+      );
     return [...this._edges];
   }
 
@@ -18,11 +21,14 @@ export abstract class InternalVertex extends Vertex {
   }
 
   override delete() {
-    if (this.deleted) throw new Error('Trying to delete a vertex that has already been deleted');
+    if (this.deleted)
+      throw new Error(
+        "Trying to delete a vertex that has already been deleted"
+      );
     this.deleted = true;
 
     // Delete all indicent edges
-    this._edges.forEach(edge => {
+    this._edges.forEach((edge) => {
       this.graph._edges.delete(edge);
       edge.deleted = true;
     });
@@ -36,19 +42,27 @@ export abstract class InternalEdge extends Edge {
 
   _vertices: [InternalVertex, InternalVertex];
 
-  constructor(graph: InternalGraph, vertex1: InternalVertex, vertex2: InternalVertex) {
+  constructor(
+    graph: InternalGraph,
+    vertex1: InternalVertex,
+    vertex2: InternalVertex
+  ) {
     super();
     this.graph = graph;
     this._vertices = [vertex1, vertex2];
   }
 
   override get vertices() {
-    if (this.deleted) throw new Error('Trying to access vertices of an edge that has been deleted');
+    if (this.deleted)
+      throw new Error(
+        "Trying to access vertices of an edge that has been deleted"
+      );
     return this._vertices;
   }
 
   override delete() {
-    if (this.deleted) throw new Error('Trying to delete an edge that has already been deleted');
+    if (this.deleted)
+      throw new Error("Trying to delete an edge that has already been deleted");
     this.deleted = true;
 
     // Remove this edge from incident vertices

@@ -178,7 +178,7 @@ export class Bezier {
     this.index = -1;
   }
 
-  static init(maxBezierCount = 37768, verticesPerBezier = 128) {
+  static init(maxBezierCount = 131072, verticesPerBezier = 32) {
     const pointCount = verticesPerBezier * 2;
     const geometry = new InstancedBufferGeometry();
 

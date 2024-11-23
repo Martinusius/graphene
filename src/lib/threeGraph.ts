@@ -105,7 +105,7 @@ export class ThreeEdge extends InternalEdge {
       new Vector3(),
       new Vector3(),
       new Color("black"),
-      10
+      5
     );
 
     this.bezier.data = this;

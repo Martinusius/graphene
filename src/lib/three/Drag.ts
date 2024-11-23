@@ -164,7 +164,6 @@ class Drag extends EventDispatcher<DragEventMap> {
 
       if (_intersections.length > 0) {
         _selected = _intersections[0].object;
-        console.log("selected", _selected);
 
         _plane.setFromNormalAndCoplanarPoint(
           _camera.getWorldDirection(_plane.normal),

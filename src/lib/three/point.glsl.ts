@@ -14,7 +14,7 @@ void main() {
   vUv = uvs;
   vImage = point[1];
 
-  vec4 result = m * vec4(point[0].xyz, 1);
+  vec4 result = m * vec4(point[0].xyz + vec3(0, 0, log(pointIndex + 1.0)), 1);
 
   vec4 vert = vec4(position.xy, 0, 1);
   vert *= projectionMatrix;
@@ -63,7 +63,7 @@ void main() {
   vImage = point[1];
   vPointIndex = pointIndex;
 
-  vec4 result = m * vec4(point[0].xyz, 1);
+  vec4 result = m * vec4(point[0].xyz + vec3(0, 0, log(pointIndex + 1.0)), 1);
 
   vec4 vert = vec4(position.xy, 0, 1);
   vert *= projectionMatrix;

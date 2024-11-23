@@ -11,15 +11,18 @@
     TextureLoader,
     Texture,
     Color,
+    Vector3,
   } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
-  import { ThreeEdge, ThreeGraph } from "./lib/threeGraph";
+  import { ThreeEdge, ThreeGraph, ThreeVertex } from "./lib/threeGraph";
   import { Instancer } from "./lib/three/Instancer";
   import { Globals } from "./lib/three/Globals";
   import { Bezier } from "./lib/three/Bezier";
   import { Point } from "./lib/three/Point";
   import { Drag } from "./lib/three/Drag";
+  import { drawFont } from "./lib/three/drawFont";
+  import { Text } from "./lib/three/Text";
 
   let container: HTMLDivElement;
 
@@ -64,6 +67,7 @@
       renderer.setSize(container.clientWidth, container.clientHeight);
 
       Instancer.resize();
+      Text.resize();
     });
 
     const circleGeometry = new CircleGeometry(32, 32);
@@ -188,19 +192,42 @@
 
     const graph = new ThreeGraph(scene);
 
-    const a = graph.createVertex();
-    const b = graph.createVertex();
-    const c = graph.createVertex();
-    const d = graph.createVertex();
+    const vertices = [graph.createVertex()];
 
-    graph.createEdge(a, b);
-    graph.createEdge(b, a);
-    graph.createEdge(a, b);
-    graph.createEdge(b, a);
+    for (let i = 0; i < 30000; i++) {
+      const other = vertices[Math.floor(Math.random() * vertices.length)];
+      const vertex = graph.createVertex();
+      graph.createEdge(other, vertex);
+      graph.createEdge(vertex, other);
 
-    graph.createEdge(b, c);
-    graph.createEdge(c, d);
-    graph.createEdge(d, a);
+      vertices.push(vertex);
+    }
+
+    Text.init();
+
+    graph.vertices.forEach(((vertex: ThreeVertex) => {
+      Text.create(vertex.point.position.clone().add(new Vector3(0, 100, 0)), String(vertex.edges.length), 0.2);
+    }) as any);
+
+    // graph.createVertex();
+
+    // window.vertices = vertices;
+
+    drawFont();
+
+    // const a = graph.createVertex();
+    // const b = graph.createVertex();
+    // const c = graph.createVertex();
+    // const d = graph.createVertex();
+
+    // graph.createEdge(a, b);
+    // graph.createEdge(b, a);
+    // graph.createEdge(a, b);
+    // graph.createEdge(b, a);
+
+    // graph.createEdge(b, c);
+    // graph.createEdge(c, d);
+    // graph.createEdge(d, a);
   });
 </script>
 

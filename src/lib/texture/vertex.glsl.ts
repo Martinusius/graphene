@@ -1,6 +1,8 @@
 export const vertexColor = `
 uniform vec2 resolution;
 uniform sampler2D positions;
+uniform sampler2D selection;
+
 
 // varying vec2 vUv;
 // varying vec4 vImage;
@@ -9,13 +11,16 @@ uniform float size;
 
 varying vec3 vPosition;
 varying vec3 vOriginal;
+varying vec4 vSelection;
+
 
 void main() {
   mat4 m = projectionMatrix * viewMatrix;
 
-  vec3 texturePosition = texture2D(positions, position.xy).xyz;
+  vec3 tPosition = texture2D(positions, position.xy).xyz;
+  vSelection = texture2D(selection, position.xy);
 
-  vec4 result = m * vec4(texturePosition, 1);
+  vec4 result = m * vec4(tPosition, 1);
 
   gl_PointSize = size;
 
@@ -34,6 +39,8 @@ export const fragmentColor = `
 
 uniform float size;
 varying vec3 vOriginal;
+varying vec4 vSelection;
+
 
 
 void main() {
@@ -59,5 +66,5 @@ void main() {
 
   // color.rgb = vec3(color.r + color.b + color.g) / 3.0;
   
-  gl_FragColor = vec4(white, white, white, alpha);
+  gl_FragColor = vec4(vec3(white) * mix(vec3(1), vec3(0, 0.5, 1), vSelection.w), alpha);
 }`;

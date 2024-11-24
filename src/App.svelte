@@ -13,6 +13,8 @@
     Color,
     Points,
     BufferGeometry,
+    Vector3,
+    Vector2,
   } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
@@ -186,23 +188,58 @@
       }
     });
 
-    const graph = new ThreeGraph(scene);
+    // const graph = new ThreeGraph(scene);
 
-    const a = graph.createVertex();
-    const b = graph.createVertex();
-    const c = graph.createVertex();
-    const d = graph.createVertex();
+    // const a = graph.createVertex();
+    // const b = graph.createVertex();
+    // const c = graph.createVertex();
+    // const d = graph.createVertex();
 
-    graph.createEdge(a, b);
-    graph.createEdge(b, a);
-    graph.createEdge(a, b);
-    graph.createEdge(b, a);
+    // graph.createEdge(a, b);
+    // graph.createEdge(b, a);
+    // graph.createEdge(a, b);
+    // graph.createEdge(b, a);
 
-    graph.createEdge(b, c);
-    graph.createEdge(c, d);
-    graph.createEdge(d, a);
+    // graph.createEdge(b, c);
+    // graph.createEdge(c, d);
+    // graph.createEdge(d, a);
 
-    const vertices = new Vertices(renderer, scene, 1024 * 1024);
+    const vertices = new Vertices(renderer, camera, scene, 256 * 256);
+
+    // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
+
+    function screenCoords(event: MouseEvent) {
+      const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
+      console.log(top, left, width, height);
+      return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
+    }
+
+    let first = new Vector2(),
+      selection = false;
+    window.addEventListener("mousedown", (event) => {
+      if (event.button !== 0) return;
+
+      first = screenCoords(event);
+      selection = true;
+    });
+
+    window.addEventListener("mousemove", (event) => {
+      if (event.button !== 0) return;
+
+      if (!selection) return;
+
+      const second = screenCoords(event);
+
+      vertices.selection(first.clone().min(second), first.clone().max(second));
+      console.log(first.clone().min(second), first.clone().max(second));
+    });
+
+    window.addEventListener("mouseup", (event) => {
+      if (event.button !== 0) return;
+
+      selection = false;
+      vertices.selection(new Vector2(), new Vector2());
+    });
   });
 </script>
 

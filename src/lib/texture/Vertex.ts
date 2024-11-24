@@ -1,10 +1,11 @@
-import { BufferAttribute, BufferGeometry, NormalBlending, Points, Scene, ShaderMaterial, Vector2, WebGLRenderer } from "three";
-import { GPUComputationRenderer } from "three/examples/jsm/Addons.js";
+import { BufferAttribute, BufferGeometry, Camera, NormalBlending, Points, Scene, ShaderMaterial, Vector2, WebGLRenderer } from "three";
+import { GPUComputationRenderer, type Variable } from "three/examples/jsm/Addons.js";
 
 import {
   vertexColor,
   fragmentColor,
 } from "./vertex.glsl";
+import { select } from "./select.glsl";
 
 
 export class Vertices {
@@ -13,13 +14,21 @@ export class Vertices {
 
   private colorMaterial: ShaderMaterial;
 
-  constructor(public renderer: WebGLRenderer, scene: Scene, vertexCount: number) {
+  private gpuCompute: GPUComputationRenderer;
+
+  private selectionVariable: Variable;
+
+  constructor(public renderer: WebGLRenderer, public camera: Camera, scene: Scene, vertexCount: number) {
     this.geometry = new BufferGeometry();
 
     const size = Math.ceil(Math.sqrt(vertexCount));
 
-    const gpuCompute = new GPUComputationRenderer(size, size, renderer);
-    const positions = gpuCompute.createTexture();
+    this.gpuCompute = new GPUComputationRenderer(size, size, renderer);
+    const positions = this.gpuCompute.createTexture();
+    const selection = this.gpuCompute.createTexture();
+
+
+
 
     const data = new Float32Array(size * size * 3);
 
@@ -39,6 +48,19 @@ export class Vertices {
     }
 
 
+    this.selectionVariable = this.gpuCompute.addVariable('selection', select, selection);
+
+    this.selectionVariable.material.uniforms.positions = { value: positions };
+    this.selectionVariable.material.uniforms.min = { value: new Vector2(100, 300) };
+    this.selectionVariable.material.uniforms.max = { value: new Vector2(700, 900) };
+    this.selectionVariable.material.uniforms.projectionMatrix = { value: camera.projectionMatrix };
+    this.selectionVariable.material.uniforms._viewMatrix = { value: camera.matrixWorldInverse };
+
+    this.gpuCompute.init();
+
+
+
+
 
 
     this.geometry.setAttribute('position', new BufferAttribute(data, 3));
@@ -46,8 +68,9 @@ export class Vertices {
     this.colorMaterial = new ShaderMaterial({
       uniforms: {
         positions: { value: positions },
-        size: { value: 10 },
-        resolution: { value: new Vector2(this.renderer.domElement.width, this.renderer.domElement.height) }
+        selection: { value: selection },
+        size: { value: 40 },
+        resolution: { value: new Vector2(this.renderer.domElement.width, this.renderer.domElement.height) },
       },
       transparent: true,
       depthWrite: true,
@@ -66,5 +89,15 @@ export class Vertices {
     });
   }
 
+  selection(min: Vector2, max: Vector2) {
+    this.selectionVariable.material.uniforms.min.value = min;
+    this.selectionVariable.material.uniforms.max.value = max;
+    this.selectionVariable.material.uniforms.projectionMatrix.value = this.camera.projectionMatrix;
+    this.camera.updateMatrixWorld();
+    this.selectionVariable.material.uniforms._viewMatrix.value = this.camera.matrixWorldInverse;
 
+    this.gpuCompute.compute();
+
+    this.colorMaterial.uniforms.selection.value = this.gpuCompute.getCurrentRenderTarget(this.selectionVariable).texture;
+  }
 }

@@ -206,6 +206,8 @@
 
     const vertices = new Vertices(renderer, camera, scene, 256 * 256);
 
+    camera.updateMatrix();
+
     // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
 
     function screenCoords(event: MouseEvent) {
@@ -238,7 +240,7 @@
       if (event.button !== 0) return;
 
       selection = false;
-      vertices.selection(new Vector2(), new Vector2());
+      vertices.selection(new Vector2(-100, -100), new Vector2(-100, -100));
     });
   });
 </script>

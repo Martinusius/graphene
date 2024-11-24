@@ -55,6 +55,8 @@ export class Vertices {
     this.selectionVariable.material.uniforms.max = { value: new Vector2(700, 900) };
     this.selectionVariable.material.uniforms.projectionMatrix = { value: camera.projectionMatrix };
     this.selectionVariable.material.uniforms._viewMatrix = { value: camera.matrixWorldInverse };
+    this.selectionVariable.material.uniforms.size = { value: 10 };
+    this.selectionVariable.material.uniforms.screenResolution = { value: new Vector2(renderer.domElement.width, renderer.domElement.height) };
 
     this.gpuCompute.init();
 
@@ -82,10 +84,16 @@ export class Vertices {
     this.points = new Points(this.geometry, this.colorMaterial);
     this.points.frustumCulled = false;
 
+    this.points.onBeforeRender = (renderer, scene, camera) => {
+      this.colorMaterial.uniforms.size.value = ((camera as any).zoom ?? 0.01) * 1000;
+      this.selectionVariable.material.uniforms.size.value = this.colorMaterial.uniforms.size.value;
+    };
+
     scene.add(this.points);
 
     window.addEventListener('resize', () => {
       this.colorMaterial.uniforms.resolution.value.set(this.renderer.domElement.width, this.renderer.domElement.height);
+      this.selectionVariable.material.uniforms.screenResolution.value.set(this.renderer.domElement.width, this.renderer.domElement.height);
     });
   }
 

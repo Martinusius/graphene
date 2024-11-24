@@ -8,6 +8,9 @@ uniform vec2 max;
 uniform mat4 projectionMatrix;
 uniform mat4 _viewMatrix;
 
+uniform vec2 screenResolution;
+uniform float size;
+
 
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
@@ -16,7 +19,12 @@ void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   vec4 position = m * vec4(texture2D(positions, uv).xyz, 1);
 
-  if(position.x > min.x && position.x < max.x && position.y > min.y && position.y < max.y) {
+  vec2 screenPixel = position.xy * screenResolution;
+  vec2 closestInside = clamp(screenPixel, min * screenResolution, max * screenResolution);
+
+  float dist = length(screenPixel - closestInside);
+
+  if(dist < size) {
     gl_FragColor = vec4(1);
   } else {
     gl_FragColor = vec4(0);

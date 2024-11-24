@@ -11,6 +11,8 @@
     TextureLoader,
     Texture,
     Color,
+    Points,
+    BufferGeometry,
   } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
@@ -20,6 +22,7 @@
   import { Bezier } from "./lib/three/Bezier";
   import { Point } from "./lib/three/Point";
   import { Drag } from "./lib/three/Drag";
+  import { Vertices } from "./lib/texture/Vertex";
 
   let container: HTMLDivElement;
 
@@ -65,9 +68,6 @@
 
       Instancer.resize();
     });
-
-    const circleGeometry = new CircleGeometry(32, 32);
-    // const circle = new Mesh(circleGeometry, new MeshBasicMaterial({ color: 0xff0000 }));
 
     scene.add(initGrid(container, camera));
     // scene.add(circle);
@@ -201,6 +201,8 @@
     graph.createEdge(b, c);
     graph.createEdge(c, d);
     graph.createEdge(d, a);
+
+    const vertices = new Vertices(renderer, scene, 1024 * 1024);
   });
 </script>
 

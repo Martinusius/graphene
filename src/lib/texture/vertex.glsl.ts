@@ -3,10 +3,6 @@ uniform vec2 resolution;
 uniform sampler2D positions;
 uniform sampler2D selection;
 
-
-// varying vec2 vUv;
-// varying vec4 vImage;
-
 uniform float size;
 
 varying vec3 vPosition;
@@ -31,16 +27,11 @@ void main() {
 }`;
 
 export const fragmentColor = `
-// varying vec2 vUv;
-// varying vec4 vImage;
 
-// uniform sampler2D atlas;
-// uniform vec2 atlasSize;
 
 uniform float size;
 varying vec3 vOriginal;
 varying vec4 vSelection;
-
 
 
 void main() {
@@ -48,13 +39,14 @@ void main() {
 
   vec2 uv = 2.0 * vec2(gl_PointCoord) - 1.0;
 
-  float smoothFactor = size / 5.0;
+
+  float smoothFactor = max(size / 5.0, 2.0);
 
   float alpha = smoothstep(1.0, 0.0, clamp(length(uv) * smoothFactor - smoothFactor + 1.0, 0.0, 1.0));
 
-  float smoothFactor2 = size / 5.0;
+  // float smoothFactor2 = size / 5.0;
 
-  float white = smoothstep(1.0, 0.0, clamp(length(uv) * 1.2 * smoothFactor2 - smoothFactor2 + 1.0, 0.0, 1.0));
+  float white = smoothstep(1.0, 0.0, clamp(length(uv) * 1.2 * smoothFactor - smoothFactor + 1.0, 0.0, 1.0));
 
 
 
@@ -66,5 +58,5 @@ void main() {
 
   // color.rgb = vec3(color.r + color.b + color.g) / 3.0;
   
-  gl_FragColor = vec4(vec3(white) * mix(vec3(1), vec3(0, 0.5, 1), vSelection.w), alpha);
+  gl_FragColor = vec4(vec3(white) * mix(vec3(0.9), vec3(0, 0.5, 1), vSelection.r), alpha);
 }`;

@@ -1,6 +1,7 @@
 export const select = `
 
 uniform sampler2D positions;
+// uniform sampler2D selection;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -10,6 +11,10 @@ uniform mat4 _viewMatrix;
 
 uniform vec2 screenResolution;
 uniform float size;
+
+uniform bool select;
+uniform bool preview;
+
 
 
 void main() {
@@ -24,10 +29,12 @@ void main() {
 
   float dist = length(screenPixel - closestInside);
 
+  vec2 previous = texture2D(selection, uv).rg;
+
   if(dist < size) {
-    gl_FragColor = vec4(1);
+    gl_FragColor = vec4(select, preview ? previous.g : float(select), 0, 1);
   } else {
-    gl_FragColor = vec4(0);
+    gl_FragColor = vec4(previous.gg, 0, 1);
   }
 }`;
 

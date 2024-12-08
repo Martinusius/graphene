@@ -25,6 +25,8 @@
   import { Point } from "./lib/three/Point";
   import { Drag } from "./lib/three/Drag";
   import { Vertices } from "./lib/texture/Vertex";
+  import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
+  import { EffectComposer, SSAARenderPass } from "three/examples/jsm/Addons.js";
 
   let container: HTMLDivElement;
 
@@ -204,7 +206,11 @@
     // graph.createEdge(c, d);
     // graph.createEdge(d, a);
 
-    const vertices = new Vertices(renderer, camera, scene, 256 * 256);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new SSAARenderPass(scene, camera));
+    composer.render();
+
+    const vertices = new Vertices(renderer, camera, scene, 512 * 512, 0);
 
     camera.updateMatrix();
 
@@ -212,35 +218,54 @@
 
     function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
-      console.log(top, left, width, height);
+      // console.log(top, left, width, height);
       return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
     }
 
     let first = new Vector2(),
       selection = false;
+
+    let select = true;
+
     window.addEventListener("mousedown", (event) => {
-      if (event.button !== 0) return;
+      if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
+      if (event.button !== LEFT_MOUSE_BUTTON) return;
+
+      select = !event.altKey;
+
+      // console.log("first", first);
 
       first = screenCoords(event);
+      first.divideScalar(camera.zoom * 100);
+
       selection = true;
     });
 
-    window.addEventListener("mousemove", (event) => {
+    function mouseMove(event: MouseEvent) {
+      if (!selection) return;
+
+      const second = screenCoords(event);
+
+      const first2 = new Vector2(first.x, first.y);
+      first2.multiplyScalar(camera.zoom * 100);
+      vertices.selection(first2.clone().min(second), first2.clone().max(second), select);
+    }
+
+    window.addEventListener("mousemove", mouseMove);
+    // window.addEventListener("wheel", mouseMove);
+
+    window.addEventListener("mouseup", (event) => {
       if (event.button !== 0) return;
 
       if (!selection) return;
 
       const second = screenCoords(event);
 
-      vertices.selection(first.clone().min(second), first.clone().max(second));
-      console.log(first.clone().min(second), first.clone().max(second));
-    });
-
-    window.addEventListener("mouseup", (event) => {
-      if (event.button !== 0) return;
+      const first2 = new Vector2(first.x, first.y);
+      first2.multiplyScalar(camera.zoom * 100);
+      vertices.selection(first2.clone().min(second), first2.clone().max(second), select, false);
 
       selection = false;
-      vertices.selection(new Vector2(-100, -100), new Vector2(-100, -100));
     });
   });
 </script>

@@ -4,29 +4,19 @@
     Scene,
     OrthographicCamera,
     WebGLRenderer,
-    CircleGeometry,
-    Mesh,
-    MeshBasicMaterial,
-    SphereGeometry,
-    TextureLoader,
-    Texture,
-    Color,
-    Points,
-    BufferGeometry,
-    Vector3,
     Vector2,
+    BufferGeometry,
   } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
-  import { ThreeEdge, ThreeGraph } from "./lib/threeGraph";
-  import { Instancer } from "./lib/three/Instancer";
   import { Globals } from "./lib/three/Globals";
-  import { Bezier } from "./lib/three/Bezier";
-  import { Point } from "./lib/three/Point";
-  import { Drag } from "./lib/three/Drag";
   import { Vertices } from "./lib/texture/Vertex";
-  import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
-  import { EffectComposer, SSAARenderPass } from "three/examples/jsm/Addons.js";
+  import {
+    isMousePressed,
+    LEFT_MOUSE_BUTTON,
+    RIGHT_MOUSE_BUTTON,
+  } from "./lib/input";
+  import { Draw } from "./lib/draw";
 
   let container: HTMLDivElement;
 
@@ -69,12 +59,10 @@
 
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(container.clientWidth, container.clientHeight);
-
-      Instancer.resize();
     });
 
     scene.add(initGrid(container, camera));
-    // scene.add(circle);
+    Draw.init(scene, camera);
 
     const render = () => {
       requestAnimationFrame(render);
@@ -82,113 +70,58 @@
     };
     render();
 
-    Globals.init(renderer, scene, camera);
-    // Instancer.init();
-    const atlasData = [
-      {
-        name: "node-base",
-        x: 0,
-        y: 0,
-        width: 100,
-        height: 100,
-      },
-      {
-        name: "node-selected",
-        x: 0,
-        y: 100,
-        width: 100,
-        height: 100,
-      },
-      {
-        name: "node-hovered",
-        x: 100,
-        y: 0,
-        width: 100,
-        height: 100,
-      },
-      {
-        name: "handle-base",
-        x: 100,
-        y: 100,
-        width: 100,
-        height: 100,
-      },
-      {
-        name: "handle-hovered",
-        x: 0,
-        y: 200,
-        width: 100,
-        height: 100,
-      },
-      {
-        name: "handle-selected",
-        x: 100,
-        y: 200,
-        width: 100,
-        height: 100,
-      },
-    ];
+    // Globals.init(renderer, scene, camera);
 
-    const textureLoader = new TextureLoader();
-    const texture = await new Promise<Texture>((resolve) => {
-      textureLoader.load("./atlas.png", (texture) => {
-        resolve(texture);
-      });
-    });
+    // const drag = new Drag();
 
-    Point.init(texture, atlasData);
-    Bezier.init();
+    // drag.addEventListener("hoveron", (event) => {
+    //   if (event.object instanceof Point) {
+    //     event.object.image = "node-hovered";
+    //   } else if (event.object instanceof Bezier) {
+    //     event.object.color = new Color(0.5, 0.5, 0.5);
+    //   }
+    // });
 
-    const drag = new Drag();
+    // drag.addEventListener("hoveroff", (event) => {
+    //   //console.log(event);
 
-    drag.addEventListener("hoveron", (event) => {
-      if (event.object instanceof Point) {
-        event.object.image = "node-hovered";
-      } else if (event.object instanceof Bezier) {
-        event.object.color = new Color(0.5, 0.5, 0.5);
-      }
-    });
+    //   if (event.object instanceof Point) {
+    //     event.object.image = "node-base";
+    //   } else if (event.object instanceof Bezier) {
+    //     event.object.color = new Color(0, 0, 0);
+    //   }
+    // });
 
-    drag.addEventListener("hoveroff", (event) => {
-      //console.log(event);
+    // drag.addEventListener("dragstart", (event) => {
+    //   if (event.object instanceof Point) {
+    //     event.object.image = "node-selected";
+    //   }
+    // });
 
-      if (event.object instanceof Point) {
-        event.object.image = "node-base";
-      } else if (event.object instanceof Bezier) {
-        event.object.color = new Color(0, 0, 0);
-      }
-    });
+    // drag.addEventListener("dragend", (event) => {
+    //   if (event.object instanceof Point) {
+    //     event.object.image = "node-base";
+    //   }
+    // });
 
-    drag.addEventListener("dragstart", (event) => {
-      if (event.object instanceof Point) {
-        event.object.image = "node-selected";
-      }
-    });
+    // drag.addEventListener("drag", (event) => {
+    //   if (event.object instanceof Bezier) {
+    //     const delta = event.position?.clone().sub(event.object.position);
 
-    drag.addEventListener("dragend", (event) => {
-      if (event.object instanceof Point) {
-        event.object.image = "node-base";
-      }
-    });
+    //     const edges = new Set<ThreeEdge>();
+    //     event.object.data.vertices.forEach((vertex: any) => {
+    //       vertex.point.position = vertex.point.position.clone().add(delta);
+    //       vertex._edges.forEach((edge: any) => edges.add(edge));
+    //     });
 
-    drag.addEventListener("drag", (event) => {
-      if (event.object instanceof Bezier) {
-        const delta = event.position?.clone().sub(event.object.position);
-
-        const edges = new Set<ThreeEdge>();
-        event.object.data.vertices.forEach((vertex: any) => {
-          vertex.point.position = vertex.point.position.clone().add(delta);
-          vertex._edges.forEach((edge: any) => edges.add(edge));
-        });
-
-        edges.forEach((edge) => {
-          edge.recalculate();
-        });
-      } else if (event.object instanceof Point) {
-        event.object.position = event.position!;
-        event.object.data._edges.forEach((edge: any) => edge.recalculate());
-      }
-    });
+    //     edges.forEach((edge) => {
+    //       edge.recalculate();
+    //     });
+    //   } else if (event.object instanceof Point) {
+    //     event.object.position = event.position!;
+    //     event.object.data._edges.forEach((edge: any) => edge.recalculate());
+    //   }
+    // });
 
     // const graph = new ThreeGraph(scene);
 
@@ -206,20 +139,20 @@
     // graph.createEdge(c, d);
     // graph.createEdge(d, a);
 
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new SSAARenderPass(scene, camera));
-    composer.render();
-
-    const vertices = new Vertices(renderer, camera, scene, 512 * 512, 0);
+    const vertices = new Vertices(renderer, camera, scene, 128 * 128);
 
     camera.updateMatrix();
 
     // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
 
     function screenCoords(event: MouseEvent) {
-      const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
+      const { top, left, width, height } =
+        renderer.domElement.getBoundingClientRect();
       // console.log(top, left, width, height);
-      return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
+      return new Vector2(
+        ((event.clientX - left) / width) * 2 - 1,
+        ((height - (event.clientY - top)) / height) * 2 - 1
+      );
     }
 
     let first = new Vector2(),
@@ -244,11 +177,19 @@
     function mouseMove(event: MouseEvent) {
       if (!selection) return;
 
+      Draw.reset();
+
       const second = screenCoords(event);
 
-      const first2 = new Vector2(first.x, first.y);
-      first2.multiplyScalar(camera.zoom * 100);
-      vertices.selection(first2.clone().min(second), first2.clone().max(second), select);
+      const firstScaled = first.clone();
+      firstScaled.multiplyScalar(camera.zoom * 100);
+
+      const min = firstScaled.clone().min(second);
+      const max = firstScaled.clone().max(second);
+
+      vertices.selection(min, max, select);
+      Draw.selectionRectangle(min, max);
+      // console.log("aaa");
     }
 
     window.addEventListener("mousemove", mouseMove);
@@ -261,10 +202,14 @@
 
       const second = screenCoords(event);
 
-      const first2 = new Vector2(first.x, first.y);
-      first2.multiplyScalar(camera.zoom * 100);
-      vertices.selection(first2.clone().min(second), first2.clone().max(second), select, false);
+      const firstScaled = first.clone();
+      firstScaled.multiplyScalar(camera.zoom * 100);
 
+      const min = firstScaled.clone().min(second);
+      const max = firstScaled.clone().max(second);
+
+      vertices.selection(min, max, select, false);
+      Draw.reset();
       selection = false;
     });
   });

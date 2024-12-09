@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@lume/three-meshline':
+        specifier: ^4.0.5
+        version: 4.0.5(three@0.170.0)
       three:
         specifier: ^0.170.0
         version: 0.170.0
@@ -224,6 +227,11 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@lume/three-meshline@4.0.5':
+    resolution: {integrity: sha512-1Gyl5yf9rXzwTtvOAsJg0Vc7AIOIIpf45H9+ZZDUstl/0TH5bDOefDSFC4OXQFgc7BQebBkGGzi+ffzaBgaovw==}
+    peerDependencies:
+      three: '*'
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1054,6 +1062,10 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@lume/three-meshline@4.0.5(three@0.170.0)':
+    dependencies:
+      three: 0.170.0
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

@@ -1,7 +1,6 @@
 export const select = `
 
 uniform sampler2D positions;
-// uniform sampler2D selection;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -19,8 +18,7 @@ uniform bool preview;
 
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
-
-
+  
   vec2 uv = gl_FragCoord.xy / resolution;
   vec4 position = m * vec4(texture2D(positions, uv).xyz, 1);
 
@@ -37,4 +35,3 @@ void main() {
     gl_FragColor = vec4(previous.gg, 0, 1);
   }
 }`;
-

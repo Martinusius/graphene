@@ -22,7 +22,7 @@
 
   onMount(async () => {
     const renderer = new WebGLRenderer({ antialias: true });
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(0x000000, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
@@ -66,7 +66,7 @@
 
     const render = () => {
       requestAnimationFrame(render);
-      renderer.render(scene, camera);
+      // renderer.render(scene, camera);
     };
     render();
 
@@ -139,7 +139,7 @@
     // graph.createEdge(c, d);
     // graph.createEdge(d, a);
 
-    const vertices = new Vertices(renderer, camera, scene, 128 * 128);
+    const vertices = new Vertices(renderer, camera, scene, 128 * 128 * 16);
 
     camera.updateMatrix();
 
@@ -175,6 +175,10 @@
     });
 
     function mouseMove(event: MouseEvent) {
+      const id = vertices.raycast(screenCoords(event));
+      console.log(id);
+      if (id) vertices.select(id);
+
       if (!selection) return;
 
       Draw.reset();

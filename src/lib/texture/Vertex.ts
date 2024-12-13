@@ -2,16 +2,23 @@ import {
   BufferAttribute,
   BufferGeometry,
   Camera,
+  DataTexture,
   DoubleSide,
+  FloatType,
+  Matrix4,
   Mesh,
   NormalBlending,
   OrthographicCamera,
   PerspectiveCamera,
   Points,
+  Raycaster,
+  RGBAFormat,
   Scene,
   ShaderMaterial,
   Vector2,
+  Vector3,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 import {
   GPUComputationRenderer,
@@ -29,9 +36,10 @@ import {
 
 import { select } from "./select.glsl";
 import { EdgeBuffer } from "../edgebuffer";
+import { PIXEL_RADIUS, pixels } from "./pixels";
 
 export class Vertices {
-  private points: Points;
+  private points: Points<BufferGeometry, ShaderMaterial>;
   private edges: Mesh;
 
   private vertexGeometry: BufferGeometry;
@@ -43,29 +51,48 @@ export class Vertices {
   private compute: GPUComputationRenderer;
   // private edgeCompute: GPUComputationRenderer;
 
+  private resolution: Vector2;
+
   private selectionVariable: Variable;
+
+  private raycaster = new Raycaster();
+  private raycastTarget = new WebGLRenderTarget(30, 30, {
+    format: RGBAFormat,
+    type: FloatType,
+  });
+
+  private readonly size: number;
+
+  private selectionTexture: DataTexture;
 
   constructor(
     public renderer: WebGLRenderer,
-    public camera: Camera,
-    scene: Scene,
+    public camera: OrthographicCamera,
+    public scene: Scene,
     public readonly vertexCount: number,
     public readonly edgeCount: number = vertexCount / 2
   ) {
     this.vertexGeometry = new BufferGeometry();
     // this.edgeGeometry = new BufferGeometry();
 
-    const size = Math.ceil(Math.sqrt(Math.max(vertexCount, edgeCount)));
+    this.resolution = new Vector2(
+      this.renderer.domElement.width,
+      this.renderer.domElement.height
+    );
 
-    this.compute = new GPUComputationRenderer(size, size, renderer);
+    this.size = Math.ceil(Math.sqrt(Math.max(vertexCount, edgeCount)));
+
+    this.compute = new GPUComputationRenderer(this.size, this.size, renderer);
     const positions = this.compute.createTexture();
     const selection = this.compute.createTexture();
 
-    const data = new Float32Array(size * size * 3);
+    this.selectionTexture = selection;
+
+    const data = new Float32Array(this.size * this.size * 3);
 
     for (let i = 0; i < vertexCount; i++) {
-      data[i * 3 + 0] = (i % size) / size;
-      data[i * 3 + 1] = Math.floor(i / size) / size;
+      data[i * 3 + 0] = (i % this.size) / this.size;
+      data[i * 3 + 1] = Math.floor(i / this.size) / this.size;
       data[i * 3 + 2] = i + 1;
     }
 
@@ -86,7 +113,7 @@ export class Vertices {
       positions.image.data[i * 8 + 6] = 0;
     }
 
-    const edges = new EdgeBuffer(edgeCount, size);
+    const edges = new EdgeBuffer(edgeCount, this.size);
     for (let i = 0; i < edgeCount; i++) {
       edges.addEdge(i * 2, i * 2 + 1, true, true);
     }
@@ -139,6 +166,7 @@ export class Vertices {
             this.renderer.domElement.height
           ),
         },
+        raycast: { value: false },
       },
       transparent: true,
       depthWrite: true,
@@ -190,24 +218,87 @@ export class Vertices {
       this.edgeMaterial.uniforms.size.value = camera.zoom * 400;
     };
 
+    this.points.userData.raycast = true;
+
     scene.add(this.edges);
     scene.add(this.points);
 
     window.addEventListener("resize", () => {
-      this.vertexMaterial.uniforms.resolution.value.set(
-        this.renderer.domElement.width,
-        this.renderer.domElement.height
-      );
-      this.edgeMaterial.uniforms.resolution.value.set(
+      this.resolution.set(
         this.renderer.domElement.width,
         this.renderer.domElement.height
       );
 
-      this.selectionVariable.material.uniforms.screenResolution.value.set(
-        this.renderer.domElement.width,
-        this.renderer.domElement.height
+      this.vertexMaterial.uniforms.resolution.value.copy(this.resolution);
+      this.edgeMaterial.uniforms.resolution.value.copy(this.resolution);
+      this.selectionVariable.material.uniforms.screenResolution.value.copy(
+        this.resolution
       );
     });
+  }
+
+  raycast(pointer: Vector2) {
+    this.raycaster.setFromCamera(pointer, this.camera);
+
+    this.scene.children.forEach((child) => {
+      child.userData.visibleBeforeRaycast = child.visible;
+      child.visible = !!child.userData.raycast;
+    });
+
+    const { origin, direction } = this.raycaster.ray;
+
+    const backup = this.camera.clone();
+
+    this.camera.position.copy(origin);
+    this.camera.lookAt(origin.clone().add(direction));
+
+    this.points.material.uniforms.raycast.value = true;
+
+    // this.renderer.setRenderTarget(this.raycastTarget);
+    this.renderer.render(this.scene, this.camera);
+
+    const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
+    this.renderer.readRenderTargetPixels(
+      this.raycastTarget,
+      0,
+      0,
+      PIXEL_RADIUS,
+      PIXEL_RADIUS,
+      pixelBuffer
+    );
+
+    // this.renderer.setRenderTarget(null);
+
+    let id;
+
+    for (let i = 0; i < pixels.length; i++) {
+      const [x, y] = pixels[i];
+      const index = (x + PIXEL_RADIUS * y) * 4;
+
+      if (pixelBuffer[index] < 1) continue;
+
+      // id = [pixelBuffer[index], pixelBuffer[index + 1]];
+      id = pixelBuffer[index];
+      break;
+    }
+
+    this.camera.copy(backup);
+
+    this.scene.children.forEach((child) => {
+      child.visible = child.userData.visibleBeforeRaycast;
+    });
+
+    this.points.material.uniforms.raycast.value = false;
+
+    if (!id) return;
+
+    // return id[0] * this.size + id[1] * this.size * this.size;
+    return id;
+  }
+
+  select(id: number) {
+    this.selectionTexture.image.data[id * 4] = 1;
+    this.selectionTexture.image.data[id * 4 + 1] = 1;
   }
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {

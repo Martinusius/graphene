@@ -61,12 +61,8 @@ void main() {
     }
   }
 
-
-  // uv.x = (uv.x - 0.5) * (1.0 - 4.0 / dist) + 0.5;
-
   vec2 tPosition = mix(firstVertex.xy, secondVertex.xy, uv.x);
   tPosition += vec2(-toSecond.y, toSecond.x) * (uv.y - 0.5) * 0.5;
-
   
   vec4 result = m * vec4(tPosition, 0, 1);
 

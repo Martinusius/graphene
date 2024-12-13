@@ -14,8 +14,6 @@ uniform float size;
 uniform bool select;
 uniform bool preview;
 
-
-
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
   

@@ -12,9 +12,6 @@ varying vec3 vPosition;
 varying vec3 vOriginal;
 varying vec4 vSelection;
 
-const float PIXEL_RADIUS = ${PIXEL_RADIUS}.0;
-
-
 void main() {
   mat4 m = projectionMatrix * viewMatrix;
 
@@ -22,10 +19,6 @@ void main() {
   vSelection = texture2D(selection, position.xy);
 
   vec4 result = m * vec4(tPosition, 1);
-
-  // result.xy *= 3.0;
-  if(raycast)
-    result.xy *= resolution / vec2(PIXEL_RADIUS);
 
   gl_PointSize = size;
 

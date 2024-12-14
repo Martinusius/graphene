@@ -56,11 +56,7 @@ export class Vertices {
   private selectionVariable: Variable;
 
   private raycaster = new Raycaster();
-  private raycastTarget = new WebGLRenderTarget(30, 30, {
-    format: RGBAFormat,
-    type: FloatType,
-  });
-
+  private raycastTarget: WebGLRenderTarget;
   private readonly size: number;
 
   private selectionTexture: DataTexture;
@@ -79,6 +75,12 @@ export class Vertices {
       this.renderer.domElement.width,
       this.renderer.domElement.height
     );
+
+    this.raycastTarget = new WebGLRenderTarget(this.resolution.x, this.resolution.y, {
+      format: RGBAFormat,
+      type: FloatType,
+    });
+
 
     this.size = Math.ceil(Math.sqrt(Math.max(vertexCount, edgeCount)));
 
@@ -101,8 +103,8 @@ export class Vertices {
     }
 
     for (let i = 0; i < vertexCount / 2; i++) {
-      const x = random() * 5000;
-      const y = random() * 5000;
+      const x = random() * 100;
+      const y = random() * 100;
 
       positions.image.data[i * 8 + 0] = x;
       positions.image.data[i * 8 + 1] = y;
@@ -237,37 +239,58 @@ export class Vertices {
     });
   }
 
+  screenCoordsToImageCoords(screenCoords: Vector2) {
+    return screenCoords.clone().addScalar(1).multiplyScalar(0.5).multiply(this.resolution);
+  }
+
   raycast(pointer: Vector2) {
-    this.raycaster.setFromCamera(pointer, this.camera);
+    // this.raycaster.setFromCamera(pointer, this.camera);
 
     this.scene.children.forEach((child) => {
       child.userData.visibleBeforeRaycast = child.visible;
       child.visible = !!child.userData.raycast;
     });
 
-    const { origin, direction } = this.raycaster.ray;
+    // const { origin, direction } = this.raycaster.ray;
 
-    const backup = this.camera.clone();
+    // const backup = this.camera.clone();
 
-    this.camera.position.copy(origin);
-    this.camera.lookAt(origin.clone().add(direction));
+    // this.camera.position.copy(origin);
+    // this.camera.lookAt(origin.clone().add(direction));
 
     this.points.material.uniforms.raycast.value = true;
 
-    // this.renderer.setRenderTarget(this.raycastTarget);
+    const pixel = this.screenCoordsToImageCoords(pointer);
+    const min = pixel.clone().sub(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS).multiplyScalar(0.5));
+
+
+
+
+    this.renderer.setRenderTarget(this.raycastTarget);
+    this.renderer.setScissor(min.x, min.y, PIXEL_RADIUS, PIXEL_RADIUS);
+    this.renderer.setScissorTest(true);
     this.renderer.render(this.scene, this.camera);
 
     const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
+    console.log(min);
+
     this.renderer.readRenderTargetPixels(
       this.raycastTarget,
-      0,
-      0,
+      min.x,
+      min.y,
       PIXEL_RADIUS,
       PIXEL_RADIUS,
+      // 0,
+      // 0,
+      // PIXEL_RADIUS,
+      // PIXEL_RADIUS,
       pixelBuffer
     );
 
-    // this.renderer.setRenderTarget(null);
+
+    this.renderer.setRenderTarget(null);
+    this.renderer.setScissorTest(false);
+
 
     let id;
 
@@ -282,7 +305,7 @@ export class Vertices {
       break;
     }
 
-    this.camera.copy(backup);
+    // this.camera.copy(backup);
 
     this.scene.children.forEach((child) => {
       child.visible = child.userData.visibleBeforeRaycast;
@@ -293,12 +316,13 @@ export class Vertices {
     if (!id) return;
 
     // return id[0] * this.size + id[1] * this.size * this.size;
-    return id;
+    return id - 1;
   }
 
   select(id: number) {
     this.selectionTexture.image.data[id * 4] = 1;
     this.selectionTexture.image.data[id * 4 + 1] = 1;
+    this.selectionTexture.needsUpdate = true;
   }
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {
@@ -317,5 +341,9 @@ export class Vertices {
 
     this.vertexMaterial.uniforms.selection.value =
       this.compute.getCurrentRenderTarget(this.selectionVariable).texture;
+
+    console.log(this.compute.getCurrentRenderTarget(this.selectionVariable).texture.image)
+
+    // this.selectionTexture = this.vertexMaterial.uniforms.selection.value;
   }
 }

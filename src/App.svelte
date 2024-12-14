@@ -1,21 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    Scene,
-    OrthographicCamera,
-    WebGLRenderer,
-    Vector2,
-    BufferGeometry,
-  } from "three";
+  import { Scene, OrthographicCamera, WebGLRenderer, Vector2, BufferGeometry } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
   import { Globals } from "./lib/three/Globals";
   import { Vertices } from "./lib/texture/Vertex";
-  import {
-    isMousePressed,
-    LEFT_MOUSE_BUTTON,
-    RIGHT_MOUSE_BUTTON,
-  } from "./lib/input";
+  import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/draw";
 
   let container: HTMLDivElement;
@@ -66,7 +56,7 @@
 
     const render = () => {
       requestAnimationFrame(render);
-      // renderer.render(scene, camera);
+      renderer.render(scene, camera);
     };
     render();
 
@@ -139,20 +129,16 @@
     // graph.createEdge(c, d);
     // graph.createEdge(d, a);
 
-    const vertices = new Vertices(renderer, camera, scene, 128 * 128 * 16);
+    const vertices = new Vertices(renderer, camera, scene, 1024);
 
     camera.updateMatrix();
 
     // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
 
     function screenCoords(event: MouseEvent) {
-      const { top, left, width, height } =
-        renderer.domElement.getBoundingClientRect();
+      const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
       // console.log(top, left, width, height);
-      return new Vector2(
-        ((event.clientX - left) / width) * 2 - 1,
-        ((height - (event.clientY - top)) / height) * 2 - 1
-      );
+      return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
     }
 
     let first = new Vector2(),

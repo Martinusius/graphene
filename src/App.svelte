@@ -7,6 +7,7 @@
   import { Vertices } from "./lib/texture/Vertex";
   import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/draw";
+  import { Compute } from "./lib/texture/Compute";
 
   let container: HTMLDivElement;
 
@@ -16,8 +17,6 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
-
-    console.log(container.clientWidth, container.clientHeight);
 
     const scene = new Scene();
 
@@ -137,7 +136,6 @@
 
     function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
-      // console.log(top, left, width, height);
       return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
     }
 
@@ -152,8 +150,6 @@
 
       select = !event.altKey;
 
-      // console.log("first", first);
-
       first = screenCoords(event);
       first.divideScalar(camera.zoom * 100);
 
@@ -162,7 +158,6 @@
 
     function mouseMove(event: MouseEvent) {
       const id = vertices.raycast(screenCoords(event));
-      console.log(id);
       if (id) vertices.select(id);
 
       if (!selection) return;
@@ -179,7 +174,6 @@
 
       vertices.selection(min, max, select);
       Draw.selectionRectangle(min, max);
-      // console.log("aaa");
     }
 
     window.addEventListener("mousemove", mouseMove);
@@ -202,6 +196,36 @@
       Draw.reset();
       selection = false;
     });
+
+    const compute = new Compute(renderer);
+
+    const texture = compute.createTexture(4, 4);
+
+    const red = compute.createProgram(`
+
+      void main() {
+        gl_FragColor = vec4(1, 0, 0, 0);
+      }
+    `);
+
+    const swap = compute.createProgram(`
+      uniform sampler2D inputTexture;
+
+      void main() {
+        vec4 color = texture2D(inputTexture, gl_FragCoord.xy / 4.0);
+        gl_FragColor = color.argb;
+      }
+    `);
+
+    swap.setUniform("inputTexture", texture);
+    red.execute(texture);
+    swap.execute(texture);
+    swap.execute(texture);
+    swap.execute(texture);
+
+    texture.write(0, 0, 1, 1, new Float32Array([1, 1, 1, 1]));
+
+    console.log(texture.read(0, 0, 4, 4));
   });
 </script>
 

@@ -272,7 +272,6 @@ export class Vertices {
     this.renderer.render(this.scene, this.camera);
 
     const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
-    console.log(min);
 
     this.renderer.readRenderTargetPixels(
       this.raycastTarget,

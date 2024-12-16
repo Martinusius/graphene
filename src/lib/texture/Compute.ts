@@ -1,31 +1,74 @@
-import { Box2, Camera, DataTexture, FloatType, Mesh, PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, Vector2, WebGLRenderTarget, type WebGLRenderer } from "three";
-import { computeVertex } from "./compute.glsl";
+import {
+  Box2,
+  BufferAttribute,
+  BufferGeometry,
+  Camera,
+  Color,
+  DataTexture,
+  FloatType,
+  Mesh,
+  PlaneGeometry,
+  Points,
+  RGBAFormat,
+  Scene,
+  ShaderMaterial,
+  Vector2,
+  WebGLRenderTarget,
+  type WebGLRenderer,
+} from "three";
+import {
+  computeVertex,
+  specialComputeFragment,
+  specialComputeVertex,
+} from "./compute.glsl";
 
 type Globals = {
   renderer: WebGLRenderer;
   camera: Camera;
   scene: Scene;
   mesh: Mesh;
-}
-
+};
 
 export class ComputeTexture {
   private textures: [WebGLRenderTarget, WebGLRenderTarget];
 
-  constructor(public readonly globals: Globals, public readonly width: number, public readonly height: number) {
+  constructor(
+    public readonly globals: Globals,
+    public readonly width: number,
+    public readonly height: number
+  ) {
     this.textures = [
-      new WebGLRenderTarget(width, height, { type: FloatType, format: RGBAFormat }),
-      new WebGLRenderTarget(width, height, { type: FloatType, format: RGBAFormat })
+      new WebGLRenderTarget(width, height, {
+        type: FloatType,
+        format: RGBAFormat,
+      }),
+      new WebGLRenderTarget(width, height, {
+        type: FloatType,
+        format: RGBAFormat,
+      }),
     ];
   }
 
   read(x: number, y: number, width: number, height: number) {
     const buffer = new Float32Array(4 * width * height);
-    this.globals.renderer.readRenderTargetPixels(this.readable(), x, y, width, height, buffer);
+    this.globals.renderer.readRenderTargetPixels(
+      this.readable(),
+      x,
+      y,
+      width,
+      height,
+      buffer
+    );
     return buffer;
   }
 
-  write(x: number, y: number, width: number, height: number, data: Float32Array) {
+  write(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    data: Float32Array
+  ) {
     const texture = new DataTexture(data, width, height, RGBAFormat, FloatType);
     texture.needsUpdate = true;
     this.globals.renderer.copyTextureToTexture(
@@ -50,23 +93,30 @@ export class ComputeTexture {
   }
 }
 
+/**
+ * - Executed once for every pixel of output texture.
+ * - Can only write its own pixel.
+ * - Based on fragment shader.
+ * - Set `gl_FragColor` to write pixel value.
+ */
 export class ComputeProgram {
   private readonly material: ShaderMaterial;
 
   constructor(
     private readonly globals: Globals,
-    public readonly fragmentShader: string,
+    public readonly shader: string,
     uniforms: any = {}
   ) {
     this.material = new ShaderMaterial({
-      uniforms: Object.fromEntries(Object.entries(uniforms).map(([key, value]) => [key, { value }])),
+      uniforms: Object.fromEntries(
+        Object.entries(uniforms).map(([key, value]) => [key, { value }])
+      ),
       vertexShader: computeVertex,
-      fragmentShader,
+      fragmentShader: shader,
     });
   }
 
   private computeTextureUniforms: { [key: string]: ComputeTexture } = {};
-
 
   setUniform(key: string, value: any) {
     if (key in this.computeTextureUniforms) {
@@ -93,14 +143,121 @@ export class ComputeProgram {
     const prevTarget = this.globals.renderer.getRenderTarget();
 
     for (const [key, value] of Object.entries(this.computeTextureUniforms)) {
-      this._setUniform(key, value.readable().texture);
+      const texture = value.readable().texture;
+
+      this._setUniform(key, texture);
+      this._setUniform(
+        key + "Size",
+        new Vector2(texture.image.width, texture.image.height)
+      );
     }
 
+    const texture = output.writable().texture;
+    this._setUniform(
+      "outputSize",
+      new Vector2(texture.image.width, texture.image.height)
+    );
+
+    this.globals.mesh.visible = true;
     this.globals.mesh.material = this.material;
     this.globals.renderer.setRenderTarget(output.writable());
     this.globals.renderer.render(this.globals.scene, this.globals.camera);
+
     output.swap();
 
+    this.globals.mesh.visible = false;
+    this.globals.renderer.setRenderTarget(prevTarget);
+  }
+}
+
+/**
+ * - Executed n times.
+ * - Can write at arbitrary positions of output texture.
+ * - Based on vertex shader.
+ * - Use `gl_VertexID` to retrieve instance ID.
+ * - Call `write(textureCoord: vec2, color: vec4)` to write pixel value.
+ */
+export class SpecialComputeProgram {
+  private readonly points: Points<BufferGeometry, ShaderMaterial>;
+
+  constructor(
+    private readonly globals: Globals,
+    public readonly shader: string,
+    uniforms: any = {}
+  ) {
+    const material = new ShaderMaterial({
+      uniforms: Object.fromEntries(
+        Object.entries(uniforms).map(([key, value]) => [key, { value }])
+      ),
+      vertexShader: specialComputeVertex + shader,
+      fragmentShader: specialComputeFragment,
+    });
+
+    const geometry = new BufferGeometry();
+
+    this.points = new Points(geometry, material);
+    this.points.frustumCulled = false;
+
+    this.globals.scene.add(this.points);
+    this.points.visible = false;
+  }
+
+  private computeTextureUniforms: { [key: string]: ComputeTexture } = {};
+
+  setUniform(key: string, value: any) {
+    if (key in this.computeTextureUniforms) {
+      this.points.material.uniforms[key].value = null;
+      delete this.computeTextureUniforms[key];
+    }
+
+    if (value instanceof ComputeTexture) {
+      this.computeTextureUniforms[key] = value;
+    } else {
+      this._setUniform(key, value);
+    }
+  }
+
+  private _setUniform(key: string, value: any) {
+    if (!this.points.material.uniforms[key]) {
+      this.points.material.uniforms[key] = { value };
+    } else {
+      this.points.material.uniforms[key].value = value;
+    }
+  }
+
+  execute(n: number, output: ComputeTexture) {
+    const prevTarget = this.globals.renderer.getRenderTarget();
+
+    for (const [key, value] of Object.entries(this.computeTextureUniforms)) {
+      const texture = value.readable().texture;
+
+      this._setUniform(key, texture);
+      this._setUniform(
+        key + "Size",
+        new Vector2(texture.image.width, texture.image.height)
+      );
+    }
+
+    const texture = output.writable().texture;
+    this._setUniform(
+      "outputSize",
+      new Vector2(texture.image.width, texture.image.height)
+    );
+
+    this.points.visible = true;
+    this.points.geometry.setDrawRange(0, n);
+
+    const color = new Color();
+    this.globals.renderer.getClearColor(color);
+    const alpha = this.globals.renderer.getClearAlpha();
+
+    this.globals.renderer.setRenderTarget(output.writable());
+    this.globals.renderer.setClearColor(0x000000, 0);
+    this.globals.renderer.render(this.globals.scene, this.globals.camera);
+    output.swap();
+
+    this.points.visible = false;
+    this.globals.renderer.setClearColor(color, alpha);
     this.globals.renderer.setRenderTarget(prevTarget);
   }
 }
@@ -115,21 +272,45 @@ export class Compute {
     this.camera = new Camera();
 
     this.mesh = new Mesh(new PlaneGeometry(2, 2));
+    this.mesh.visible = false;
     this.scene.add(this.mesh);
   }
 
   createTexture(width: number, height: number) {
     return new ComputeTexture(
-      { renderer: this.renderer, mesh: this.mesh, camera: this.camera, scene: this.scene },
+      {
+        renderer: this.renderer,
+        mesh: this.mesh,
+        camera: this.camera,
+        scene: this.scene,
+      },
       width,
       height
     );
   }
 
-  createProgram(fragmentShader: string, uniforms: any = {}) {
+  createProgram(shader: string, uniforms: any = {}) {
     return new ComputeProgram(
-      { renderer: this.renderer, mesh: this.mesh, camera: this.camera, scene: this.scene },
-      fragmentShader,
+      {
+        renderer: this.renderer,
+        mesh: this.mesh,
+        camera: this.camera,
+        scene: this.scene,
+      },
+      shader,
+      uniforms
+    );
+  }
+
+  createSpecialProgram(shader: string, uniforms: any = {}) {
+    return new SpecialComputeProgram(
+      {
+        renderer: this.renderer,
+        mesh: this.mesh,
+        camera: this.camera,
+        scene: this.scene,
+      },
+      shader,
       uniforms
     );
   }

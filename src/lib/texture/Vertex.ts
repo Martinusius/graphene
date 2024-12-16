@@ -76,11 +76,14 @@ export class Vertices {
       this.renderer.domElement.height
     );
 
-    this.raycastTarget = new WebGLRenderTarget(this.resolution.x, this.resolution.y, {
-      format: RGBAFormat,
-      type: FloatType,
-    });
-
+    this.raycastTarget = new WebGLRenderTarget(
+      this.resolution.x,
+      this.resolution.y,
+      {
+        format: RGBAFormat,
+        type: FloatType,
+      }
+    );
 
     this.size = Math.ceil(Math.sqrt(Math.max(vertexCount, edgeCount)));
 
@@ -240,7 +243,11 @@ export class Vertices {
   }
 
   screenCoordsToImageCoords(screenCoords: Vector2) {
-    return screenCoords.clone().addScalar(1).multiplyScalar(0.5).multiply(this.resolution);
+    return screenCoords
+      .clone()
+      .addScalar(1)
+      .multiplyScalar(0.5)
+      .multiply(this.resolution);
   }
 
   raycast(pointer: Vector2) {
@@ -261,13 +268,17 @@ export class Vertices {
     this.points.material.uniforms.raycast.value = true;
 
     const pixel = this.screenCoordsToImageCoords(pointer);
-    const min = pixel.clone().sub(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS).multiplyScalar(0.5));
-
-
-
+    const min = pixel
+      .clone()
+      .sub(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS).multiplyScalar(0.5));
 
     this.renderer.setRenderTarget(this.raycastTarget);
-    this.renderer.setScissor(min.x, min.y, PIXEL_RADIUS, PIXEL_RADIUS);
+    this.renderer.setScissor(
+      min.x / window.devicePixelRatio,
+      min.y / window.devicePixelRatio,
+      PIXEL_RADIUS / window.devicePixelRatio,
+      PIXEL_RADIUS / window.devicePixelRatio
+    );
     this.renderer.setScissorTest(true);
     this.renderer.render(this.scene, this.camera);
 
@@ -286,10 +297,8 @@ export class Vertices {
       pixelBuffer
     );
 
-
     this.renderer.setRenderTarget(null);
     this.renderer.setScissorTest(false);
-
 
     let id;
 
@@ -341,7 +350,9 @@ export class Vertices {
     this.vertexMaterial.uniforms.selection.value =
       this.compute.getCurrentRenderTarget(this.selectionVariable).texture;
 
-    console.log(this.compute.getCurrentRenderTarget(this.selectionVariable).texture.image)
+    console.log(
+      this.compute.getCurrentRenderTarget(this.selectionVariable).texture.image
+    );
 
     // this.selectionTexture = this.vertexMaterial.uniforms.selection.value;
   }

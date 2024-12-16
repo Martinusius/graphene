@@ -1,11 +1,21 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Scene, OrthographicCamera, WebGLRenderer, Vector2, BufferGeometry } from "three";
+  import {
+    Scene,
+    OrthographicCamera,
+    WebGLRenderer,
+    Vector2,
+    BufferGeometry,
+  } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
   import { Globals } from "./lib/three/Globals";
   import { Vertices } from "./lib/texture/Vertex";
-  import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
+  import {
+    isMousePressed,
+    LEFT_MOUSE_BUTTON,
+    RIGHT_MOUSE_BUTTON,
+  } from "./lib/input";
   import { Draw } from "./lib/draw";
   import { Compute } from "./lib/texture/Compute";
 
@@ -135,8 +145,12 @@
     // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
 
     function screenCoords(event: MouseEvent) {
-      const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
-      return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
+      const { top, left, width, height } =
+        renderer.domElement.getBoundingClientRect();
+      return new Vector2(
+        ((event.clientX - left) / width) * 2 - 1,
+        ((height - (event.clientY - top)) / height) * 2 - 1
+      );
     }
 
     let first = new Vector2(),
@@ -177,7 +191,6 @@
     }
 
     window.addEventListener("mousemove", mouseMove);
-    // window.addEventListener("wheel", mouseMove);
 
     window.addEventListener("mouseup", (event) => {
       if (event.button !== 0) return;
@@ -199,33 +212,35 @@
 
     const compute = new Compute(renderer);
 
-    const texture = compute.createTexture(4, 4);
+    const size = 8192;
 
-    const red = compute.createProgram(`
+    const texture = compute.createTexture(size, size);
 
+    const regular = compute.createProgram(`
       void main() {
-        gl_FragColor = vec4(1, 0, 0, 0);
+        gl_FragColor = vec4(1);
       }
     `);
 
-    const swap = compute.createProgram(`
-      uniform sampler2D inputTexture;
+    const special = compute.createSpecialProgram(`
+      uniform ivec2 outputSize;
 
       void main() {
-        vec4 color = texture2D(inputTexture, gl_FragCoord.xy / 4.0);
-        gl_FragColor = color.argb;
+        int x = (gl_VertexID % outputSize.x) + 1;
+        int y = (gl_VertexID / outputSize.y) + 1;
+
+        write(vec2(x, y) / vec2(outputSize), vec4(1));
       }
     `);
 
-    swap.setUniform("inputTexture", texture);
-    red.execute(texture);
-    swap.execute(texture);
-    swap.execute(texture);
-    swap.execute(texture);
+    const start = performance.now();
+    special.execute(size * size, texture);
+    // regular.execute(texture);
 
-    texture.write(0, 0, 1, 1, new Float32Array([1, 1, 1, 1]));
-
-    console.log(texture.read(0, 0, 4, 4));
+    // console.log(texture.read(0, 0, 1, 1));
+    // console.log(texture.read(Math.floor(size / 2), Math.floor(size / 2), 1, 1));
+    const elapsed = performance.now() - start;
+    console.log(`Took ${Math.floor(elapsed)}ms`);
   });
 </script>
 

@@ -1,4 +1,4 @@
-export const vertexColor = `
+export const edgeVertex = `
 uniform vec2 resolution;
 uniform sampler2D positions;
 uniform sampler2D selection;
@@ -23,11 +23,9 @@ void main() {
   bool uvArrow = vertexUvs.z > 1.0;
   vertexUvs.z %= 1.0;
 
-
   vec2 firstVertex = texture2D(positions, vertexUvs.xy).xy;
   vec2 secondVertex = texture2D(positions, vertexUvs.zw).xy;
 
-  
   vec2 toSecond = normalize(secondVertex - firstVertex);
   
   firstVertex.xy += toSecond * 1.8;
@@ -73,7 +71,7 @@ void main() {
   gl_Position = result;
 }`;
 
-export const fragmentColor = `
+export const edgeFragment = `
 varying vec2 vfirstVertex;
 varying vec2 vSecondVertex;
 varying vec2 vUv;

@@ -26,19 +26,19 @@ import {
 } from "three/examples/jsm/Addons.js";
 
 import {
-  vertexColor as vertexVertexColor,
-  fragmentColor as fragmentVertexColor,
+  vertexVertex as vertexVertexColor,
+  vertexFragment as fragmentVertexColor,
 } from "./vertex.glsl";
 import {
-  vertexColor as vertexEdgeColor,
-  fragmentColor as fragmentEdgeColor,
+  edgeVertex as vertexEdgeColor,
+  edgeFragment as fragmentEdgeColor,
 } from "./edge.glsl";
 
 import { select } from "./select.glsl";
 import { EdgeBuffer } from "../edgebuffer";
 import { PIXEL_RADIUS, pixels } from "./pixels";
 
-export class Vertices {
+export class OldVertices {
   private points: Points<BufferGeometry, ShaderMaterial>;
   private edges: Mesh;
 
@@ -172,6 +172,7 @@ export class Vertices {
           ),
         },
         raycast: { value: false },
+        bufferSize: { value: this.size },
       },
       transparent: true,
       depthWrite: true,
@@ -290,10 +291,6 @@ export class Vertices {
       min.y,
       PIXEL_RADIUS,
       PIXEL_RADIUS,
-      // 0,
-      // 0,
-      // PIXEL_RADIUS,
-      // PIXEL_RADIUS,
       pixelBuffer
     );
 

@@ -10,13 +10,16 @@
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
   import { Globals } from "./lib/three/Globals";
-  import { Vertices } from "./lib/texture/Vertex";
+  import { OldVertices } from "./lib/texture/Vertex";
   import {
     isMousePressed,
     LEFT_MOUSE_BUTTON,
     RIGHT_MOUSE_BUTTON,
   } from "./lib/input";
   import { Draw } from "./lib/draw";
+  // import { Compute } from "./lib/texture/compute";
+  import { Graph } from "./lib/texture/Graph";
+  import { Three } from "./lib/texture/Three";
   import { Compute } from "./lib/texture/Compute";
 
   let container: HTMLDivElement;
@@ -69,178 +72,123 @@
     };
     render();
 
-    // Globals.init(renderer, scene, camera);
+    const three = new Three(renderer, camera, scene);
 
-    // const drag = new Drag();
+    const graph = new Graph(three, 1024, 1024);
+    graph.generateVertices();
 
-    // drag.addEventListener("hoveron", (event) => {
-    //   if (event.object instanceof Point) {
-    //     event.object.image = "node-hovered";
-    //   } else if (event.object instanceof Bezier) {
-    //     event.object.color = new Color(0.5, 0.5, 0.5);
-    //   }
-    // });
+    window.addEventListener("mousemove", (event) => {
+      const { top, left, width, height } =
+        renderer.domElement.getBoundingClientRect();
+      const x = ((event.clientX - left) / width) * 2 - 1;
+      const y = ((height - (event.clientY - top)) / height) * 2 - 1;
+      // const id = graph.raycast(new Vector2(x, y));
 
-    // drag.addEventListener("hoveroff", (event) => {
-    //   //console.log(event);
+      // if (id) console.log(id);
+      // if (id) graph.select(id, true);
+    });
 
-    //   if (event.object instanceof Point) {
-    //     event.object.image = "node-base";
-    //   } else if (event.object instanceof Bezier) {
-    //     event.object.color = new Color(0, 0, 0);
-    //   }
-    // });
-
-    // drag.addEventListener("dragstart", (event) => {
-    //   if (event.object instanceof Point) {
-    //     event.object.image = "node-selected";
-    //   }
-    // });
-
-    // drag.addEventListener("dragend", (event) => {
-    //   if (event.object instanceof Point) {
-    //     event.object.image = "node-base";
-    //   }
-    // });
-
-    // drag.addEventListener("drag", (event) => {
-    //   if (event.object instanceof Bezier) {
-    //     const delta = event.position?.clone().sub(event.object.position);
-
-    //     const edges = new Set<ThreeEdge>();
-    //     event.object.data.vertices.forEach((vertex: any) => {
-    //       vertex.point.position = vertex.point.position.clone().add(delta);
-    //       vertex._edges.forEach((edge: any) => edges.add(edge));
-    //     });
-
-    //     edges.forEach((edge) => {
-    //       edge.recalculate();
-    //     });
-    //   } else if (event.object instanceof Point) {
-    //     event.object.position = event.position!;
-    //     event.object.data._edges.forEach((edge: any) => edge.recalculate());
-    //   }
-    // });
-
-    // const graph = new ThreeGraph(scene);
-
-    // const a = graph.createVertex();
-    // const b = graph.createVertex();
-    // const c = graph.createVertex();
-    // const d = graph.createVertex();
-
-    // graph.createEdge(a, b);
-    // graph.createEdge(b, a);
-    // graph.createEdge(a, b);
-    // graph.createEdge(b, a);
-
-    // graph.createEdge(b, c);
-    // graph.createEdge(c, d);
-    // graph.createEdge(d, a);
-
-    const vertices = new Vertices(renderer, camera, scene, 1024);
+    // const vertices = new OldVertices(renderer, camera, scene, 1024);
 
     camera.updateMatrix();
 
     // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
 
-    function screenCoords(event: MouseEvent) {
-      const { top, left, width, height } =
-        renderer.domElement.getBoundingClientRect();
-      return new Vector2(
-        ((event.clientX - left) / width) * 2 - 1,
-        ((height - (event.clientY - top)) / height) * 2 - 1
-      );
-    }
+    // function screenCoords(event: MouseEvent) {
+    //   const { top, left, width, height } =
+    //     renderer.domElement.getBoundingClientRect();
+    //   return new Vector2(
+    //     ((event.clientX - left) / width) * 2 - 1,
+    //     ((height - (event.clientY - top)) / height) * 2 - 1
+    //   );
+    // }
 
-    let first = new Vector2(),
-      selection = false;
+    // let first = new Vector2(),
+    //   selection = false;
 
-    let select = true;
+    // let select = true;
 
-    window.addEventListener("mousedown", (event) => {
-      if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
-      if (event.button !== LEFT_MOUSE_BUTTON) return;
+    // window.addEventListener("mousedown", (event) => {
+    //   if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
+    //   if (event.button !== LEFT_MOUSE_BUTTON) return;
 
-      select = !event.altKey;
+    //   select = !event.altKey;
 
-      first = screenCoords(event);
-      first.divideScalar(camera.zoom * 100);
+    //   first = screenCoords(event);
+    //   first.divideScalar(camera.zoom * 100);
 
-      selection = true;
-    });
+    //   selection = true;
+    // });
 
-    function mouseMove(event: MouseEvent) {
-      const id = vertices.raycast(screenCoords(event));
-      if (id) vertices.select(id);
+    // function mouseMove(event: MouseEvent) {
+    //   const id = vertices.raycast(screenCoords(event));
+    //   if (id) vertices.select(id);
 
-      if (!selection) return;
+    //   if (!selection) return;
 
-      Draw.reset();
+    //   Draw.reset();
 
-      const second = screenCoords(event);
+    //   const second = screenCoords(event);
 
-      const firstScaled = first.clone();
-      firstScaled.multiplyScalar(camera.zoom * 100);
+    //   const firstScaled = first.clone();
+    //   firstScaled.multiplyScalar(camera.zoom * 100);
 
-      const min = firstScaled.clone().min(second);
-      const max = firstScaled.clone().max(second);
+    //   const min = firstScaled.clone().min(second);
+    //   const max = firstScaled.clone().max(second);
 
-      vertices.selection(min, max, select);
-      Draw.selectionRectangle(min, max);
-    }
+    //   vertices.selection(min, max, select);
+    //   Draw.selectionRectangle(min, max);
+    // }
 
-    window.addEventListener("mousemove", mouseMove);
+    // window.addEventListener("mousemove", mouseMove);
 
-    window.addEventListener("mouseup", (event) => {
-      if (event.button !== 0) return;
+    // window.addEventListener("mouseup", (event) => {
+    //   if (event.button !== 0) return;
 
-      if (!selection) return;
+    //   if (!selection) return;
 
-      const second = screenCoords(event);
+    //   const second = screenCoords(event);
 
-      const firstScaled = first.clone();
-      firstScaled.multiplyScalar(camera.zoom * 100);
+    //   const firstScaled = first.clone();
+    //   firstScaled.multiplyScalar(camera.zoom * 100);
 
-      const min = firstScaled.clone().min(second);
-      const max = firstScaled.clone().max(second);
+    //   const min = firstScaled.clone().min(second);
+    //   const max = firstScaled.clone().max(second);
 
-      vertices.selection(min, max, select, false);
-      Draw.reset();
-      selection = false;
-    });
+    //   vertices.selection(min, max, select, false);
+    //   Draw.reset();
+    //   selection = false;
+    // });
 
     const compute = new Compute(renderer);
 
-    const size = 8192;
+    const texture = compute.createTexture(4, 4);
 
-    const texture = compute.createTexture(size, size);
+    const red = compute.createProgram(`
 
-    const regular = compute.createProgram(`
       void main() {
-        gl_FragColor = vec4(1);
+        gl_FragColor = vec4(1, 0, 0, 0);
       }
     `);
 
-    const special = compute.createSpecialProgram(`
-      uniform ivec2 outputSize;
+    const swap = compute.createProgram(`
+      uniform sampler2D inputTexture;
 
       void main() {
-        int x = (gl_VertexID % outputSize.x) + 1;
-        int y = (gl_VertexID / outputSize.y) + 1;
-
-        write(vec2(x, y) / vec2(outputSize), vec4(1));
+        vec4 color = texture2D(inputTexture, gl_FragCoord.xy / 4.0);
+        gl_FragColor = color.argb;
       }
     `);
 
-    const start = performance.now();
-    special.execute(size * size, texture);
-    // regular.execute(texture);
+    // swap.setUniform("inputTexture", texture);
+    // red.execute(texture);
+    // swap.execute(texture);
+    // swap.execute(texture);
+    // swap.execute(texture);
 
-    // console.log(texture.read(0, 0, 1, 1));
-    // console.log(texture.read(Math.floor(size / 2), Math.floor(size / 2), 1, 1));
-    const elapsed = performance.now() - start;
-    console.log(`Took ${Math.floor(elapsed)}ms`);
+    // texture.write(0, 0, 1, 1, new Float32Array([1, 1, 1, 1]));
+
+    // console.log(texture.read(0, 0, 4, 4));
   });
 </script>
 

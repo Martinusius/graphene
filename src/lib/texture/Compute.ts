@@ -22,18 +22,19 @@ import {
   specialComputeVertex,
 } from "./compute.glsl";
 
-type Globals = {
+type ComputeGlobals = {
   renderer: WebGLRenderer;
   camera: Camera;
   scene: Scene;
   mesh: Mesh;
+  compute: Compute;
 };
 
 export class ComputeTexture {
   private textures: [WebGLRenderTarget, WebGLRenderTarget];
 
   constructor(
-    public readonly globals: Globals,
+    private readonly globals: ComputeGlobals,
     public readonly width: number,
     public readonly height: number
   ) {
@@ -47,6 +48,9 @@ export class ComputeTexture {
         format: RGBAFormat,
       }),
     ];
+
+    this.globals.compute.zeros.execute(this);
+    this.globals.compute.zeros.execute(this);
   }
 
   read(x: number, y: number, width: number, height: number) {
@@ -103,7 +107,7 @@ export class ComputeProgram {
   private readonly material: ShaderMaterial;
 
   constructor(
-    private readonly globals: Globals,
+    private readonly globals: ComputeGlobals,
     public readonly shader: string,
     uniforms: any = {}
   ) {
@@ -181,7 +185,7 @@ export class SpecialComputeProgram {
   private readonly points: Points<BufferGeometry, ShaderMaterial>;
 
   constructor(
-    private readonly globals: Globals,
+    private readonly globals: ComputeGlobals,
     public readonly shader: string,
     uniforms: any = {}
   ) {
@@ -267,6 +271,8 @@ export class Compute {
   private camera: Camera;
   private mesh: Mesh;
 
+  public readonly zeros: ComputeProgram;
+
   constructor(public readonly renderer: WebGLRenderer) {
     this.scene = new Scene();
     this.camera = new Camera();
@@ -274,6 +280,8 @@ export class Compute {
     this.mesh = new Mesh(new PlaneGeometry(2, 2));
     this.mesh.visible = false;
     this.scene.add(this.mesh);
+
+    this.zeros = this.createProgram("void main() { gl_FragColor = vec4(0); }");
   }
 
   createTexture(width: number, height: number) {
@@ -283,6 +291,7 @@ export class Compute {
         mesh: this.mesh,
         camera: this.camera,
         scene: this.scene,
+        compute: this,
       },
       width,
       height
@@ -296,6 +305,7 @@ export class Compute {
         mesh: this.mesh,
         camera: this.camera,
         scene: this.scene,
+        compute: this,
       },
       shader,
       uniforms
@@ -309,6 +319,7 @@ export class Compute {
         mesh: this.mesh,
         camera: this.camera,
         scene: this.scene,
+        compute: this,
       },
       shader,
       uniforms

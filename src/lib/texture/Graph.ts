@@ -1,10 +1,16 @@
 import { FloatType, RGBAFormat, Vector2, Vector3 } from "three";
-import { Compute, ComputeTexture } from "./Compute";
+import { Compute, ComputeProgram, ComputeTexture } from "./Compute";
 import { DynamicRenderTarget } from "./DynamicRenderTarget";
 import { Edges } from "./Edges";
 import type { Three } from "./Three";
 import { Vertices } from "./Vertices";
 import { PIXEL_RADIUS, pixels } from "./pixels";
+import { hover } from "./hover.glsl";
+
+export type RaycastResult = {
+  type: "vertex" | "edge";
+  id: number;
+};
 
 export class Graph {
   private compute: Compute;
@@ -18,6 +24,8 @@ export class Graph {
   private edges: Edges;
 
   private raycastTarget: DynamicRenderTarget;
+
+  private hoverProgram: ComputeProgram;
 
   constructor(
     private readonly three: Three,
@@ -48,16 +56,17 @@ export class Graph {
       this.selectionVertices
     );
 
-    this.edges = new Edges(three, maxEdges, this.vertexPositions);
+    this.edges = new Edges(three, maxEdges, this.vertexPositions, this.selectionEdges);
 
     this.raycastTarget = new DynamicRenderTarget(three.renderer, {
       format: RGBAFormat,
       type: FloatType,
     });
 
+    this.hoverProgram = this.compute.createProgram(hover);
   }
 
-  select(id: number, select: boolean) {
+  selectVertex(id: number, select: boolean) {
     const x = id % this.selectionVertices.width;
     const y = Math.floor(id / this.selectionVertices.width);
 
@@ -70,11 +79,35 @@ export class Graph {
     );
   }
 
-  raycast(pointer: Vector2) {
-    // print scene coordinates from pointer
-    // console.log(new Vector3(pointer.x, pointer.y, 0).unproject(this.three.camera));
+  selectEdge(id: number, select: boolean) {
+    const x = id % this.selectionEdges.width;
+    const y = Math.floor(id / this.selectionEdges.width);
 
-    return new Promise<number | undefined>((resolve) => {
+    this.selectionEdges.write(
+      x,
+      y,
+      1,
+      1,
+      new Float32Array([Number(select), Number(select), 0, 0])
+    );
+  }
+
+  hoverVertex(id: number, hover = true) {
+    this.hoverProgram.setUniform('hover', hover);
+    this.hoverProgram.setUniform('id', id);
+    this.hoverProgram.setUniform('selection', this.selectionVertices);
+    this.hoverProgram.execute(this.selectionVertices);
+  }
+
+  hoverEdge(id: number, hover = true) {
+    this.hoverProgram.setUniform('hover', hover);
+    this.hoverProgram.setUniform('id', id);
+    this.hoverProgram.setUniform('selection', this.selectionEdges);
+    this.hoverProgram.execute(this.selectionEdges);
+  }
+
+  raycast(pointer: Vector2) {
+    return new Promise<RaycastResult | undefined>((resolve) => {
 
       this.three.scene.children.forEach((child) => {
         child.visible = child.userData.raycastable;
@@ -103,6 +136,11 @@ export class Graph {
 
       const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
 
+      const typeMap = [
+        "vertex",
+        "edge"
+      ] as const;
+
       this.three.renderer.readRenderTargetPixelsAsync(
         target,
         min.x,
@@ -115,11 +153,19 @@ export class Graph {
           const [x, y] = pixels[i];
           const index = (x + PIXEL_RADIUS * y) * 4;
 
-          if (pixelBuffer[index] < 1) continue;
+          if (pixelBuffer[index + 1] < 1) continue;
 
-          resolve(pixelBuffer[index] - 1);
+          const type = typeMap[pixelBuffer[index]];
+          const id = pixelBuffer[index + 1] - 1;
+
+          resolve({
+            type,
+            id
+          });
           break;
         }
+
+        resolve(undefined);
       });
 
       this.three.renderer.setRenderTarget(null);

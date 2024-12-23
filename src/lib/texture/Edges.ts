@@ -16,27 +16,23 @@ export class Edges {
   constructor(
     three: Three,
     edgeCount: number,
-    vertexPositions: ComputeTexture
+    vertexPositions: ComputeTexture,
+    selectionEdges: ComputeTexture
   ) {
-    const size = vertexPositions.width;
-    console.log(size);
+    const vertexSize = vertexPositions.width;
 
-    const edges = new EdgeBuffer(edgeCount, size);
-    // let j = -1;
+    const size = selectionEdges.width;
+
+    const edges = new EdgeBuffer(edgeCount, vertexSize);
 
     for (let i = 0; i < edgeCount; i++) {
-      // const u = Math.floor(Math.random() * size * size);
-      // const v = Math.floor(Math.random() * size * size);
-
-      // if (j++ % size === size - 2) continue;
-
-
       edges.addEdge(i, i + 1, true, true);
     }
 
     const material = new ShaderMaterial({
       uniforms: {
         positions: { value: null },
+        selection: { value: null },
         resolution: {
           value: new Vector2(
             three.renderer.domElement.width,
@@ -45,6 +41,7 @@ export class Edges {
         },
         size: { value: 40 },
         raycast: { value: false },
+        bufferSize: { value: size },
       },
       transparent: true,
       depthWrite: true,
@@ -62,6 +59,8 @@ export class Edges {
 
       this.edges.material.uniforms.positions.value =
         vertexPositions.readable().texture;
+      this.edges.material.uniforms.selection.value =
+        selectionEdges.readable().texture;
 
       this.edges.material.uniforms.resolution.value.copy(three.resolution)
     };

@@ -6,8 +6,7 @@
   import { Globals } from "./lib/three/Globals";
   import { OldVertices } from "./lib/texture/Vertex";
   import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
-  import { Draw } from "./lib/draw";
-  // import { Compute } from "./lib/texture/compute";
+  import { Draw } from "./lib/Draw";
   import { Graph } from "./lib/texture/Graph";
   import { Three } from "./lib/texture/Three";
   import { Compute } from "./lib/texture/Compute";
@@ -64,7 +63,7 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
+    const graph = new Graph(three, 1024, 100);
     graph.generateVertices();
 
     window.addEventListener("mousemove", (event) => {
@@ -72,8 +71,43 @@
       const x = ((event.clientX - left) / width) * 2 - 1;
       const y = ((height - (event.clientY - top)) / height) * 2 - 1;
 
-      graph.raycast(new Vector2(x, y)).then((id) => {
-        if (id !== undefined) graph.select(id, true);
+      // check if coordinates are inside the canvas
+      if (x < -1 || x > 1 || y < -1 || y > 1) {
+        console.log("outside");
+
+        // set cursor to default
+        document.body.style.cursor = "default";
+
+        graph.hoverVertex(-1);
+        graph.hoverEdge(-1);
+        return;
+      }
+
+      graph.raycast(new Vector2(x, y)).then((result) => {
+        if (!result) {
+          // set cursor to default
+          document.body.style.cursor = "default";
+
+          graph.hoverVertex(-1);
+          graph.hoverEdge(-1);
+          return;
+        }
+
+        const { type, id } = result;
+
+        document.body.style.cursor = "pointer";
+
+        // if (type === "vertex") graph.selectVertex(id, true);
+        // if (type === "edge") graph.selectEdge(id, true);
+        if (type === "vertex") {
+          graph.hoverVertex(id, true);
+          graph.hoverEdge(-1);
+        }
+
+        if (type === "edge") {
+          graph.hoverEdge(id, true);
+          graph.hoverVertex(-1);
+        }
       });
 
       // if (id) console.log(id);

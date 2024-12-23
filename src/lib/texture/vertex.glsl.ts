@@ -45,16 +45,23 @@ flat varying int vIndex;
 varying vec4 vSelection;
 
 void main() {
-  if(raycast) {
-    gl_FragColor = vec4(vIndex + 1, 0, 0, 1);
-    return;
-  }
+  
   
   vec2 uv = 2.0 * vec2(gl_PointCoord) - 1.0;
   float smoothFactor = max(size / 5.0, 2.0);
 
   float alpha = smoothstep(1.0, 0.0, clamp(length(uv) * smoothFactor - smoothFactor + 1.0, 0.0, 1.0));
-
   float white = smoothstep(1.0, 0.0, clamp(length(uv) * 1.2 * smoothFactor - smoothFactor + 1.0, 0.0, 1.0));
-  gl_FragColor = vec4(vec3(white) * mix(vec3(0.9), vec3(0, 0.5, 1), vSelection.r), alpha);
+
+  if(raycast) {
+    if(alpha < 0.001) discard;
+
+    gl_FragColor = vec4(0, vIndex + 1, 0, 1);
+    return;
+  }
+
+  vec3 colorFill = mix(vec3(0.9), vec3(0, 0.8, 0.2), vSelection.b);
+  colorFill = mix(colorFill, vec3(0, 0.5, 1), vSelection.r);
+
+  gl_FragColor = vec4(vec3(white) * colorFill, alpha);
 }`;

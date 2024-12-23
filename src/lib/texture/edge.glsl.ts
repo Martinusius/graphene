@@ -1,15 +1,22 @@
 export const edgeVertex = `
 uniform vec2 resolution;
 uniform sampler2D positions;
-// uniform sampler2D selection;
+uniform sampler2D selection;
 
 attribute vec4 vertices;
 
 uniform float size;
+uniform int bufferSize;
 
-varying vec2 vfirstVertex;
-varying vec2 vSecondVertex;
-varying vec2 vUv;
+varying vec4 vSelection;
+flat varying int vIndex;
+
+
+vec2 getUv() {
+  vec2 uv = vec2(gl_InstanceID % bufferSize, gl_InstanceID / bufferSize);
+  return (uv + 0.5) / float(bufferSize);
+}
+
 
 
 void main() {
@@ -64,20 +71,28 @@ void main() {
   
   vec4 result = m * vec4(tPosition, 0, 1);
 
-  vfirstVertex = firstVertex;
-  vSecondVertex = secondVertex;
-  vUv = uv;
+  vSelection = texture2D(selection, getUv());
+  vIndex = gl_InstanceID;
 
   gl_Position = result;
 }`;
 
 export const edgeFragment = `
-varying vec2 vfirstVertex;
-varying vec2 vSecondVertex;
-varying vec2 vUv;
+varying vec4 vSelection;
+flat varying int vIndex;
+
 
 uniform float size;
+uniform bool raycast;
+
 
 void main() {
-  gl_FragColor = vec4(0, 0, 0, 1);
+  if(raycast) {
+    gl_FragColor = vec4(1, vIndex + 1, 0, 1);
+    return;
+  }
+
+  vec3 color = mix(vec3(0), vec3(0, 0.8, 0.2), vSelection.b);
+  color = mix(color, vec3(0, 0.5, 1), vSelection.r);
+  gl_FragColor = vec4(color, 1);
 }`;

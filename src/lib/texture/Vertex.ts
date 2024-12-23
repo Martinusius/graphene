@@ -35,7 +35,7 @@ import {
 } from "./edge.glsl";
 
 import { select } from "./select.glsl";
-import { EdgeBuffer } from "../edgebuffer";
+import { EdgeBuffer } from "../EdgeBuffer";
 import { PIXEL_RADIUS, pixels } from "./pixels";
 
 export class OldVertices {

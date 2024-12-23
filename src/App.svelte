@@ -1,21 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    Scene,
-    OrthographicCamera,
-    WebGLRenderer,
-    Vector2,
-    BufferGeometry,
-  } from "three";
+  import { Scene, OrthographicCamera, WebGLRenderer, Vector2, BufferGeometry } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
   import { Globals } from "./lib/three/Globals";
   import { OldVertices } from "./lib/texture/Vertex";
-  import {
-    isMousePressed,
-    LEFT_MOUSE_BUTTON,
-    RIGHT_MOUSE_BUTTON,
-  } from "./lib/input";
+  import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/draw";
   // import { Compute } from "./lib/texture/compute";
   import { Graph } from "./lib/texture/Graph";
@@ -49,7 +39,7 @@
     const controls = new OrbitControls(camera, container);
     controls.enableRotate = false;
     controls.minZoom = 0.05 / 100;
-    controls.maxZoom = 10;
+    controls.maxZoom = 1;
     // controls.enablePan = true;
 
     window.addEventListener("resize", () => {
@@ -74,15 +64,17 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024, 1024);
+    const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
     graph.generateVertices();
 
     window.addEventListener("mousemove", (event) => {
-      const { top, left, width, height } =
-        renderer.domElement.getBoundingClientRect();
+      const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
       const x = ((event.clientX - left) / width) * 2 - 1;
       const y = ((height - (event.clientY - top)) / height) * 2 - 1;
-      // const id = graph.raycast(new Vector2(x, y));
+
+      graph.raycast(new Vector2(x, y)).then((id) => {
+        if (id !== undefined) graph.select(id, true);
+      });
 
       // if (id) console.log(id);
       // if (id) graph.select(id, true);
@@ -165,7 +157,6 @@
     const texture = compute.createTexture(4, 4);
 
     const red = compute.createProgram(`
-
       void main() {
         gl_FragColor = vec4(1, 0, 0, 0);
       }

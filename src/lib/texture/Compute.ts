@@ -3,10 +3,12 @@ import {
   BufferAttribute,
   BufferGeometry,
   Camera,
+  ClampToEdgeWrapping,
   Color,
   DataTexture,
   FloatType,
   Mesh,
+  NearestFilter,
   PlaneGeometry,
   Points,
   RGBAFormat,
@@ -42,10 +44,18 @@ export class ComputeTexture {
       new WebGLRenderTarget(width, height, {
         type: FloatType,
         format: RGBAFormat,
+        minFilter: NearestFilter,
+        magFilter: NearestFilter,
+        depthBuffer: false,
+        stencilBuffer: false,
       }),
       new WebGLRenderTarget(width, height, {
         type: FloatType,
         format: RGBAFormat,
+        minFilter: NearestFilter,
+        magFilter: NearestFilter,
+        depthBuffer: false,
+        stencilBuffer: false,
       }),
     ];
 

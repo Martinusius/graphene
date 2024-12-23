@@ -4,7 +4,6 @@ import {
   OrthographicCamera,
   Points,
   ShaderMaterial,
-  Vector2,
 } from "three";
 import type { Three } from "./Three";
 import type { ComputeTexture } from "./Compute";

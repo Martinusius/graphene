@@ -1,4 +1,4 @@
-import { FloatType, RGBAFormat, Vector2 } from "three";
+import { FloatType, RGBAFormat, Vector2, Vector3 } from "three";
 import { Compute, ComputeTexture } from "./Compute";
 import { DynamicRenderTarget } from "./DynamicRenderTarget";
 import { Edges } from "./Edges";
@@ -15,7 +15,7 @@ export class Graph {
   private selectionEdges: ComputeTexture;
 
   private vertices: Vertices;
-  // private edges: Edges;
+  private edges: Edges;
 
   private raycastTarget: DynamicRenderTarget;
 
@@ -48,12 +48,13 @@ export class Graph {
       this.selectionVertices
     );
 
-    // this.edges = new Edges(three, maxEdges, this.vertexPositions);
+    this.edges = new Edges(three, maxEdges, this.vertexPositions);
 
     this.raycastTarget = new DynamicRenderTarget(three.renderer, {
       format: RGBAFormat,
       type: FloatType,
     });
+
   }
 
   select(id: number, select: boolean) {
@@ -70,68 +71,68 @@ export class Graph {
   }
 
   raycast(pointer: Vector2) {
-    this.three.scene.children.forEach((child) => {
-      child.visible = child.userData.raycastable;
+    // print scene coordinates from pointer
+    // console.log(new Vector3(pointer.x, pointer.y, 0).unproject(this.three.camera));
 
-      if (child.userData.raycastable) {
-        (child as any).material.uniforms.raycast.value = true;
-      }
+    return new Promise<number | undefined>((resolve) => {
+
+      this.three.scene.children.forEach((child) => {
+        child.visible = child.userData.raycastable;
+
+        if (child.userData.raycastable) {
+          (child as any).material.uniforms.raycast.value = true;
+        }
+      });
+
+      const target = this.raycastTarget.target();
+
+      const pixel = this.three.screenToImage(pointer);
+      const min = pixel
+        .clone()
+        .sub(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS).multiplyScalar(0.5));
+
+      this.three.renderer.setRenderTarget(target);
+      this.three.renderer.setScissor(
+        min.x / window.devicePixelRatio,
+        min.y / window.devicePixelRatio,
+        PIXEL_RADIUS / window.devicePixelRatio,
+        PIXEL_RADIUS / window.devicePixelRatio
+      );
+      this.three.renderer.setScissorTest(true);
+      this.three.renderer.render(this.three.scene, this.three.camera);
+
+      const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
+
+      this.three.renderer.readRenderTargetPixelsAsync(
+        target,
+        min.x,
+        min.y,
+        PIXEL_RADIUS,
+        PIXEL_RADIUS,
+        pixelBuffer
+      ).then(() => {
+        for (let i = 0; i < pixels.length; i++) {
+          const [x, y] = pixels[i];
+          const index = (x + PIXEL_RADIUS * y) * 4;
+
+          if (pixelBuffer[index] < 1) continue;
+
+          resolve(pixelBuffer[index] - 1);
+          break;
+        }
+      });
+
+      this.three.renderer.setRenderTarget(null);
+      this.three.renderer.setScissorTest(false);
+
+      this.three.scene.children.forEach((child) => {
+        child.visible = true;
+
+        if (child.userData.raycastable) {
+          (child as any).material.uniforms.raycast.value = false;
+        }
+      });
     });
-
-    const target = this.raycastTarget.target();
-
-    const pixel = this.three.screenToImage(pointer);
-    const min = pixel
-      .clone()
-      .sub(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS).multiplyScalar(0.5));
-
-    this.three.renderer.setRenderTarget(target);
-    this.three.renderer.setScissor(
-      min.x / window.devicePixelRatio,
-      min.y / window.devicePixelRatio,
-      PIXEL_RADIUS / window.devicePixelRatio,
-      PIXEL_RADIUS / window.devicePixelRatio
-    );
-    this.three.renderer.setScissorTest(true);
-    this.three.renderer.render(this.three.scene, this.three.camera);
-
-    const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
-
-    this.three.renderer.readRenderTargetPixels(
-      target,
-      min.x,
-      min.y,
-      PIXEL_RADIUS,
-      PIXEL_RADIUS,
-      pixelBuffer
-    );
-
-    this.three.renderer.setRenderTarget(null);
-    this.three.renderer.setScissorTest(false);
-
-    let id;
-
-    for (let i = 0; i < pixels.length; i++) {
-      const [x, y] = pixels[i];
-      const index = (x + PIXEL_RADIUS * y) * 4;
-
-      if (pixelBuffer[index] < 1) continue;
-
-      id = pixelBuffer[index];
-      break;
-    }
-
-    this.three.scene.children.forEach((child) => {
-      child.visible = true;
-
-      if (child.userData.raycastable) {
-        (child as any).material.uniforms.raycast.value = false;
-      }
-    });
-
-    if (!id) return;
-
-    return id - 1;
   }
 
   generateVertices() {
@@ -139,14 +140,12 @@ export class Graph {
     const data = new Float32Array(size * size * 4);
 
     for (let i = 0; i < size * size; i++) {
-      data[i * 4 + 0] = (i % size) * 10;
-      data[i * 4 + 1] = Math.floor(i / size) * 10;
+      data[i * 4 + 0] = (i % size) * 20;
+      data[i * 4 + 1] = Math.floor(i / size) * 20;
       data[i * 4 + 2] = 0;
       data[i * 4 + 3] = 1;
     }
 
     this.vertexPositions.write(0, 0, size, size, data);
-
-    console.log(this.vertexPositions.read(0, 0, 1, 1));
   }
 }

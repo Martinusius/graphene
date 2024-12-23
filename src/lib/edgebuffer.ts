@@ -83,13 +83,15 @@ export class EdgeBuffer {
     uvArrow: boolean,
     vuArrow: boolean
   ) {
+    const o = 0.5 / this.textureSize;
+
     const [ux, uy] = [
-      (u % this.textureSize) / this.textureSize,
-      Math.floor(u / this.textureSize) / this.textureSize,
+      (u % this.textureSize) / this.textureSize + o,
+      Math.floor(u / this.textureSize) / this.textureSize + o,
     ];
     const [vx, vy] = [
-      (v % this.textureSize) / this.textureSize,
-      Math.floor(v / this.textureSize) / this.textureSize,
+      (v % this.textureSize) / this.textureSize + o,
+      Math.floor(v / this.textureSize) / this.textureSize + o,
     ];
 
     this.vertices.set(

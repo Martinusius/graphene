@@ -1,7 +1,7 @@
 export const edgeVertex = `
 uniform vec2 resolution;
 uniform sampler2D positions;
-uniform sampler2D selection;
+// uniform sampler2D selection;
 
 attribute vec4 vertices;
 
@@ -17,19 +17,20 @@ void main() {
 
   vec4 vertexUvs = vertices;
 
-  bool vuArrow = vertexUvs.x > 1.0;
-  vertexUvs.x %= 1.0;
+  bool vuArrow = vertexUvs.x >= 1.0;
+  vertexUvs.x -= float(vuArrow);
 
-  bool uvArrow = vertexUvs.z > 1.0;
-  vertexUvs.z %= 1.0;
+  bool uvArrow = vertexUvs.z >= 1.0;
+  vertexUvs.z -= float(uvArrow); 
+
 
   vec2 firstVertex = texture2D(positions, vertexUvs.xy).xy;
   vec2 secondVertex = texture2D(positions, vertexUvs.zw).xy;
 
   vec2 toSecond = normalize(secondVertex - firstVertex);
   
-  firstVertex.xy += toSecond * 1.8;
-  secondVertex.xy -= toSecond * 1.8;
+  firstVertex.xy += toSecond * 3.6;
+  secondVertex.xy -= toSecond * 3.6;
 
   float dist = length(firstVertex - secondVertex);
 
@@ -40,7 +41,6 @@ void main() {
 
   if(vuArrow) {
     if(uv.x == 0.0 && uv.y != 0.5) {
-      // uv.x = 0.25;
       uv.x = 2.0 / dist;
       uv.y = 5.0 * (uv.y - 0.5) + 0.5;
     }

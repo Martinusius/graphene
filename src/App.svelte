@@ -63,25 +63,16 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024, 100);
+    const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
     graph.generateVertices();
 
-    window.addEventListener("mousemove", (event) => {
+    function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
-      const x = ((event.clientX - left) / width) * 2 - 1;
-      const y = ((height - (event.clientY - top)) / height) * 2 - 1;
+      return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
+    }
 
-      // check if coordinates are inside the canvas
-      if (x < -1 || x > 1 || y < -1 || y > 1) {
-        console.log("outside");
-
-        // set cursor to default
-        document.body.style.cursor = "default";
-
-        graph.hoverVertex(-1);
-        graph.hoverEdge(-1);
-        return;
-      }
+    window.addEventListener("mousemove", (event) => {
+      const { x, y } = screenCoords(event);
 
       graph.raycast(new Vector2(x, y)).then((result) => {
         if (!result) {
@@ -120,90 +111,78 @@
 
     // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
 
-    // function screenCoords(event: MouseEvent) {
-    //   const { top, left, width, height } =
-    //     renderer.domElement.getBoundingClientRect();
-    //   return new Vector2(
-    //     ((event.clientX - left) / width) * 2 - 1,
-    //     ((height - (event.clientY - top)) / height) * 2 - 1
-    //   );
-    // }
+    let first = new Vector2(),
+      selection = false;
 
-    // let first = new Vector2(),
-    //   selection = false;
+    let select = true;
 
-    // let select = true;
+    window.addEventListener("mousedown", (event) => {
+      if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
+      if (event.button !== LEFT_MOUSE_BUTTON) return;
 
-    // window.addEventListener("mousedown", (event) => {
-    //   if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
-    //   if (event.button !== LEFT_MOUSE_BUTTON) return;
+      select = !event.altKey;
 
-    //   select = !event.altKey;
+      first = screenCoords(event);
+      first.divideScalar(camera.zoom * 100);
 
-    //   first = screenCoords(event);
-    //   first.divideScalar(camera.zoom * 100);
+      selection = true;
+    });
 
-    //   selection = true;
-    // });
+    function mouseMove(event: MouseEvent) {
+      if (!selection) return;
 
-    // function mouseMove(event: MouseEvent) {
-    //   const id = vertices.raycast(screenCoords(event));
-    //   if (id) vertices.select(id);
+      Draw.reset();
 
-    //   if (!selection) return;
+      const second = screenCoords(event);
 
-    //   Draw.reset();
+      const firstScaled = first.clone();
+      firstScaled.multiplyScalar(camera.zoom * 100);
 
-    //   const second = screenCoords(event);
+      const min = firstScaled.clone().min(second);
+      const max = firstScaled.clone().max(second);
 
-    //   const firstScaled = first.clone();
-    //   firstScaled.multiplyScalar(camera.zoom * 100);
+      graph.select(min, max, select);
+      Draw.selectionRectangle(min, max);
+    }
 
-    //   const min = firstScaled.clone().min(second);
-    //   const max = firstScaled.clone().max(second);
+    window.addEventListener("mousemove", mouseMove);
 
-    //   vertices.selection(min, max, select);
-    //   Draw.selectionRectangle(min, max);
-    // }
+    window.addEventListener("mouseup", (event) => {
+      if (event.button !== 0) return;
 
-    // window.addEventListener("mousemove", mouseMove);
+      if (!selection) return;
 
-    // window.addEventListener("mouseup", (event) => {
-    //   if (event.button !== 0) return;
+      const second = screenCoords(event);
 
-    //   if (!selection) return;
+      const firstScaled = first.clone();
+      firstScaled.multiplyScalar(camera.zoom * 100);
 
-    //   const second = screenCoords(event);
+      const min = firstScaled.clone().min(second);
+      const max = firstScaled.clone().max(second);
 
-    //   const firstScaled = first.clone();
-    //   firstScaled.multiplyScalar(camera.zoom * 100);
+      graph.select(min, max, select, false);
+      Draw.reset();
+      selection = false;
+    });
 
-    //   const min = firstScaled.clone().min(second);
-    //   const max = firstScaled.clone().max(second);
+    // const compute = new Compute(renderer);
 
-    //   vertices.selection(min, max, select, false);
-    //   Draw.reset();
-    //   selection = false;
-    // });
+    // const texture = compute.createTexture(4, 4);
 
-    const compute = new Compute(renderer);
+    // const red = compute.createProgram(`
+    //   void main() {
+    //     gl_FragColor = vec4(1, 0, 0, 0);
+    //   }
+    // `);
 
-    const texture = compute.createTexture(4, 4);
+    // const swap = compute.createProgram(`
+    //   uniform sampler2D inputTexture;
 
-    const red = compute.createProgram(`
-      void main() {
-        gl_FragColor = vec4(1, 0, 0, 0);
-      }
-    `);
-
-    const swap = compute.createProgram(`
-      uniform sampler2D inputTexture;
-
-      void main() {
-        vec4 color = texture2D(inputTexture, gl_FragCoord.xy / 4.0);
-        gl_FragColor = color.argb;
-      }
-    `);
+    //   void main() {
+    //     vec4 color = texture2D(inputTexture, gl_FragCoord.xy / 4.0);
+    //     gl_FragColor = color.argb;
+    //   }
+    // `);
 
     // swap.setUniform("inputTexture", texture);
     // red.execute(texture);

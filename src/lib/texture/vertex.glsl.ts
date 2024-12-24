@@ -45,8 +45,6 @@ flat varying int vIndex;
 varying vec4 vSelection;
 
 void main() {
-  
-  
   vec2 uv = 2.0 * vec2(gl_PointCoord) - 1.0;
   float smoothFactor = max(size / 5.0, 2.0);
 
@@ -60,8 +58,9 @@ void main() {
     return;
   }
 
-  vec3 colorFill = mix(vec3(0.9), vec3(0, 0.8, 0.2), vSelection.b);
-  colorFill = mix(colorFill, vec3(0, 0.5, 1), vSelection.r);
+  vec3 colorFill = mix(vec3(0.9), vec3(0, 0.5, 1), vSelection.r);
 
-  gl_FragColor = vec4(vec3(white) * colorFill, alpha);
+  vec3 color = mix(vec3(white) * colorFill, vec3(1), vSelection.b * 0.4);
+
+  gl_FragColor = vec4(color, alpha);
 }`;

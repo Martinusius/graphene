@@ -1,11 +1,11 @@
-import { Vector2, type Camera, type Scene, type WebGLRenderer } from "three";
+import { OrthographicCamera, Vector2, type Camera, type Scene, type WebGLRenderer } from "three";
 
 export class Three {
   constructor(
     public readonly renderer: WebGLRenderer,
-    public readonly camera: Camera,
+    public readonly camera: OrthographicCamera,
     public readonly scene: Scene
-  ) {}
+  ) { }
 
   get resolution() {
     return new Vector2(

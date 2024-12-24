@@ -36,8 +36,8 @@ void main() {
 
   vec2 toSecond = normalize(secondVertex - firstVertex);
   
-  firstVertex.xy += toSecond * 3.6;
-  secondVertex.xy -= toSecond * 3.6;
+  firstVertex.xy += toSecond * 4.0;
+  secondVertex.xy -= toSecond * 4.0;
 
   float dist = length(firstVertex - secondVertex);
 

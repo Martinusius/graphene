@@ -6,6 +6,7 @@ import type { Three } from "./Three";
 import { Vertices } from "./Vertices";
 import { PIXEL_RADIUS, pixels } from "./pixels";
 import { hover } from "./hover.glsl";
+import { select } from "./select.glsl";
 
 export type RaycastResult = {
   type: "vertex" | "edge";
@@ -26,6 +27,7 @@ export class Graph {
   private raycastTarget: DynamicRenderTarget;
 
   private hoverProgram: ComputeProgram;
+  private selectProgram: ComputeProgram;
 
   constructor(
     private readonly three: Three,
@@ -64,32 +66,25 @@ export class Graph {
     });
 
     this.hoverProgram = this.compute.createProgram(hover);
+    this.selectProgram = this.compute.createProgram(select);
   }
 
-  selectVertex(id: number, select: boolean) {
-    const x = id % this.selectionVertices.width;
-    const y = Math.floor(id / this.selectionVertices.width);
+  select(min: Vector2, max: Vector2, select = true, preview = true) {
+    this.selectProgram.setUniform('min', min);
+    this.selectProgram.setUniform('max', max);
+    this.selectProgram.setUniform('select', select);
+    this.selectProgram.setUniform('preview', preview);
 
-    this.selectionVertices.write(
-      x,
-      y,
-      1,
-      1,
-      new Float32Array([Number(select), Number(select), 0, 0])
-    );
-  }
+    this.selectProgram.setUniform('projectionMatrix', this.three.camera.projectionMatrix);
+    this.three.camera.updateMatrixWorld();
+    this.selectProgram.setUniform('_viewMatrix', this.three.camera.matrixWorldInverse);
+    this.selectProgram.setUniform('screenResolution', this.three.resolution);
+    this.selectProgram.setUniform('size', this.three.camera.zoom * 400);
 
-  selectEdge(id: number, select: boolean) {
-    const x = id % this.selectionEdges.width;
-    const y = Math.floor(id / this.selectionEdges.width);
+    this.selectProgram.setUniform('positions', this.vertexPositions);
+    this.selectProgram.setUniform('selection', this.selectionVertices);
 
-    this.selectionEdges.write(
-      x,
-      y,
-      1,
-      1,
-      new Float32Array([Number(select), Number(select), 0, 0])
-    );
+    this.selectProgram.execute(this.selectionVertices);
   }
 
   hoverVertex(id: number, hover = true) {
@@ -108,9 +103,8 @@ export class Graph {
 
   raycast(pointer: Vector2) {
     return new Promise<RaycastResult | undefined>((resolve) => {
-
       this.three.scene.children.forEach((child) => {
-        child.visible = child.userData.raycastable;
+        child.visible = !!child.userData.raycastable;
 
         if (child.userData.raycastable) {
           (child as any).material.uniforms.raycast.value = true;

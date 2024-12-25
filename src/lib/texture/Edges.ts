@@ -26,6 +26,7 @@ export class Edges {
     const edges = new EdgeBuffer(edgeCount, vertexSize);
 
     for (let i = 0; i < edgeCount; i++) {
+      if (i % size === size - 1) continue;
       edges.addEdge(i, i + 1, true, true);
     }
 

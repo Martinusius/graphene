@@ -1,15 +1,22 @@
 import { FloatType, RGBAFormat, Vector2, Vector3 } from "three";
-import { Compute, ComputeProgram, ComputeTexture } from "./Compute";
+import { Compute, ComputeProgram, ComputeTexture, SpecialComputeProgram } from "./Compute";
 import { DynamicRenderTarget } from "./DynamicRenderTarget";
 import { Edges } from "./Edges";
 import type { Three } from "./Three";
 import { Vertices } from "./Vertices";
 import { PIXEL_RADIUS, pixels } from "./pixels";
-import { hover } from "./hover.glsl";
+import { flag } from "./flag.glsl";
 import { select } from "./select.glsl";
+import { drag } from "./drag.glsl";
+
+export type ObjectType = "vertex" | "edge";
+
+function otherType(type: ObjectType): ObjectType {
+  return type === "vertex" ? "edge" : "vertex";
+}
 
 export type RaycastResult = {
-  type: "vertex" | "edge";
+  type: ObjectType;
   id: number;
 };
 
@@ -26,8 +33,10 @@ export class Graph {
 
   private raycastTarget: DynamicRenderTarget;
 
-  private hoverProgram: ComputeProgram;
+  private flagProgram: ComputeProgram;
   private selectProgram: ComputeProgram;
+
+  private dragProgram: SpecialComputeProgram;
 
   constructor(
     private readonly three: Three,
@@ -65,11 +74,13 @@ export class Graph {
       type: FloatType,
     });
 
-    this.hoverProgram = this.compute.createProgram(hover);
+    this.flagProgram = this.compute.createProgram(flag);
     this.selectProgram = this.compute.createProgram(select);
+
+    this.dragProgram = this.compute.createSpecialProgram(drag);
   }
 
-  select(min: Vector2, max: Vector2, select = true, preview = true) {
+  selection(min: Vector2, max: Vector2, select = true, preview = true) {
     this.selectProgram.setUniform('min', min);
     this.selectProgram.setUniform('max', max);
     this.selectProgram.setUniform('select', select);
@@ -87,18 +98,58 @@ export class Graph {
     this.selectProgram.execute(this.selectionVertices);
   }
 
-  hoverVertex(id: number, hover = true) {
-    this.hoverProgram.setUniform('hover', hover);
-    this.hoverProgram.setUniform('id', id);
-    this.hoverProgram.setUniform('selection', this.selectionVertices);
-    this.hoverProgram.execute(this.selectionVertices);
+  private flag(channel: number, type: ObjectType, id: number, set: boolean, unsetOther: boolean) {
+    const texture = { vertex: this.selectionVertices, edge: this.selectionEdges }[type];
+
+    this.flagProgram.setUniform('channel', channel);
+    this.flagProgram.setUniform('set', set);
+    this.flagProgram.setUniform('unsetOther', unsetOther);
+    this.flagProgram.setUniform('id', id);
+    this.flagProgram.setUniform('selection', texture);
+    this.flagProgram.execute(texture);
   }
 
-  hoverEdge(id: number, hover = true) {
-    this.hoverProgram.setUniform('hover', hover);
-    this.hoverProgram.setUniform('id', id);
-    this.hoverProgram.setUniform('selection', this.selectionEdges);
-    this.hoverProgram.execute(this.selectionEdges);
+  select(type: ObjectType, id: number, select = true) {
+    this.flag(0, type, id, select, false);
+    this.flag(1, type, id, select, false);
+  }
+
+  hover(type: ObjectType, id: number) {
+    this.flag(2, otherType(type), -1, false, true);
+    this.flag(2, type, id, true, true);
+  }
+
+  isSelected(type: ObjectType, id: number) {
+    const texture = { vertex: this.selectionVertices, edge: this.selectionEdges }[type];
+
+    const x = id % texture.width;
+    const y = Math.floor(id / texture.width);
+
+    const data = texture.read(x, y, 1, 1);
+    return data[0] > 0.5;
+  }
+
+  unhover() {
+    this.flag(2, "vertex", -1, true, true);
+    this.flag(2, "edge", -1, true, true);
+  }
+
+  deselect() {
+    this.flag(0, "vertex", -1, true, true);
+    this.flag(0, "edge", -1, true, true);
+    this.flag(1, "vertex", -1, true, true);
+    this.flag(1, "edge", -1, true, true);
+  }
+
+
+  drag(offset: Vector2) {
+    this.dragProgram.setUniform('positions', this.vertexPositions);
+    this.dragProgram.setUniform('selectionVertices', this.selectionVertices);
+    this.dragProgram.setUniform('selectionEdges', this.selectionEdges);
+
+    this.dragProgram.setUniform('offset', offset);
+
+    this.dragProgram.execute(this.vertexPositions.width * this.vertexPositions.height, this.vertexPositions);
   }
 
   raycast(pointer: Vector2) {
@@ -180,8 +231,8 @@ export class Graph {
     const data = new Float32Array(size * size * 4);
 
     for (let i = 0; i < size * size; i++) {
-      data[i * 4 + 0] = (i % size) * 20;
-      data[i * 4 + 1] = Math.floor(i / size) * 20;
+      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 10;
+      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 10;
       data[i * 4 + 2] = 0;
       data[i * 4 + 3] = 1;
     }

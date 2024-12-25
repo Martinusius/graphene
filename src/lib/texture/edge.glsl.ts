@@ -92,7 +92,8 @@ void main() {
     return;
   }
 
-  vec3 color = mix(vec3(0), vec3(0, 0.8, 0.2), vSelection.b);
-  color = mix(color, vec3(0, 0.5, 1), vSelection.r);
+  vec3 color = mix(vec3(0), vec3(0, 0.5, 1), vSelection.r);
+  color = mix(color, vec3(1), vSelection.b * 0.4);
+
   gl_FragColor = vec4(color, 1);
 }`;

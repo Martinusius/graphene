@@ -20,6 +20,7 @@ import {
 } from "three";
 import {
   computeVertex,
+  computeFragment,
   specialComputeFragment,
   specialComputeVertex,
 } from "./compute.glsl";
@@ -126,7 +127,7 @@ export class ComputeProgram {
         Object.entries(uniforms).map(([key, value]) => [key, { value }])
       ),
       vertexShader: computeVertex,
-      fragmentShader: shader,
+      fragmentShader: computeFragment + shader,
     });
   }
 

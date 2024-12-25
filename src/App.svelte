@@ -1,15 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Scene, OrthographicCamera, WebGLRenderer, Vector2, BufferGeometry } from "three";
+  import { Scene, OrthographicCamera, WebGLRenderer, Vector2, Vector3 } from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { initGrid } from "./lib/grid";
-  import { Globals } from "./lib/three/Globals";
-  import { OldVertices } from "./lib/texture/Vertex";
   import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/Draw";
   import { Graph } from "./lib/texture/Graph";
   import { Three } from "./lib/texture/Three";
-  import { Compute } from "./lib/texture/Compute";
 
   let container: HTMLDivElement;
 
@@ -71,7 +68,17 @@
       return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
     }
 
-    window.addEventListener("mousemove", (event) => {
+    function worldCoords(event: MouseEvent) {
+      const coords = screenCoords(event);
+      const world = new Vector3(coords.x, coords.y, 0).unproject(camera);
+      return new Vector2(world.x, world.y);
+    }
+
+    let hovering = false,
+      hoveredType = "",
+      hoveredId = -1;
+
+    function mouseMoveHover(event: MouseEvent) {
       const { x, y } = screenCoords(event);
 
       graph.raycast(new Vector2(x, y)).then((result) => {
@@ -79,8 +86,9 @@
           // set cursor to default
           document.body.style.cursor = "default";
 
-          graph.hoverVertex(-1);
-          graph.hoverEdge(-1);
+          graph.unhover();
+
+          hovering = false;
           return;
         }
 
@@ -88,24 +96,22 @@
 
         document.body.style.cursor = "pointer";
 
-        // if (type === "vertex") graph.selectVertex(id, true);
-        // if (type === "edge") graph.selectEdge(id, true);
         if (type === "vertex") {
-          graph.hoverVertex(id, true);
-          graph.hoverEdge(-1);
+          graph.hover("vertex", id);
         }
 
         if (type === "edge") {
-          graph.hoverEdge(id, true);
-          graph.hoverVertex(-1);
+          graph.hover("edge", id);
         }
+
+        hoveredType = type;
+        hoveredId = id;
+        hovering = true;
       });
+    }
 
-      // if (id) console.log(id);
-      // if (id) graph.select(id, true);
-    });
-
-    // const vertices = new OldVertices(renderer, camera, scene, 1024);
+    window.addEventListener("mousemove", mouseMoveHover);
+    window.addEventListener("wheel", mouseMoveHover);
 
     camera.updateMatrix();
 
@@ -116,9 +122,29 @@
 
     let select = true;
 
+    let dragging = false;
+    const startCoords = new Vector2();
+
     window.addEventListener("mousedown", (event) => {
       if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
       if (event.button !== LEFT_MOUSE_BUTTON) return;
+
+      if (hovering) {
+        dragging = true;
+        // graph.selection(new Vector2(-1), new Vector2(-1), select, false);
+
+        const selected = graph.isSelected(hoveredType as any, hoveredId);
+
+        console.log(selected);
+
+        if (!selected) {
+          graph.deselect();
+          graph.select(hoveredType as any, hoveredId);
+        }
+
+        startCoords.copy(worldCoords(event));
+        return;
+      }
 
       select = !event.altKey;
 
@@ -129,6 +155,14 @@
     });
 
     function mouseMove(event: MouseEvent) {
+      if (dragging) {
+        const diff = worldCoords(event).sub(startCoords);
+        startCoords.copy(worldCoords(event));
+
+        graph.drag(diff);
+        return;
+      }
+
       if (!selection) return;
 
       Draw.reset();
@@ -141,14 +175,20 @@
       const min = firstScaled.clone().min(second);
       const max = firstScaled.clone().max(second);
 
-      graph.select(min, max, select);
+      graph.selection(min, max, select);
       Draw.selectionRectangle(min, max);
     }
 
     window.addEventListener("mousemove", mouseMove);
+    window.addEventListener("wheel", mouseMove);
 
     window.addEventListener("mouseup", (event) => {
       if (event.button !== 0) return;
+
+      if (dragging) {
+        dragging = false;
+        return;
+      }
 
       if (!selection) return;
 
@@ -160,10 +200,16 @@
       const min = firstScaled.clone().min(second);
       const max = firstScaled.clone().max(second);
 
-      graph.select(min, max, select, false);
+      graph.selection(min, max, select, false);
       Draw.reset();
       selection = false;
     });
+
+    // window.addEventListener("contextmenu", (event) => {
+    //   event.preventDefault();
+
+    //   graph.drag(new Vector2(37, 37));
+    // });
 
     // const compute = new Compute(renderer);
 

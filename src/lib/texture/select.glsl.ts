@@ -1,5 +1,4 @@
 export const select = `
-
 uniform sampler2D positions;
 uniform sampler2D selection;
 
@@ -8,8 +7,6 @@ uniform vec2 max;
 
 uniform mat4 projectionMatrix;
 uniform mat4 _viewMatrix;
-
-uniform ivec2 outputSize;
 
 uniform vec2 screenResolution;
 uniform float size;

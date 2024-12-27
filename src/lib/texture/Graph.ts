@@ -8,6 +8,7 @@ import { PIXEL_RADIUS, pixels } from "./pixels";
 import { flag } from "./flag.glsl";
 import { select } from "./select.glsl";
 import { drag } from "./drag.glsl";
+import { selectEdges } from "./selectEdges.glsl";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -24,6 +25,7 @@ export class Graph {
   private compute: Compute;
 
   private vertexPositions: ComputeTexture;
+  private edgeVertices: ComputeTexture;
 
   private selectionVertices: ComputeTexture;
   private selectionEdges: ComputeTexture;
@@ -35,6 +37,7 @@ export class Graph {
 
   private flagProgram: ComputeProgram;
   private selectProgram: ComputeProgram;
+  private selectEdgesProgram: ComputeProgram;
 
   private dragProgram: SpecialComputeProgram;
 
@@ -58,6 +61,7 @@ export class Graph {
       verticesSize
     );
 
+    this.edgeVertices = this.compute.createTexture(edgesSize, edgesSize);
     this.selectionEdges = this.compute.createTexture(edgesSize, edgesSize);
 
     this.vertices = new Vertices(
@@ -67,7 +71,7 @@ export class Graph {
       this.selectionVertices
     );
 
-    this.edges = new Edges(three, maxEdges, this.vertexPositions, this.selectionEdges);
+    this.edges = new Edges(three, maxEdges, this.edgeVertices, this.selectionEdges, this.vertexPositions);
 
     this.raycastTarget = new DynamicRenderTarget(three.renderer, {
       format: RGBAFormat,
@@ -75,19 +79,23 @@ export class Graph {
     });
 
     this.flagProgram = this.compute.createProgram(flag);
+
     this.selectProgram = this.compute.createProgram(select);
+    this.selectEdgesProgram = this.compute.createProgram(selectEdges);
 
     this.dragProgram = this.compute.createSpecialProgram(drag);
   }
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {
+    this.three.camera.updateMatrixWorld();
+
+
     this.selectProgram.setUniform('min', min);
     this.selectProgram.setUniform('max', max);
     this.selectProgram.setUniform('select', select);
     this.selectProgram.setUniform('preview', preview);
 
     this.selectProgram.setUniform('projectionMatrix', this.three.camera.projectionMatrix);
-    this.three.camera.updateMatrixWorld();
     this.selectProgram.setUniform('_viewMatrix', this.three.camera.matrixWorldInverse);
     this.selectProgram.setUniform('screenResolution', this.three.resolution);
     this.selectProgram.setUniform('size', this.three.camera.zoom * 400);
@@ -96,6 +104,22 @@ export class Graph {
     this.selectProgram.setUniform('selection', this.selectionVertices);
 
     this.selectProgram.execute(this.selectionVertices);
+
+    this.selectEdgesProgram.setUniform('min', min);
+    this.selectEdgesProgram.setUniform('max', max);
+    this.selectEdgesProgram.setUniform('select', select);
+    this.selectEdgesProgram.setUniform('preview', preview);
+
+    this.selectEdgesProgram.setUniform('projectionMatrix', this.three.camera.projectionMatrix);
+    this.selectEdgesProgram.setUniform('_viewMatrix', this.three.camera.matrixWorldInverse);
+    this.selectEdgesProgram.setUniform('screenResolution', this.three.resolution);
+    this.selectEdgesProgram.setUniform('size', this.three.camera.zoom * 400);
+
+    this.selectEdgesProgram.setUniform('vertices', this.edgeVertices);
+    this.selectEdgesProgram.setUniform('positions', this.vertexPositions);
+    this.selectEdgesProgram.setUniform('selection', this.selectionEdges);
+
+    this.selectEdgesProgram.execute(this.selectionEdges);
   }
 
   private flag(channel: number, type: ObjectType, id: number, set: boolean, unsetOther: boolean) {
@@ -119,13 +143,15 @@ export class Graph {
     this.flag(2, type, id, true, true);
   }
 
-  isSelected(type: ObjectType, id: number) {
+  async isSelected(type: ObjectType, id: number) {
     const texture = { vertex: this.selectionVertices, edge: this.selectionEdges }[type];
 
     const x = id % texture.width;
     const y = Math.floor(id / texture.width);
 
-    const data = texture.read(x, y, 1, 1);
+    const data = await texture.read(x, y, 1, 1)
+    // console.log('typeid', type, id);
+    // console.log('selected', data[0]);
     return data[0] > 0.5;
   }
 
@@ -144,12 +170,14 @@ export class Graph {
 
   drag(offset: Vector2) {
     this.dragProgram.setUniform('positions', this.vertexPositions);
+    this.dragProgram.setUniform('edgeVertices', this.edgeVertices);
     this.dragProgram.setUniform('selectionVertices', this.selectionVertices);
     this.dragProgram.setUniform('selectionEdges', this.selectionEdges);
 
     this.dragProgram.setUniform('offset', offset);
 
-    this.dragProgram.execute(this.vertexPositions.width * this.vertexPositions.height, this.vertexPositions);
+    this.dragProgram.execute(this.vertexPositions.width * this.vertexPositions.height +
+      2 * this.edgeVertices.width * this.edgeVertices.height, this.vertexPositions);
   }
 
   raycast(pointer: Vector2) {
@@ -226,6 +254,10 @@ export class Graph {
     });
   }
 
+  private indexUv(index: number, size: number) {
+    return new Vector2((index % size + 0.5) / size, Math.floor(index / size + 0.5) / size);
+  }
+
   generateVertices() {
     const size = this.vertexPositions.width;
     const data = new Float32Array(size * size * 4);
@@ -238,5 +270,30 @@ export class Graph {
     }
 
     this.vertexPositions.write(0, 0, size, size, data);
+    this.vertices.count = size * size;
+  }
+
+  generateEdges() {
+    const vertexSize = this.vertexPositions.width;
+    const size = this.edgeVertices.width;
+
+    console.log(size);
+    console.log(vertexSize);
+
+    const data = new Float32Array(size * size * 4);
+
+    let j = 0;
+    for (let i = 0; i < size * size; i++) {
+      if (i % size === size - 1) continue;
+
+      data[j * 4 + 0] = this.indexUv(i, vertexSize).x + 1;
+      data[j * 4 + 1] = this.indexUv(i, vertexSize).y;
+      data[j * 4 + 2] = this.indexUv(i + 1, vertexSize).x + 1;
+      data[j * 4 + 3] = this.indexUv(i + 1, vertexSize).y;
+      j++;
+    }
+
+    this.edgeVertices.write(0, 0, size, size, data);
+    this.edges.count = j;
   }
 }

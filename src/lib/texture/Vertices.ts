@@ -12,6 +12,14 @@ import { vertexFragment, vertexVertex } from "./vertex.glsl";
 export class Vertices {
   private points: Points<BufferGeometry, ShaderMaterial>;
 
+  set count(value: number) {
+    this.points.geometry.setDrawRange(0, value);
+  }
+
+  get count() {
+    return this.points.geometry.drawRange.count;
+  }
+
   constructor(
     three: Three,
     vertexCount: number,

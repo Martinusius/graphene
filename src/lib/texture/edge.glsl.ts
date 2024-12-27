@@ -1,9 +1,11 @@
 export const edgeVertex = `
 uniform vec2 resolution;
+
+uniform sampler2D vertices;
 uniform sampler2D positions;
 uniform sampler2D selection;
 
-attribute vec4 vertices;
+// attribute vec4 vertices;
 
 uniform float size;
 uniform int bufferSize;
@@ -18,11 +20,10 @@ vec2 getUv() {
 }
 
 
-
 void main() {
   mat4 m = projectionMatrix * viewMatrix;
 
-  vec4 vertexUvs = vertices;
+  vec4 vertexUvs = texture2D(vertices, getUv());
 
   bool vuArrow = vertexUvs.x >= 1.0;
   vertexUvs.x -= float(vuArrow);

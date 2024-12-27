@@ -10,7 +10,7 @@ export class EdgeBuffer {
 
   // instanced attribute, 2 uv coordinates of the vertices the edge connects
   // also specifies direction arrows
-  private vertices: Float32Array;
+  // private vertices: Float32Array;
 
   // defines which part of the edge the specific vertex is (processed in the shader)
   private position = new Float32Array(
@@ -47,14 +47,9 @@ export class EdgeBuffer {
     ].flat()
   );
 
-  constructor(edgeCount: number, private textureSize: number) {
-    this.vertices = new Float32Array(edgeCount * 4);
+  constructor() {
     this.geometry.instanceCount = 0;
 
-    this.geometry.setAttribute(
-      "vertices",
-      new InstancedBufferAttribute(this.vertices, 4)
-    );
 
     this.geometry.setAttribute(
       "position",
@@ -62,41 +57,5 @@ export class EdgeBuffer {
     );
 
     this.geometry.setIndex(new BufferAttribute(this.indices, 1));
-  }
-
-  public swapEdges(fromIndex: number, toIndex: number) {
-    const from = this.vertices.slice(fromIndex * 4, fromIndex * 4 + 4);
-    const to = this.vertices.slice(toIndex * 4, toIndex * 4 + 4);
-
-    this.vertices.set(to, fromIndex * 4);
-    this.vertices.set(from, toIndex * 4);
-  }
-
-  public addEdge(u: number, v: number, uvArrow: boolean, vuArrow: boolean) {
-    this.setEdge(this.geometry.instanceCount++, u, v, uvArrow, vuArrow);
-  }
-
-  private setEdge(
-    index: number,
-    u: number,
-    v: number,
-    uvArrow: boolean,
-    vuArrow: boolean
-  ) {
-    const o = 0.5 / this.textureSize;
-
-    const [ux, uy] = [
-      (u % this.textureSize) / this.textureSize + o,
-      Math.floor(u / this.textureSize) / this.textureSize + o,
-    ];
-    const [vx, vy] = [
-      (v % this.textureSize) / this.textureSize + o,
-      Math.floor(v / this.textureSize) / this.textureSize + o,
-    ];
-
-    this.vertices.set(
-      [ux + Number(vuArrow), uy, vx + Number(uvArrow), vy],
-      index * 4
-    );
   }
 }

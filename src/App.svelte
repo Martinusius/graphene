@@ -60,8 +60,9 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
+    const graph = new Graph(three, 1024, 1024 - 1);
     graph.generateVertices();
+    graph.generateEdges();
 
     function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
@@ -79,6 +80,8 @@
       hoveredId = -1;
 
     function mouseMoveHover(event: MouseEvent) {
+      if (dragging) return;
+
       const { x, y } = screenCoords(event);
 
       graph.raycast(new Vector2(x, y)).then((result) => {
@@ -125,15 +128,15 @@
     let dragging = false;
     const startCoords = new Vector2();
 
-    window.addEventListener("mousedown", (event) => {
+    window.addEventListener("mousedown", async (event) => {
       if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
       if (event.button !== LEFT_MOUSE_BUTTON) return;
 
       if (hovering) {
-        dragging = true;
         // graph.selection(new Vector2(-1), new Vector2(-1), select, false);
 
-        const selected = graph.isSelected(hoveredType as any, hoveredId);
+        const selected = await graph.isSelected(hoveredType as any, hoveredId);
+        dragging = true;
 
         console.log(selected);
 

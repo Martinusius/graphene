@@ -1,5 +1,6 @@
 import {
   BufferGeometry,
+  InstancedBufferGeometry,
   Mesh,
   OrthographicCamera,
   ShaderMaterial,
@@ -11,27 +12,37 @@ import type { Three } from "./Three";
 import { edgeFragment, edgeVertex } from "./edge.glsl";
 
 export class Edges {
-  private edges: Mesh<BufferGeometry, ShaderMaterial>;
+  private edges: Mesh<InstancedBufferGeometry, ShaderMaterial>;
+
+  set count(value: number) {
+    this.edges.geometry.instanceCount = value;
+  }
+
+  get count() {
+    return this.edges.geometry.instanceCount;
+  }
 
   constructor(
     three: Three,
     edgeCount: number,
-    vertexPositions: ComputeTexture,
-    selectionEdges: ComputeTexture
+    edgeVertices: ComputeTexture,
+    selectionEdges: ComputeTexture,
+    vertexPositions: ComputeTexture
   ) {
     const vertexSize = vertexPositions.width;
 
-    const size = selectionEdges.width;
+    const size = edgeVertices.width;
 
-    const edges = new EdgeBuffer(edgeCount, vertexSize);
+    const edges = new EdgeBuffer();
 
-    for (let i = 0; i < edgeCount; i++) {
-      if (i % size === size - 1) continue;
-      edges.addEdge(i, i + 1, true, true);
-    }
+    // for (let i = 0; i < edgeCount; i++) {
+    //   if (i % size === size - 1) continue;
+    //   edges.addEdge(i, i + 1, true, true);
+    // }
 
     const material = new ShaderMaterial({
       uniforms: {
+        vertices: { value: null },
         positions: { value: null },
         selection: { value: null },
         resolution: {
@@ -58,10 +69,12 @@ export class Edges {
     this.edges.onBeforeRender = (_, __, camera: OrthographicCamera) => {
       this.edges.material.uniforms.size.value = camera.zoom * 400;
 
-      this.edges.material.uniforms.positions.value =
-        vertexPositions.readable().texture;
+      this.edges.material.uniforms.vertices.value =
+        edgeVertices.readable().texture;
       this.edges.material.uniforms.selection.value =
         selectionEdges.readable().texture;
+      this.edges.material.uniforms.positions.value =
+        vertexPositions.readable().texture;
 
       this.edges.material.uniforms.resolution.value.copy(three.resolution)
     };

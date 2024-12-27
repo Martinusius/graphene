@@ -67,9 +67,7 @@ export class ComputeTexture {
   async read(x: number, y: number, width: number, height: number) {
     const buffer = new Float32Array(4 * width * height);
 
-    // const target = this.globals.renderer.getRenderTarget();
 
-    // this.globals.renderer.setRenderTarget(this.readable());
     await this.globals.renderer.readRenderTargetPixelsAsync(
       this.readable(),
       x,
@@ -79,7 +77,6 @@ export class ComputeTexture {
       buffer
     );
 
-    // this.globals.renderer.setRenderTarget(target);
 
     return buffer;
   }
@@ -91,6 +88,8 @@ export class ComputeTexture {
     height: number,
     data: Float32Array
   ) {
+
+
     const texture = new DataTexture(data, width, height, RGBAFormat, FloatType);
     texture.needsUpdate = true;
     this.globals.renderer.copyTextureToTexture(

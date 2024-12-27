@@ -36,7 +36,6 @@
     controls.enableRotate = false;
     controls.minZoom = 0.05 / 100;
     controls.maxZoom = 1;
-    // controls.enablePan = true;
 
     window.addEventListener("resize", () => {
       camera.left = container.clientWidth / -100;
@@ -60,7 +59,7 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024, 1024 - 1);
+    const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
     graph.generateVertices();
     graph.generateEdges();
 
@@ -86,7 +85,6 @@
 
       graph.raycast(new Vector2(x, y)).then((result) => {
         if (!result) {
-          // set cursor to default
           document.body.style.cursor = "default";
 
           graph.unhover();
@@ -118,8 +116,6 @@
 
     camera.updateMatrix();
 
-    // vertices.selection(new Vector2(100, 100), new Vector2(700, 900));
-
     let first = new Vector2(),
       selection = false;
 
@@ -133,8 +129,6 @@
       if (event.button !== LEFT_MOUSE_BUTTON) return;
 
       if (hovering) {
-        // graph.selection(new Vector2(-1), new Vector2(-1), select, false);
-
         const selected = await graph.isSelected(hoveredType as any, hoveredId);
         dragging = true;
 

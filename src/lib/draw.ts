@@ -1,4 +1,5 @@
 import {
+  BufferAttribute,
   BufferGeometry,
   Color,
   LineCurve3,
@@ -86,12 +87,11 @@ export class Draw {
     return new Vector2(unprojected.x, unprojected.y);
   }
 
+  private static selection: { plane: Mesh; outline: MeshLine } | null = null;
+
   static selectionRectangle(a: Vector2, b: Vector2) {
     a = this.unproject(a);
     b = this.unproject(b);
-
-    // a = new Vector2(window.innerWidth, window.innerHeight).multiply(a);
-    // b = new Vector2(window.innerWidth, window.innerHeight).multiply(b);
 
     const mid = a.clone().add(b).divideScalar(2);
 
@@ -101,20 +101,6 @@ export class Draw {
 
     // planegeometry
     const geometry = new PlaneGeometry(sx, sy);
-
-    // material
-    const material = new MeshBasicMaterial({
-      color: new Color(0x0040ff),
-      opacity: 0.3,
-      transparent: true,
-    });
-
-    // mesh
-    const mesh = new Mesh(geometry, material);
-    mesh.userData.temporary = true;
-    mesh.position.x = mid.x;
-    mesh.position.y = mid.y;
-    this.scene.add(mesh);
 
     // meshlinegeometry
     const geometry2 = new MeshLineGeometry();
@@ -126,25 +112,55 @@ export class Draw {
       new Vector3(-sx / 2, -sy / 2, 0),
     ]);
 
+    if (this.selection) {
+      this.selection.plane.geometry.dispose();
+      this.selection.outline.geometry.dispose();
+      this.selection.plane.geometry = geometry;
+      this.selection.outline.geometry = geometry2;
+      this.selection.plane.visible = true;
+      this.selection.outline.visible = true;
+      this.selection.plane.position.x = mid.x;
+      this.selection.plane.position.y = mid.y;
+      this.selection.outline.position.x = mid.x;
+      this.selection.outline.position.y = mid.y;
+
+      return;
+    }
+
+    // material
+    const material = new MeshBasicMaterial({
+      color: new Color(0x0040ff),
+      opacity: 0.3,
+      transparent: true,
+    });
+
     // meshlinematerial
     const material2 = new MeshLineMaterial({
       lineWidth: 0.04 / this.camera.zoom,
       color: new Color(0x0080ff),
     } as any);
 
+    // mesh
+    const plane = new Mesh(geometry, material);
+    plane.userData.temporary = true;
+    plane.position.x = mid.x;
+    plane.position.y = mid.y;
+
     const outline = new MeshLine(geometry2, material2);
+    outline.userData.temporary = true;
     outline.position.x = mid.x;
     outline.position.y = mid.y;
-    outline.userData.temporary = true;
+
+    this.scene.add(plane);
     this.scene.add(outline);
+
+    this.selection = { plane, outline };
   }
 
   static reset() {
     this.scene.children
       .filter((child) => (child as any).userData.temporary)
-      .forEach((child) => this.deleteObject3D(child));
-
-    // document.querySelectorAll(".temporary").forEach((label) => label.remove());
+      .forEach((child) => child.visible = false);
   }
 
   static ruler(start: Vector3, end: Vector3) {

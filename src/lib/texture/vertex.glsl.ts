@@ -27,7 +27,7 @@ void main() {
   vec3 tPosition = texture2D(positions, uv).xyz;
   vSelection = texture2D(selection, uv);
 
-  vec4 result = m * vec4(tPosition, 1);
+  vec4 result = m * vec4(tPosition.xy, 1, 1);
 
   gl_PointSize = size;
 
@@ -51,9 +51,9 @@ void main() {
   float alpha = smoothstep(1.0, 0.0, clamp(length(uv) * smoothFactor - smoothFactor + 1.0, 0.0, 1.0));
   float white = smoothstep(1.0, 0.0, clamp(length(uv) * 1.2 * smoothFactor - smoothFactor + 1.0, 0.0, 1.0));
 
+  if(alpha < 0.2) discard;
+  
   if(raycast) {
-    if(alpha < 0.001) discard;
-
     gl_FragColor = vec4(0, vIndex + 1, 0, 1);
     return;
   }

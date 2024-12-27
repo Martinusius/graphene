@@ -1,4 +1,4 @@
-export const PIXEL_RADIUS = 5;
+export const PIXEL_RADIUS = 30;
 export const pixels: [number, number][] = [];
 
 for (let x = 0; x < PIXEL_RADIUS; x++) {

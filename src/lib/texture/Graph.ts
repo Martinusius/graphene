@@ -183,6 +183,7 @@ export class Graph {
   raycast(pointer: Vector2) {
     return new Promise<RaycastResult | undefined>((resolve) => {
       this.three.scene.children.forEach((child) => {
+        child.userData.previouslyVisible = child.visible;
         child.visible = !!child.userData.raycastable;
 
         if (child.userData.raycastable) {
@@ -205,6 +206,9 @@ export class Graph {
         PIXEL_RADIUS / window.devicePixelRatio
       );
       this.three.renderer.setScissorTest(true);
+
+
+
       this.three.renderer.render(this.three.scene, this.three.camera);
 
       const pixelBuffer = new Float32Array(4 * PIXEL_RADIUS * PIXEL_RADIUS);
@@ -245,7 +249,7 @@ export class Graph {
       this.three.renderer.setScissorTest(false);
 
       this.three.scene.children.forEach((child) => {
-        child.visible = true;
+        child.visible = child.userData.previouslyVisible;
 
         if (child.userData.raycastable) {
           (child as any).material.uniforms.raycast.value = false;
@@ -255,7 +259,7 @@ export class Graph {
   }
 
   private indexUv(index: number, size: number) {
-    return new Vector2((index % size + 0.5) / size, Math.floor(index / size + 0.5) / size);
+    return new Vector2((index % size + 0.5) / size, (Math.floor(index / size) + 0.5) / size);
   }
 
   generateVertices() {

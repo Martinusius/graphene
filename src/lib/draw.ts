@@ -123,6 +123,7 @@ export class Draw {
       this.selection.plane.position.y = mid.y;
       this.selection.outline.position.x = mid.x;
       this.selection.outline.position.y = mid.y;
+      this.selection.outline.material.lineWidth = 0.04 / this.camera.zoom;
 
       return;
     }

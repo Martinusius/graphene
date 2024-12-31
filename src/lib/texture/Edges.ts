@@ -31,7 +31,7 @@ export class Edges {
   ) {
     const vertexSize = vertexPositions.width;
 
-    const size = edgeVertices.width;
+    const edgeSize = edgeVertices.width;
 
     const edges = new EdgeBuffer();
 
@@ -53,7 +53,8 @@ export class Edges {
         },
         size: { value: 40 },
         raycast: { value: false },
-        bufferSize: { value: size },
+        edgeSize: { value: edgeSize },
+        vertexSize: { value: vertexSize },
       },
       transparent: true,
       depthWrite: true,

@@ -7,6 +7,8 @@
   import { Draw } from "./lib/Draw";
   import { Graph } from "./lib/texture/Graph";
   import { Three } from "./lib/texture/Three";
+  import { Compute } from "./lib/texture/Compute";
+  import { Float, Int } from "./lib/texture/TextureFormat";
 
   let container: HTMLDivElement;
 
@@ -51,17 +53,17 @@
     scene.add(initGrid(container, camera));
     Draw.init(scene, camera);
 
-    const render = () => {
-      requestAnimationFrame(render);
-      renderer.render(scene, camera);
-    };
-    render();
-
     const three = new Three(renderer, camera, scene);
 
     const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
     graph.generateVertices();
     graph.generateEdges();
+
+    const render = () => {
+      requestAnimationFrame(render);
+      renderer.render(scene, camera);
+    };
+    render();
 
     function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
@@ -132,8 +134,6 @@
         const selected = await graph.isSelected(hoveredType as any, hoveredId);
         dragging = true;
 
-        console.log(selected);
-
         if (!selected) {
           graph.deselect();
           graph.select(hoveredType as any, hoveredId);
@@ -198,44 +198,21 @@
       const max = firstScaled.clone().max(second);
 
       graph.selection(min, max, select, false);
+      graph.countSelected();
+
       Draw.reset();
       selection = false;
     });
 
-    // window.addEventListener("contextmenu", (event) => {
-    //   event.preventDefault();
-
-    //   graph.drag(new Vector2(37, 37));
-    // });
+    window.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+    });
 
     // const compute = new Compute(renderer);
 
-    // const texture = compute.createTexture(4, 4);
-
-    // const red = compute.createProgram(`
-    //   void main() {
-    //     gl_FragColor = vec4(1, 0, 0, 0);
-    //   }
-    // `);
-
-    // const swap = compute.createProgram(`
-    //   uniform sampler2D inputTexture;
-
-    //   void main() {
-    //     vec4 color = texture2D(inputTexture, gl_FragCoord.xy / 4.0);
-    //     gl_FragColor = color.argb;
-    //   }
-    // `);
-
-    // swap.setUniform("inputTexture", texture);
-    // red.execute(texture);
-    // swap.execute(texture);
-    // swap.execute(texture);
-    // swap.execute(texture);
-
-    // texture.write(0, 0, 1, 1, new Float32Array([1, 1, 1, 1]));
-
-    // console.log(texture.read(0, 0, 4, 4));
+    // const texture = compute.createTexture(10, 10, Float);
+    // const data = new Float32Array(new Array(10 * 10).fill(0).map((_, i) => 100 - i));
+    // texture.write(0, 0, 10, 10, data);
   });
 </script>
 

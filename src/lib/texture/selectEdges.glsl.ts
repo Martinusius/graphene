@@ -1,7 +1,9 @@
 export const selectEdges = `
-uniform sampler2D vertices;
+uniform isampler2D vertices;
 uniform sampler2D positions;
 uniform sampler2D selection;
+
+uniform ivec2 verticesSize;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -15,6 +17,8 @@ uniform float size;
 uniform bool select;
 uniform bool preview;
 
+out vec4 color;
+
 bool lineSegmentIntersection(vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   float denominator = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
   float ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / denominator;
@@ -27,30 +31,34 @@ void main() {
   
   vec2 uv = gl_FragCoord.xy / vec2(outputSize);
 
-  vec4 vertexUvs = texture2D(vertices, uv);
+  ivec2 vertexIndices = texture(vertices, uv).xy;
 
-  bool vuArrow = vertexUvs.x >= 1.0;
-  vertexUvs.x -= float(vuArrow);
+  bool vuArrow = bool(vertexIndices.x & 1);
+  bool uvArrow = bool(vertexIndices.y & 1);
 
-  bool uvArrow = vertexUvs.z >= 1.0;
-  vertexUvs.z -= float(uvArrow); 
+  vec2 firstVertex = texture(positions, indexUv(vertexIndices.x >> 1, verticesSize)).xy;
+  vec2 secondVertex = texture(positions, indexUv(vertexIndices.y >> 1, verticesSize)).xy;
 
-  vec2 firstVertex = (m * vec4(texture2D(positions, vertexUvs.xy).xy, 0, 1)).xy;
-  vec2 secondVertex = (m * vec4(texture2D(positions, vertexUvs.zw).xy, 0, 1)).xy;
+  vec2 firstVertexScreen = (m * vec4(firstVertex, 0, 1)).xy;
+  vec2 secondVertexScreen = (m * vec4(secondVertex, 0, 1)).xy;
 
-  bool intersectsLeft = lineSegmentIntersection(firstVertex, secondVertex, min, vec2(min.x, max.y));
-  bool intersectsRight = lineSegmentIntersection(firstVertex, secondVertex, max, vec2(max.x, min.y));
-  bool intersectsTop = lineSegmentIntersection(firstVertex, secondVertex, min, vec2(max.x, min.y));
-  bool intersectsBottom = lineSegmentIntersection(firstVertex, secondVertex, max, vec2(min.x, max.y));
+  bool intersectsLeft = lineSegmentIntersection(firstVertexScreen, secondVertexScreen, min, vec2(min.x, max.y));
+  bool intersectsRight = lineSegmentIntersection(firstVertexScreen, secondVertexScreen, max, vec2(max.x, min.y));
+  bool intersectsTop = lineSegmentIntersection(firstVertexScreen, secondVertexScreen, min, vec2(max.x, min.y));
+  bool intersectsBottom = lineSegmentIntersection(firstVertexScreen, secondVertexScreen, max, vec2(min.x, max.y));
   
   bool intersects = intersectsLeft || intersectsRight || intersectsTop || intersectsBottom;
-  bool inside = firstVertex.x >= min.x && firstVertex.x <= max.x && firstVertex.y >= min.y && firstVertex.y <= max.y && secondVertex.x >= min.x && secondVertex.x <= max.x && secondVertex.y >= min.y && secondVertex.y <= max.y;
+  bool inside = 
+    firstVertexScreen.x >= min.x && firstVertexScreen.x <= max.x && 
+    firstVertexScreen.y >= min.y && firstVertexScreen.y <= max.y &&
+    secondVertexScreen.x >= min.x && secondVertexScreen.x <= max.x && 
+    secondVertexScreen.y >= min.y && secondVertexScreen.y <= max.y;
 
-  vec2 previous = texture2D(selection, uv).rg;
+  vec2 previous = texture(selection, uv).rg;
 
   if(intersects || inside) {
-    gl_FragColor = vec4(select, preview ? previous.g : float(select), 0, 1);
+    color = vec4(select, preview ? previous.g : float(select), 0, 1);
   } else {
-    gl_FragColor = vec4(previous.gg, 0, 1);
+    color = vec4(previous.gg, 0, 1);
   }
 }`;

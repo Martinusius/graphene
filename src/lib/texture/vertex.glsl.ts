@@ -24,7 +24,7 @@ void main() {
 
   vec2 uv = getUv();
 
-  vec3 tPosition = texture2D(positions, uv).xyz;
+  vec2 tPosition = texture2D(positions, uv).xy;
   vSelection = texture2D(selection, uv);
 
   vec4 result = m * vec4(tPosition.xy, 1, 1);

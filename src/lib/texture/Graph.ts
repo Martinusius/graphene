@@ -9,6 +9,7 @@ import { flag } from "./flag.glsl";
 import { select } from "./select.glsl";
 import { drag } from "./drag.glsl";
 import { selectEdges } from "./selectEdges.glsl";
+import { Float, Float2, Int2 } from "./TextureFormat";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -53,15 +54,16 @@ export class Graph {
 
     this.vertexPositions = this.compute.createTexture(
       verticesSize,
-      verticesSize
+      verticesSize,
+      Float2
     );
 
     this.selectionVertices = this.compute.createTexture(
       verticesSize,
-      verticesSize
+      verticesSize,
     );
 
-    this.edgeVertices = this.compute.createTexture(edgesSize, edgesSize);
+    this.edgeVertices = this.compute.createTexture(edgesSize, edgesSize, Int2);
     this.selectionEdges = this.compute.createTexture(edgesSize, edgesSize);
 
     this.vertices = new Vertices(
@@ -181,7 +183,12 @@ export class Graph {
   }
 
   raycast(pointer: Vector2) {
+    // render a PIXEL_RADIUS x PIXEL_RADIUS area around the pointer (mouse)
+    // read the pixels in order from closest to furthest from the pointer
+    // find the first pixel that contains an object and return the object
+
     return new Promise<RaycastResult | undefined>((resolve) => {
+      // hide all objects that are not raycastable
       this.three.scene.children.forEach((child) => {
         child.userData.previouslyVisible = child.visible;
         child.visible = !!child.userData.raycastable;
@@ -193,11 +200,17 @@ export class Graph {
 
       const target = this.raycastTarget.target();
 
+      // the pixel over which the pointer is
       const pixel = this.three.screenToImage(pointer);
+
+      // min corner of the PIXEL_RADIUS x PIXEL_RADIUS area
       const min = pixel
         .clone()
         .sub(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS).multiplyScalar(0.5));
+      const max = min.clone().add(new Vector2(PIXEL_RADIUS, PIXEL_RADIUS));
 
+
+      // prevent rendering objects outside the PIXEL_RADIUS x PIXEL_RADIUS area
       this.three.renderer.setRenderTarget(target);
       this.three.renderer.setScissor(
         min.x / window.devicePixelRatio,
@@ -206,8 +219,6 @@ export class Graph {
         PIXEL_RADIUS / window.devicePixelRatio
       );
       this.three.renderer.setScissorTest(true);
-
-
 
       this.three.renderer.render(this.three.scene, this.three.camera);
 
@@ -218,17 +229,34 @@ export class Graph {
         "edge"
       ] as const;
 
+      const oldMin = min.clone();
+
+      // clamp min and max to the screen bounds (the pixel-reading function does not like invalid selections)
+      min.max(new Vector2(0, 0));
+      max.min(this.three.resolution);
+
+      const size = max.clone().sub(min);
+
       this.three.renderer.readRenderTargetPixelsAsync(
         target,
         min.x,
         min.y,
-        PIXEL_RADIUS,
-        PIXEL_RADIUS,
+        size.x,
+        size.y,
         pixelBuffer
       ).then(() => {
         for (let i = 0; i < pixels.length; i++) {
           const [x, y] = pixels[i];
-          const index = (x + PIXEL_RADIUS * y) * 4;
+
+          // check if the pixel is within the bounds of the screen
+          if (oldMin.x + x < 0 || oldMin.y + y < 0) continue;
+          if (oldMin.x + x >= this.three.resolution.x || oldMin.y + y >= this.three.resolution.y) continue;
+
+
+          const offsetMin = min.clone().sub(oldMin);
+
+          // calculate index
+          const index = (x - offsetMin.x + size.x * (y - offsetMin.y)) * 4;
 
           if (pixelBuffer[index + 1] < 1) continue;
 
@@ -248,6 +276,7 @@ export class Graph {
       this.three.renderer.setRenderTarget(null);
       this.three.renderer.setScissorTest(false);
 
+      // restore visibility of previously visible objects
       this.three.scene.children.forEach((child) => {
         child.visible = child.userData.previouslyVisible;
 
@@ -264,13 +293,11 @@ export class Graph {
 
   generateVertices() {
     const size = this.vertexPositions.width;
-    const data = new Float32Array(size * size * 4);
+    const data = new Float32Array(size * size * 2);
 
     for (let i = 0; i < size * size; i++) {
-      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 10;
-      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 10;
-      data[i * 4 + 2] = 0;
-      data[i * 4 + 3] = 1;
+      data[i * 2 + 0] = (i % size) * 20 + Math.random() * 10;
+      data[i * 2 + 1] = Math.floor(i / size) * 20 + Math.random() * 10;
     }
 
     this.vertexPositions.write(0, 0, size, size, data);
@@ -284,20 +311,55 @@ export class Graph {
     console.log(size);
     console.log(vertexSize);
 
-    const data = new Float32Array(size * size * 4);
+    const data = new Int32Array(size * size * 2);
 
     let j = 0;
     for (let i = 0; i < size * size; i++) {
       if (i % size === size - 1) continue;
 
-      data[j * 4 + 0] = this.indexUv(i, vertexSize).x + 1;
-      data[j * 4 + 1] = this.indexUv(i, vertexSize).y;
-      data[j * 4 + 2] = this.indexUv(i + 1, vertexSize).x + 1;
-      data[j * 4 + 3] = this.indexUv(i + 1, vertexSize).y;
+      data[j * 2 + 0] = (i) * 2 + 1;
+      data[j * 2 + 1] = (i + 1) * 2 + 1;
+
+      // data[j * 4 + 0] = this.indexUv(i, vertexSize).x + 1;
+      // data[j * 4 + 1] = this.indexUv(i, vertexSize).y;
+      // data[j * 4 + 2] = this.indexUv(i + 1, vertexSize).x + 1;
+      // data[j * 4 + 3] = this.indexUv(i + 1, vertexSize).y;
       j++;
     }
 
     this.edgeVertices.write(0, 0, size, size, data);
     this.edges.count = j;
+  }
+
+  async invert() {
+    const select = await this.selectionVertices.read(0, 0, this.selectionVertices.width, this.selectionVertices.height);
+
+    for (let i = 0; i < select.length / 4; i++) {
+      select[i * 4] = 1 - select[i * 4];
+    }
+
+    this.selectionVertices.write(0, 0, this.selectionVertices.width, this.selectionVertices.height, select);
+  }
+
+  async countSelected() {
+    const promises = [
+      this.selectionVertices.read(0, 0, this.selectionVertices.width, this.selectionVertices.height),
+      this.selectionEdges.read(0, 0, this.selectionEdges.width, this.selectionEdges.height)
+    ];
+
+    const [vertices, edges] = await Promise.all(promises);
+
+    let vertexCount = 0;
+    for (let i = 0; i < this.vertices.count; i++) {
+      vertexCount += vertices[i * 4] > 0.5 ? 1 : 0;
+    }
+
+    let edgeCount = 0;
+    for (let i = 0; i < this.edges.count; i++) {
+      edgeCount += edges[i * 4] > 0.5 ? 1 : 0;
+    }
+
+    console.log('vertexCount', vertexCount);
+    console.log('edgeCount', edgeCount);
   }
 }

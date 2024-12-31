@@ -1,18 +1,33 @@
 // regular compute program
 
 export const computeVertex = `
+in vec3 position;
 void main() {
   gl_Position = vec4(position.xy, 0, 1);
 }`;
 
 export const computeFragment = `
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp isampler2D;
+
 uniform ivec2 outputSize;
+
+vec2 indexUv(int index, ivec2 size) {
+  return (vec2(0.5) + vec2(index % size.x, index / size.y)) / vec2(size);
+}
 `;
 
 // special compute program
 export const specialComputeVertex = `
-varying vec4 writeColor;
-flat varying int vDontDiscard;
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp isampler2D;
+
+out vec4 writeColor;
+flat out int vDontDiscard;
 
 uniform ivec2 outputSize;
 
@@ -49,11 +64,18 @@ void Discard() {
 `;
 
 export const specialComputeFragment = `
-varying vec4 writeColor;
-flat varying int vDontDiscard;
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp isampler2D;
+
+in vec4 writeColor;
+flat in int vDontDiscard;
+
+out vec4 color;
 
 void main() {
   if(vDontDiscard == 0) discard;
-  gl_FragColor = writeColor;
+  color = writeColor;
 }
 `;

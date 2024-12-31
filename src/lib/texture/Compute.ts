@@ -1,16 +1,16 @@
 import {
   Box2,
-  BufferAttribute,
   BufferGeometry,
   Camera,
-  ClampToEdgeWrapping,
   Color,
   DataTexture,
   FloatType,
+  GLSL3,
   Mesh,
   NearestFilter,
   PlaneGeometry,
   Points,
+  RawShaderMaterial,
   RGBAFormat,
   Scene,
   ShaderMaterial,
@@ -24,6 +24,7 @@ import {
   specialComputeFragment,
   specialComputeVertex,
 } from "./compute.glsl";
+import { Float4, type TextureFormat } from "./TextureFormat";
 
 type ComputeGlobals = {
   renderer: WebGLRenderer;
@@ -33,26 +34,29 @@ type ComputeGlobals = {
   compute: Compute;
 };
 
+
+
 export class ComputeTexture {
   private textures: [WebGLRenderTarget, WebGLRenderTarget];
 
   constructor(
     private readonly globals: ComputeGlobals,
     public readonly width: number,
-    public readonly height: number
+    public readonly height: number,
+    format: TextureFormat
   ) {
     this.textures = [
       new WebGLRenderTarget(width, height, {
-        type: FloatType,
-        format: RGBAFormat,
+        type: format.type,
+        format: format.format,
         minFilter: NearestFilter,
         magFilter: NearestFilter,
         depthBuffer: false,
         stencilBuffer: false,
       }),
       new WebGLRenderTarget(width, height, {
-        type: FloatType,
-        format: RGBAFormat,
+        type: format.type,
+        format: format.format,
         minFilter: NearestFilter,
         magFilter: NearestFilter,
         depthBuffer: false,
@@ -60,8 +64,8 @@ export class ComputeTexture {
       }),
     ];
 
-    this.globals.compute.zeros.execute(this);
-    this.globals.compute.zeros.execute(this);
+    this.globals.renderer.initRenderTarget(this.textures[0]);
+    this.globals.renderer.initRenderTarget(this.textures[1]);
   }
 
   async read(x: number, y: number, width: number, height: number) {
@@ -86,7 +90,7 @@ export class ComputeTexture {
     y: number,
     width: number,
     height: number,
-    data: Float32Array
+    data: Float32Array | Int32Array | Uint32Array | Uint8Array
   ) {
 
 
@@ -128,12 +132,13 @@ export class ComputeProgram {
     public readonly shader: string,
     uniforms: any = {}
   ) {
-    this.material = new ShaderMaterial({
+    this.material = new RawShaderMaterial({
       uniforms: Object.fromEntries(
         Object.entries(uniforms).map(([key, value]) => [key, { value }])
       ),
       vertexShader: computeVertex,
       fragmentShader: computeFragment + shader,
+      glslVersion: GLSL3,
     });
   }
 
@@ -206,12 +211,13 @@ export class SpecialComputeProgram {
     public readonly shader: string,
     uniforms: any = {}
   ) {
-    const material = new ShaderMaterial({
+    const material = new RawShaderMaterial({
       uniforms: Object.fromEntries(
         Object.entries(uniforms).map(([key, value]) => [key, { value }])
       ),
       vertexShader: specialComputeVertex + shader,
       fragmentShader: specialComputeFragment,
+      glslVersion: GLSL3,
     });
 
     const geometry = new BufferGeometry();
@@ -288,8 +294,6 @@ export class Compute {
   private camera: Camera;
   private mesh: Mesh;
 
-  public readonly zeros: ComputeProgram;
-
   constructor(public readonly renderer: WebGLRenderer) {
     this.scene = new Scene();
     this.camera = new Camera();
@@ -297,11 +301,9 @@ export class Compute {
     this.mesh = new Mesh(new PlaneGeometry(2, 2));
     this.mesh.visible = false;
     this.scene.add(this.mesh);
-
-    this.zeros = this.createProgram("void main() { gl_FragColor = vec4(0); }");
   }
 
-  createTexture(width: number, height: number) {
+  createTexture(width: number, height: number, format: TextureFormat = Float4) {
     return new ComputeTexture(
       {
         renderer: this.renderer,
@@ -311,7 +313,8 @@ export class Compute {
         compute: this,
       },
       width,
-      height
+      height,
+      format
     );
   }
 

@@ -1,39 +1,39 @@
 export const edgeVertex = `
 uniform vec2 resolution;
 
-uniform sampler2D vertices;
+uniform isampler2D vertices;
 uniform sampler2D positions;
 uniform sampler2D selection;
 
 // attribute vec4 vertices;
 
 uniform float size;
-uniform int bufferSize;
+uniform int vertexSize;
+uniform int edgeSize;
 
 varying vec4 vSelection;
 flat varying int vIndex;
 
 
 vec2 getUv() {
-  vec2 uv = vec2(gl_InstanceID % bufferSize, gl_InstanceID / bufferSize);
-  return (uv + 0.5) / float(bufferSize);
+  vec2 uv = vec2(gl_InstanceID % edgeSize, gl_InstanceID / edgeSize);
+  return (uv + 0.5) / float(edgeSize);
 }
 
+vec2 indexUv(int index, int size) {
+  return (vec2(index % size, index / size) + 0.5) / float(size);
+}
 
 void main() {
   mat4 m = projectionMatrix * viewMatrix;
 
-  vec4 vertexUvs = texture2D(vertices, getUv());
+  ivec2 vertexIndices = texture2D(vertices, getUv()).xy;
 
-  bool vuArrow = vertexUvs.x >= 1.0;
-  vertexUvs.x -= float(vuArrow);
+  bool vuArrow = bool(vertexIndices.x & 1);
+  bool uvArrow = bool(vertexIndices.y & 1);
 
-  bool uvArrow = vertexUvs.z >= 1.0;
-  vertexUvs.z -= float(uvArrow); 
-
-
-  vec2 firstVertex = texture2D(positions, vertexUvs.xy).xy;
-  vec2 secondVertex = texture2D(positions, vertexUvs.zw).xy;
+  vec2 firstVertex = texture2D(positions, indexUv(vertexIndices.x >> 1, vertexSize)).xy;
+  vec2 secondVertex = texture2D(positions, indexUv(vertexIndices.y >> 1, vertexSize)).xy;
 
   vec2 toSecond = normalize(secondVertex - firstVertex);
   

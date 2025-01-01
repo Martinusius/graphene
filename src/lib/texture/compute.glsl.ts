@@ -9,12 +9,18 @@ void main() {
 export const computeFragment = `
 precision highp float;
 precision highp int;
-precision highp sampler2D;
-precision highp isampler2D;
+
+// precision highp sampler2D;
+// precision highp isampler2D;
+// precision highp usampler2D;
 
 uniform ivec2 outputSize;
 
 vec2 indexUv(int index, ivec2 size) {
+  return (vec2(0.5) + vec2(index % size.x, index / size.y)) / vec2(size);
+}
+
+vec2 indexUv(uint index, uvec2 size) {
   return (vec2(0.5) + vec2(index % size.x, index / size.y)) / vec2(size);
 }
 `;
@@ -23,10 +29,12 @@ vec2 indexUv(int index, ivec2 size) {
 export const specialComputeVertex = `
 precision highp float;
 precision highp int;
-precision highp sampler2D;
-precision highp isampler2D;
 
-out vec4 writeColor;
+// precision highp sampler2D;
+// precision highp isampler2D;
+// precision highp usampler2D;
+
+flat out vec4 writeColor;
 flat out int vDontDiscard;
 
 uniform ivec2 outputSize;
@@ -39,6 +47,10 @@ void writeUv(vec2 position, vec4 color) {
 }
 
 vec2 indexUv(int index, ivec2 size) {
+  return (vec2(0.5) + vec2(index % size.x, index / size.y)) / vec2(size);
+}
+
+vec2 indexUv(uint index, uvec2 size) {
   return (vec2(0.5) + vec2(index % size.x, index / size.y)) / vec2(size);
 }
 
@@ -66,10 +78,12 @@ void Discard() {
 export const specialComputeFragment = `
 precision highp float;
 precision highp int;
-precision highp sampler2D;
-precision highp isampler2D;
 
-in vec4 writeColor;
+// precision highp sampler2D;
+// precision highp isampler2D;
+// precision highp usampler2D;
+
+flat in vec4 writeColor;
 flat in int vDontDiscard;
 
 out vec4 color;

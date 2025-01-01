@@ -1,6 +1,7 @@
-export const select = `
-uniform sampler2D positions;
-uniform sampler2D selection;
+import { shader } from "./shader";
+
+export const select = shader(`
+uniform sampler2D vertexData;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -20,18 +21,26 @@ void main() {
   mat4 m = projectionMatrix * _viewMatrix;
   
   vec2 uv = gl_FragCoord.xy / vec2(outputSize);
-  vec4 position = m * vec4(texture(positions, uv).xyz, 1);
+
+  vec4 vertex = texture(vertexData, uv);
+
+  vec4 position = m * vec4(vertex.xy, 0, 1);
 
   vec2 screenPixel = position.xy * screenResolution;
   vec2 closestInside = clamp(screenPixel, min * screenResolution, max * screenResolution);
 
   float dist = length(screenPixel - closestInside);
 
-  vec2 previous = texture(selection, uv).rg;
+  uint previous = floatBitsToUint(vertex.z);
+  uint new = previous & ~0b11u;
 
   if(dist < size) {
-    color = vec4(select, preview ? previous.g : float(select), 0, 1);
+    new |= uint(select);
+    new |= preview ? (previous & 0b10u) : uint(select) << 1;
   } else {
-    color = vec4(previous.gg, 0, 1);
+    new |= previous & 0b10u;
+    new |= (previous & 0b10u) >> 1;
   }
-}`;
+
+  color = vec4(vertex.xy, uintBitsToFloat(new), 0);
+}`);

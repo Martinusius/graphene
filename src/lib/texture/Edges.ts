@@ -25,26 +25,18 @@ export class Edges {
   constructor(
     three: Three,
     edgeCount: number,
-    edgeVertices: ComputeTexture,
-    selectionEdges: ComputeTexture,
-    vertexPositions: ComputeTexture
+    edgeData: ComputeTexture,
+    vertexData: ComputeTexture,
   ) {
-    const vertexSize = vertexPositions.width;
-
-    const edgeSize = edgeVertices.width;
+    const vertexSize = vertexData.width;
+    const edgeSize = edgeData.width;
 
     const edges = new EdgeBuffer();
 
-    // for (let i = 0; i < edgeCount; i++) {
-    //   if (i % size === size - 1) continue;
-    //   edges.addEdge(i, i + 1, true, true);
-    // }
-
     const material = new ShaderMaterial({
       uniforms: {
-        vertices: { value: null },
-        positions: { value: null },
-        selection: { value: null },
+        edgeData: { value: null },
+        vertexData: { value: null },
         resolution: {
           value: new Vector2(
             three.renderer.domElement.width,
@@ -70,12 +62,10 @@ export class Edges {
     this.edges.onBeforeRender = (_, __, camera: OrthographicCamera) => {
       this.edges.material.uniforms.size.value = camera.zoom * 400;
 
-      this.edges.material.uniforms.vertices.value =
-        edgeVertices.readable().texture;
-      this.edges.material.uniforms.selection.value =
-        selectionEdges.readable().texture;
-      this.edges.material.uniforms.positions.value =
-        vertexPositions.readable().texture;
+      this.edges.material.uniforms.edgeData.value =
+        edgeData.readable().texture;
+      this.edges.material.uniforms.vertexData.value =
+        vertexData.readable().texture;
 
       this.edges.material.uniforms.resolution.value.copy(three.resolution)
     };

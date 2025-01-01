@@ -16,6 +16,7 @@ import {
   ShaderMaterial,
   Vector2,
   WebGLRenderTarget,
+  type PixelFormat,
   type WebGLRenderer,
 } from "three";
 import {
@@ -85,6 +86,25 @@ export class ComputeTexture {
     return buffer;
   }
 
+  readUint(x: number, y: number, width: number, height: number) {
+    const gl = this.globals.renderer.getContext() as WebGL2RenderingContext;
+    const texture = (this.globals.renderer.properties.get(this.readable().texture) as any).texture as WebGLTexture;
+
+    const array = new Uint8Array(width * height + 500);
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    const format = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+    const type = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+
+    console.log(format, type);
+    // console.log(gl.RED_INTEGER, gl.UNSIGNED_BYTE);
+
+    gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    return array;
+  }
+
   write(
     x: number,
     y: number,
@@ -94,7 +114,7 @@ export class ComputeTexture {
   ) {
 
 
-    const texture = new DataTexture(data, width, height, RGBAFormat, FloatType);
+    const texture = new DataTexture(data, width, height, this.readable().texture.format as PixelFormat, this.readable().texture.type);
     texture.needsUpdate = true;
     this.globals.renderer.copyTextureToTexture(
       texture,

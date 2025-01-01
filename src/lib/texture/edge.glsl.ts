@@ -1,17 +1,16 @@
-export const edgeVertex = `
+import { shader } from "./shader";
+
+export const edgeVertex = shader(`
 uniform vec2 resolution;
 
-uniform isampler2D vertices;
-uniform sampler2D positions;
-uniform sampler2D selection;
-
-// attribute vec4 vertices;
+uniform sampler2D edgeData;
+uniform sampler2D vertexData;
 
 uniform float size;
-uniform int vertexSize;
+uniform uint vertexSize;
 uniform int edgeSize;
 
-varying vec4 vSelection;
+flat varying uint vSelection;
 flat varying int vIndex;
 
 
@@ -20,20 +19,22 @@ vec2 getUv() {
   return (uv + 0.5) / float(edgeSize);
 }
 
-vec2 indexUv(int index, int size) {
+vec2 indexUv(uint index, uint size) {
   return (vec2(index % size, index / size) + 0.5) / float(size);
 }
 
 void main() {
   mat4 m = projectionMatrix * viewMatrix;
 
-  ivec2 vertexIndices = texture2D(vertices, getUv()).xy;
+  vec4 edge = texture2D(edgeData, getUv());
 
-  bool vuArrow = bool(vertexIndices.x & 1);
-  bool uvArrow = bool(vertexIndices.y & 1);
+  uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
 
-  vec2 firstVertex = texture2D(positions, indexUv(vertexIndices.x >> 1, vertexSize)).xy;
-  vec2 secondVertex = texture2D(positions, indexUv(vertexIndices.y >> 1, vertexSize)).xy;
+  bool vuArrow = bool(vertexIndices.x & 1u);
+  bool uvArrow = bool(vertexIndices.y & 1u);
+
+  vec2 firstVertex = texture2D(vertexData, indexUv(vertexIndices.x >> 1, vertexSize)).xy;
+  vec2 secondVertex = texture2D(vertexData, indexUv(vertexIndices.y >> 1, vertexSize)).xy;
 
   vec2 toSecond = normalize(secondVertex - firstVertex);
   
@@ -72,14 +73,14 @@ void main() {
   
   vec4 result = m * vec4(tPosition, 0, 1);
 
-  vSelection = texture2D(selection, getUv());
+  vSelection = floatBitsToUint(edge.z);
   vIndex = gl_InstanceID;
 
   gl_Position = result;
-}`;
+}`);
 
-export const edgeFragment = `
-varying vec4 vSelection;
+export const edgeFragment = shader(`
+flat varying uint vSelection;
 flat varying int vIndex;
 
 
@@ -93,8 +94,8 @@ void main() {
     return;
   }
 
-  vec3 color = mix(vec3(0), vec3(0, 0.5, 1), vSelection.r);
-  color = mix(color, vec3(1), vSelection.b * 0.4);
+  vec3 color = mix(vec3(0), vec3(0, 0.5, 1), float(vSelection & 1u));
+  color = mix(color, vec3(1), float((vSelection & 0b100u) >> 2) * 0.4);
 
   gl_FragColor = vec4(color, 1);
-}`;
+}`);

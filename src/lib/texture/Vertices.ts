@@ -23,22 +23,20 @@ export class Vertices {
   constructor(
     three: Three,
     vertexCount: number,
-    positions: ComputeTexture,
-    selection: ComputeTexture
+    vertexData: ComputeTexture,
   ) {
     const geometry = new BufferGeometry();
     geometry.setDrawRange(0, vertexCount);
 
     const material = new ShaderMaterial({
       uniforms: {
-        positions: { value: null },
-        selection: { value: null },
+        vertexData: { value: null },
         size: { value: 40 },
         resolution: {
           value: three.resolution,
         },
         raycast: { value: false },
-        bufferSize: { value: positions.width },
+        bufferSize: { value: vertexData.width },
       },
       transparent: true,
       depthWrite: true,
@@ -54,10 +52,8 @@ export class Vertices {
     this.points.onBeforeRender = (_, __, camera: OrthographicCamera) => {
       this.points.material.uniforms.size.value = camera.zoom * 400;
 
-      this.points.material.uniforms.positions.value =
-        positions.readable().texture;
-      this.points.material.uniforms.selection.value =
-        selection.readable().texture;
+      this.points.material.uniforms.vertexData.value =
+        vertexData.readable().texture;
 
       this.points.material.uniforms.resolution.value.copy(three.resolution);
     };

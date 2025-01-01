@@ -1,40 +1,43 @@
-export const drag = `
-uniform sampler2D positions;
-uniform isampler2D edgeVertices;
-uniform sampler2D selectionEdges;
-uniform sampler2D selectionVertices;
+import { shader } from "./shader";
 
-uniform ivec2 edgeVerticesSize;
-uniform ivec2 selectionVerticesSize;
-uniform ivec2 selectionEdgesSize;
+export const drag = shader(`
+uniform sampler2D vertexData;
+uniform sampler2D edgeData;
+
+uniform ivec2 edgeDataSize;
+uniform ivec2 vertexDataSize;
 
 uniform vec2 offset;
 
 void main() {
-  int edgeCutoff = selectionVerticesSize.x * selectionVerticesSize.y;
+  int edgeCutoff = vertexDataSize.x * vertexDataSize.y;
 
   if (gl_VertexID < edgeCutoff) {
     // drag vertex
-    vec4 selection = texture(selectionVertices, indexUv(gl_VertexID, selectionVerticesSize));
-    vec4 position = texture(positions, indexUv(gl_VertexID, selectionVerticesSize));
+    vec4 vertex = texture(vertexData, indexUv(gl_VertexID, vertexDataSize));
+    
+    float selection = float(floatBitsToUint(vertex.z) & 1u);
+    vertex.xy += selection * offset;
 
-    writeIndex(gl_VertexID, position + selection.r * vec4(offset, 0, 0));
+    writeIndex(gl_VertexID, vertex);
   }
   else {
     // drag edge
     int edgeIndex = (gl_VertexID - edgeCutoff) / 2;
     int whichVertex = (gl_VertexID - edgeCutoff) % 2;
 
-    ivec2 vertexIndices = texture(edgeVertices, indexUv(edgeIndex, edgeVerticesSize)).xy;
+    vec4 edge = texture(edgeData, indexUv(edgeIndex, edgeDataSize));
 
-    vec4 selection = texture(selectionEdges, indexUv(edgeIndex, selectionEdgesSize));
-    
-    int vertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
+    uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
+    float selection = float(floatBitsToUint(edge.z) & 1u);
 
-    vec4 position = texture(positions, indexUv(vertex, selectionVerticesSize));
+    uint vertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
 
-    writeIndexDepth(vertex, position + selection.r * vec4(offset, 0, 0), 1.0);
+    vec4 position = texture(vertexData, indexUv(int(vertex), vertexDataSize));
+    position.xy += selection * offset;
 
-    if(selection.r < 0.5) Discard();
+    writeIndexDepth(int(vertex), position, 1.0);
+
+    if(selection < 0.5) Discard();
   }
-}`;
+}`);

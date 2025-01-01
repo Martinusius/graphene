@@ -1,9 +1,9 @@
 import { PIXEL_RADIUS } from "./pixels";
+import { shader } from "./shader";
 
-export const vertexVertex = `
+export const vertexVertex = shader(`
 uniform vec2 resolution;
-uniform sampler2D positions;
-uniform sampler2D selection;
+uniform sampler2D vertexData;
 
 uniform int bufferSize;
 
@@ -12,7 +12,7 @@ uniform bool raycast;
 
 varying vec3 vPosition;
 flat varying int vIndex;
-varying vec4 vSelection;
+flat varying uint vSelection;
 
 vec2 getUv() {
   vec2 uv = vec2(gl_VertexID % bufferSize, gl_VertexID / bufferSize);
@@ -24,8 +24,10 @@ void main() {
 
   vec2 uv = getUv();
 
-  vec2 tPosition = texture2D(positions, uv).xy;
-  vSelection = texture2D(selection, uv);
+  vec4 vertex = texture(vertexData, uv);
+
+  vec2 tPosition = vertex.xy;
+  vSelection = floatBitsToUint(vertex.z);
 
   vec4 result = m * vec4(tPosition.xy, 1, 1);
 
@@ -35,14 +37,14 @@ void main() {
   vIndex = gl_VertexID;
 
   gl_Position = result;
-}`;
+}`);
 
-export const vertexFragment = `
+export const vertexFragment = shader(`
 uniform float size;
 uniform bool raycast;
 
 flat varying int vIndex;
-varying vec4 vSelection;
+flat varying uint vSelection;
 
 void main() {
   vec2 uv = 2.0 * vec2(gl_PointCoord) - 1.0;
@@ -58,9 +60,9 @@ void main() {
     return;
   }
 
-  vec3 colorFill = mix(vec3(0.9), vec3(0, 0.5, 1), vSelection.r);
+  vec3 colorFill = mix(vec3(0.9), vec3(0, 0.5, 1), float(vSelection & 1u));
 
-  vec3 color = mix(vec3(white) * colorFill, vec3(1), vSelection.b * 0.4);
+  vec3 color = mix(vec3(white) * colorFill, vec3(1), float((vSelection & 0b100u) >> 2) * 0.4);
 
   gl_FragColor = vec4(color, alpha);
-}`;
+}`);

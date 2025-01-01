@@ -1,4 +1,4 @@
-import { ByteType, FloatType, IntType, RedFormat, RedIntegerFormat, RGBAFormat, RGBAIntegerFormat, RGBFormat, RGBIntegerFormat, RGFormat, RGIntegerFormat, UnsignedIntType, type PixelFormat, type TextureDataType } from "three";
+import { ByteType, FloatType, IntType, RedFormat, RedIntegerFormat, RGBAFormat, RGBAIntegerFormat, RGBFormat, RGBIntegerFormat, RGFormat, RGIntegerFormat, UnsignedByteType, UnsignedIntType, type PixelFormat, type TextureDataType } from "three";
 
 export type TextureFormat = {
   type: TextureDataType,
@@ -82,5 +82,25 @@ export const Byte3 = {
 
 export const Byte4 = {
   type: ByteType,
+  format: RGBAIntegerFormat,
+};
+
+export const Ubyte = {
+  type: UnsignedByteType,
+  format: RedIntegerFormat,
+};
+
+export const Ubyte2 = {
+  type: UnsignedByteType,
+  format: RGIntegerFormat,
+};
+
+export const Ubyte3 = {
+  type: UnsignedByteType,
+  format: RGBIntegerFormat,
+};
+
+export const Ubyte4 = {
+  type: UnsignedByteType,
   format: RGBAIntegerFormat,
 };

@@ -8,7 +8,7 @@
   import { Graph } from "./lib/texture/Graph";
   import { Three } from "./lib/texture/Three";
   import { Compute } from "./lib/texture/Compute";
-  import { Float, Int } from "./lib/texture/TextureFormat";
+  import { Byte, Float, Int, Ubyte, Uint } from "./lib/texture/TextureFormat";
 
   let container: HTMLDivElement;
 
@@ -210,9 +210,11 @@
 
     // const compute = new Compute(renderer);
 
-    // const texture = compute.createTexture(10, 10, Float);
-    // const data = new Float32Array(new Array(10 * 10).fill(0).map((_, i) => 100 - i));
+    // const texture = compute.createTexture(10, 10, Ubyte);
+    // const data = new Uint8Array(new Array(10 * 10 + 18).fill(0).map((_, i) => 120 - i));
+    // console.log(data);
     // texture.write(0, 0, 10, 10, data);
+    // console.log(texture.readUint(0, 0, 10, 10));
   });
 </script>
 

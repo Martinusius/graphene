@@ -1,9 +1,10 @@
-export const selectEdges = `
-uniform isampler2D vertices;
-uniform sampler2D positions;
-uniform sampler2D selection;
+import { shader } from "./shader";
 
-uniform ivec2 verticesSize;
+export const selectEdges = shader(`
+uniform sampler2D vertexData;
+uniform sampler2D edgeData;
+
+uniform uvec2 vertexDataSize;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -31,13 +32,15 @@ void main() {
   
   vec2 uv = gl_FragCoord.xy / vec2(outputSize);
 
-  ivec2 vertexIndices = texture(vertices, uv).xy;
+  vec4 edge = texture(edgeData, uv);
 
-  bool vuArrow = bool(vertexIndices.x & 1);
-  bool uvArrow = bool(vertexIndices.y & 1);
+  uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
 
-  vec2 firstVertex = texture(positions, indexUv(vertexIndices.x >> 1, verticesSize)).xy;
-  vec2 secondVertex = texture(positions, indexUv(vertexIndices.y >> 1, verticesSize)).xy;
+  bool vuArrow = bool(vertexIndices.x & 1u);
+  bool uvArrow = bool(vertexIndices.y & 1u);
+
+  vec2 firstVertex = texture(vertexData, indexUv(vertexIndices.x >> 1, vertexDataSize)).xy;
+  vec2 secondVertex = texture(vertexData, indexUv(vertexIndices.y >> 1, vertexDataSize)).xy;
 
   vec2 firstVertexScreen = (m * vec4(firstVertex, 0, 1)).xy;
   vec2 secondVertexScreen = (m * vec4(secondVertex, 0, 1)).xy;
@@ -54,11 +57,16 @@ void main() {
     secondVertexScreen.x >= min.x && secondVertexScreen.x <= max.x && 
     secondVertexScreen.y >= min.y && secondVertexScreen.y <= max.y;
 
-  vec2 previous = texture(selection, uv).rg;
+  uint previous = floatBitsToUint(edge.z);
+  uint new = previous & ~0b11u;
 
   if(intersects || inside) {
-    color = vec4(select, preview ? previous.g : float(select), 0, 1);
+    new |= uint(select);
+    new |= preview ? (previous & 0b10u) : uint(select) << 1;
   } else {
-    color = vec4(previous.gg, 0, 1);
+    new |= previous & 0b10u;
+    new |= (previous & 0b10u) >> 1;
   }
-}`;
+
+  color = vec4(edge.xy, uintBitsToFloat(new), 0);
+}`);

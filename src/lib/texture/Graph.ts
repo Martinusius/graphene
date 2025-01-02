@@ -11,6 +11,8 @@ import { drag } from "./drag.glsl";
 import { selectEdges } from "./selectEdges.glsl";
 import { Byte, Float2, Float4, Int, Int2, Ubyte4, Uint } from "./TextureFormat";
 import { floatBitsToUint, uintBitsToFloat } from "./reinterpret";
+import { hash } from "./hash.glsl";
+import { Forces } from "./Forces";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -29,8 +31,7 @@ export class Graph {
   private vertexData: ComputeTexture;
   private edgeData: ComputeTexture;
 
-  // private selectionVertices: ComputeTexture;
-  // private selectionEdges: ComputeTexture;
+
 
   private vertices: Vertices;
   private edges: Edges;
@@ -43,6 +44,9 @@ export class Graph {
 
   private dragProgram: SpecialComputeProgram;
 
+
+  private forces: Forces;
+
   constructor(
     private readonly three: Three,
     maxVertices: number,
@@ -50,23 +54,14 @@ export class Graph {
   ) {
     this.compute = new Compute(three.renderer);
 
-    const verticesSize = Math.ceil(Math.sqrt(maxVertices));
-    const edgesSize = Math.ceil(Math.sqrt(maxEdges));
+    // const verticesSize = Math.ceil(Math.sqrt(maxVertices));
+    // const edgesSize = Math.ceil(Math.sqrt(maxEdges));
 
-    this.vertexData = this.compute.createTexture(
-      verticesSize,
-      verticesSize,
-      Float4
-    );
+    this.vertexData = this.compute.createTextureBuffer(maxVertices);
 
-    // this.selectionVertices = this.compute.createTexture(
-    //   verticesSize,
-    //   verticesSize,
-    //   Ubyte4
-    // );
 
-    this.edgeData = this.compute.createTexture(edgesSize, edgesSize, Float4);
-    // this.selectionEdges = this.compute.createTexture(edgesSize, edgesSize, Ubyte4);
+
+    this.edgeData = this.compute.createTextureBuffer(maxEdges);
 
     this.vertices = new Vertices(
       three,
@@ -87,7 +82,14 @@ export class Graph {
     this.selectEdgesProgram = this.compute.createProgram(selectEdges);
 
     this.dragProgram = this.compute.createSpecialProgram(drag);
+
+    this.forces = new Forces(this.compute, maxVertices, this.vertexData);
   }
+
+  async updateForces() {
+    await this.forces.update();
+  }
+
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {
     this.three.camera.updateMatrixWorld();
@@ -282,17 +284,13 @@ export class Graph {
     });
   }
 
-  private indexUv(index: number, size: number) {
-    return new Vector2((index % size + 0.5) / size, (Math.floor(index / size) + 0.5) / size);
-  }
-
   generateVertices() {
     const size = this.vertexData.width;
     const data = new Float32Array(size * size * 4);
 
     for (let i = 0; i < size * size; i++) {
-      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 10;
-      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 10;
+      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 20;
+      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 20;
       data[i * 4 + 2] = uintBitsToFloat(0);
       data[i * 4 + 3] = 0;
     }

@@ -31,7 +31,7 @@
     );
     camera.position.set(0, 0, 50);
     camera.lookAt(0, 0, 0);
-    camera.zoom = 1 / 100;
+    camera.zoom = 1 / 10;
     camera.updateProjectionMatrix();
 
     const controls = new OrbitControls(camera, container);
@@ -55,11 +55,12 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024 * 1024, 1024 * 1024 - 1);
+    const graph = new Graph(three, 1024, 1024 - 1);
     graph.generateVertices();
     graph.generateEdges();
 
     const render = () => {
+      graph.updateForces();
       requestAnimationFrame(render);
       renderer.render(scene, camera);
     };
@@ -152,6 +153,8 @@
     });
 
     function mouseMove(event: MouseEvent) {
+      // console.log(worldCoords(event));
+
       if (dragging) {
         const diff = worldCoords(event).sub(startCoords);
         startCoords.copy(worldCoords(event));
@@ -199,6 +202,7 @@
 
       graph.selection(min, max, select, false);
       graph.countSelected();
+      // graph.hash().then(console.log);
 
       Draw.reset();
       selection = false;
@@ -206,6 +210,8 @@
 
     window.addEventListener("contextmenu", (event) => {
       event.preventDefault();
+
+      // graph.updateForces();
     });
 
     // const compute = new Compute(renderer);

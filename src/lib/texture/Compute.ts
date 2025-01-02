@@ -338,6 +338,11 @@ export class Compute {
     );
   }
 
+  createTextureBuffer(capacity: number, format: TextureFormat = Float4) {
+    const size = Math.ceil(Math.sqrt(capacity));
+    return this.createTexture(size, size, format);
+  }
+
   createProgram(shader: string, uniforms: any = {}) {
     return new ComputeProgram(
       {

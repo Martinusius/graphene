@@ -18,18 +18,22 @@ const int primeB = 1381747;
 
 out vec4 color;
 
+int modulo(int a, int b) {
+  return (b + (a % b)) % b;
+}
+
 uint calculateHash(uint index, ivec2 offset) {
   vec4 vertex = texture(vertexData, indexUv(index, vertexDataSize));
   
   ivec2 cellCoords = ivec2(vertex.xy / cellSize) + offset;
 
-  int pa = primeA % hashModulo;
-  int pb = primeB % hashModulo;
+  int pa = modulo(primeA, hashModulo);
+  int pb = modulo(primeB, hashModulo);
 
-  int x = cellCoords.x % hashModulo;
-  int y = cellCoords.y % hashModulo;
+  int x = modulo(cellCoords.x, hashModulo);
+  int y = modulo(cellCoords.y, hashModulo);
 
-  int cellHash = ((pa * x) % hashModulo + (pb * y) % hashModulo) % hashModulo;
+  int cellHash = modulo(modulo(pa * x, hashModulo) + modulo(pb * y, hashModulo), hashModulo);
 
   return uint(cellHash);
 }
@@ -41,8 +45,6 @@ vec2 calculateRepulsion(uint myIndex, vec2 me, uint hash) {
 
   vec2 totalForce = vec2(0.0);
 
-  // return vec2(float(nextOffsetIndex - offsetIndex) * 25.0, 0.0);
-
   for(uint i = offsetIndex; i < nextOffsetIndex; i++) {
     uint vertexIndex = floatBitsToUint(texture(hashTable, indexUv(i / 4u, hashTableSize))[i % 4u]);
     if(vertexIndex == myIndex) continue;
@@ -51,9 +53,12 @@ vec2 calculateRepulsion(uint myIndex, vec2 me, uint hash) {
     vec2 direction = normalize(me - vertex);
     float distance = length(vertex - me);
 
+    if(distance > cellSize) continue;
+
     if(distance == 0.0) continue;
 
-    totalForce += strength * direction / (distance * distance);
+    totalForce += repulse(me, vertex); 
+    //totalForce += strength * direction / max(10.0, distance * distance);
   } 
 
   return totalForce;
@@ -65,7 +70,7 @@ void main() {
   vec4 vertex = texture(vertexData, indexUv(index, vertexDataSize));
   vec2 me = vertex.xy;
 
-  uint selection = 1u - floatBitsToUint(vertex.z) & 1u;
+  uint selection = 1u - (floatBitsToUint(vertex.z) >> 3) & 1u;
   
   vec2 totalForce = vec2(0.0);
 
@@ -74,9 +79,6 @@ void main() {
       totalForce += calculateRepulsion(index, me, calculateHash(index, ivec2(x, y)));
     }
   }
-
-  // totalForce += calculateRepulsion(index, me, calculateHash(index, ivec2(0, 0)));
-
 
   color = vec4(totalForce * float(selection), 0, 0);
 }

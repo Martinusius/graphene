@@ -3,11 +3,14 @@ import {
   BufferGeometry,
   Camera,
   Color,
+  CustomBlending,
   DataTexture,
+  DstAlphaFactor,
   FloatType,
   GLSL3,
   Mesh,
   NearestFilter,
+  OneFactor,
   PlaneGeometry,
   Points,
   RawShaderMaterial,
@@ -229,6 +232,7 @@ export class SpecialComputeProgram {
   constructor(
     private readonly globals: ComputeGlobals,
     public readonly shader: string,
+    additive = false,
     uniforms: any = {}
   ) {
     const material = new RawShaderMaterial({
@@ -238,6 +242,11 @@ export class SpecialComputeProgram {
       vertexShader: specialComputeVertex + shader,
       fragmentShader: specialComputeFragment,
       glslVersion: GLSL3,
+      ...(additive ? {
+        blending: CustomBlending,
+        blendDst: OneFactor,
+        blendSrc: OneFactor
+      } : {})
     });
 
     const geometry = new BufferGeometry();
@@ -357,7 +366,7 @@ export class Compute {
     );
   }
 
-  createSpecialProgram(shader: string, uniforms: any = {}) {
+  createSpecialProgram(shader: string, additive = false, uniforms: any = {}) {
     return new SpecialComputeProgram(
       {
         renderer: this.renderer,
@@ -367,6 +376,7 @@ export class Compute {
         compute: this,
       },
       shader,
+      additive,
       uniforms
     );
   }

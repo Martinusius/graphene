@@ -12,18 +12,22 @@ out vec4 color;
 const int primeA = 5499311;
 const int primeB = 1381747;
 
+int modulo(int a, int b) {
+  return (b + (a % b)) % b;
+}
+
 float calculateHash(uint index) {
   vec4 vertex = texture(vertexData, indexUv(index, vertexDataSize));
   
   ivec2 cellCoords = ivec2(vertex.xy / cellSize);
 
-  int pa = primeA % hashModulo;
-  int pb = primeB % hashModulo;
+  int pa = modulo(primeA, hashModulo);
+  int pb = modulo(primeB, hashModulo);
 
-  int x = cellCoords.x % hashModulo;
-  int y = cellCoords.y % hashModulo;
+  int x = modulo(cellCoords.x, hashModulo);
+  int y = modulo(cellCoords.y, hashModulo);
 
-  int cellHash = ((pa * x) % hashModulo + (pb * y) % hashModulo) % hashModulo;
+  int cellHash = modulo(modulo(pa * x, hashModulo) + modulo(pb * y, hashModulo), hashModulo);
 
   return uintBitsToFloat(uint(cellHash));
 }

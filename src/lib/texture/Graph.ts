@@ -13,6 +13,7 @@ import { Byte, Float2, Float4, Int, Int2, Ubyte4, Uint } from "./TextureFormat";
 import { floatBitsToUint, uintBitsToFloat } from "./reinterpret";
 import { hash } from "./hash.glsl";
 import { Forces } from "./Forces";
+import { EadesAlgorithm, FruchtermanReingoldAlgorithm } from "./forceAlgorithm";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -45,7 +46,7 @@ export class Graph {
   private dragProgram: SpecialComputeProgram;
 
 
-  private forces: Forces;
+  public forces: Forces;
 
   constructor(
     private readonly three: Three,
@@ -83,12 +84,17 @@ export class Graph {
 
     this.dragProgram = this.compute.createSpecialProgram(drag);
 
-    this.forces = new Forces(this.compute, maxVertices, this.vertexData);
+    const algorithm = new EadesAlgorithm();
+
+    algorithm.repulsionStrength = 3000;
+
+    // const algorithm = new FruchtermanReingoldAlgorithm();
+
+
+    this.forces = new Forces(algorithm, this.compute, maxVertices, this.vertexData, this.edgeData);
   }
 
-  async updateForces() {
-    await this.forces.update();
-  }
+
 
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {
@@ -134,6 +140,11 @@ export class Graph {
     this.flagProgram.setUniform('id', id);
     this.flagProgram.setUniform('flagData', texture);
     this.flagProgram.execute(texture);
+  }
+
+  undrag() {
+    this.flag(3, "vertex", -1, true, true);
+    this.flag(3, "edge", -1, true, true);
   }
 
   select(type: ObjectType, id: number, select = true) {
@@ -289,8 +300,8 @@ export class Graph {
     const data = new Float32Array(size * size * 4);
 
     for (let i = 0; i < size * size; i++) {
-      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 20;
-      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 20;
+      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 2000;
+      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 2000;
       data[i * 4 + 2] = uintBitsToFloat(0);
       data[i * 4 + 3] = 0;
     }

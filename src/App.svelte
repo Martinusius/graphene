@@ -7,8 +7,6 @@
   import { Draw } from "./lib/Draw";
   import { Graph } from "./lib/texture/Graph";
   import { Three } from "./lib/texture/Three";
-  import { Compute } from "./lib/texture/Compute";
-  import { Byte, Float, Int, Ubyte, Uint } from "./lib/texture/TextureFormat";
 
   let container: HTMLDivElement;
 
@@ -31,7 +29,7 @@
     );
     camera.position.set(0, 0, 50);
     camera.lookAt(0, 0, 0);
-    camera.zoom = 1 / 10;
+    camera.zoom = 1 / 500;
     camera.updateProjectionMatrix();
 
     const controls = new OrbitControls(camera, container);
@@ -55,12 +53,16 @@
 
     const three = new Three(renderer, camera, scene);
 
-    const graph = new Graph(three, 1024, 1024 - 1);
+    const graph = new Graph(three, 1024 * 128, 1024 * 128 - 1);
     graph.generateVertices();
     graph.generateEdges();
 
+    let i = 0;
+
     const render = () => {
-      graph.updateForces();
+      graph.forces.update(0.1);
+
+      // graph.updateForces(0.1);
       requestAnimationFrame(render);
       renderer.render(scene, camera);
     };
@@ -159,6 +161,7 @@
         const diff = worldCoords(event).sub(startCoords);
         startCoords.copy(worldCoords(event));
 
+        graph.forces.cooling = 1;
         graph.drag(diff);
         return;
       }
@@ -186,6 +189,7 @@
       if (event.button !== 0) return;
 
       if (dragging) {
+        graph.undrag();
         dragging = false;
         return;
       }

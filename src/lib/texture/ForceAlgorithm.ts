@@ -1,11 +1,11 @@
-import type { ComputeProgram, SpecialComputeProgram } from "./Compute";
+import type { ComputeProgram } from "./compute/ComputeProgram";
 
 export abstract class ForceAlgorithm {
   public abstract repulsionFunction(): string;
   public abstract attractionFunction(): string;
   public abstract uniforms(): any;
 
-  public setUniforms(program: ComputeProgram | SpecialComputeProgram) {
+  public setUniforms(program: ComputeProgram) {
     for (const [name, value] of Object.entries(this.uniforms())) {
       program.setUniform(name, value);
     }

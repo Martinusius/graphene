@@ -1,10 +1,10 @@
 import { shader } from "./shader";
 
 export const selectEdges = shader(`
-uniform sampler2D vertexData;
-uniform sampler2D edgeData;
+uniform buffer vertexData;
+uniform buffer edgeData;
 
-uniform uvec2 vertexDataSize;
+// uniform uvec2 vertexDataSize;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -18,7 +18,7 @@ uniform float size;
 uniform bool select;
 uniform bool preview;
 
-out vec4 color;
+// out vec4 color;
 
 bool lineSegmentIntersection(vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   float denominator = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
@@ -30,17 +30,17 @@ bool lineSegmentIntersection(vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
   
-  vec2 uv = gl_FragCoord.xy / vec2(outputSize);
+  // vec2 uv = gl_FragCoord.xy / vec2(outputSize);
 
-  vec4 edge = texture(edgeData, uv);
+  vec4 edge = ReadBuffer(edgeData, instanceId); //texture(edgeData, uv);
 
   uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
 
   bool vuArrow = bool(vertexIndices.x & 1u);
   bool uvArrow = bool(vertexIndices.y & 1u);
 
-  vec2 firstVertex = texture(vertexData, indexUv(vertexIndices.x >> 1, vertexDataSize)).xy;
-  vec2 secondVertex = texture(vertexData, indexUv(vertexIndices.y >> 1, vertexDataSize)).xy;
+  vec2 firstVertex = ReadBuffer(vertexData, vertexIndices.x >> 1).xy; //texture(vertexData, indexUv(vertexIndices.x >> 1, vertexDataSize)).xy;
+  vec2 secondVertex = ReadBuffer(vertexData,vertexIndices.y >> 1).xy; //texture(vertexData, indexUv(vertexIndices.y >> 1, vertexDataSize)).xy;
 
   vec2 firstVertexScreen = (m * vec4(firstVertex, 0, 1)).xy;
   vec2 secondVertexScreen = (m * vec4(secondVertex, 0, 1)).xy;
@@ -68,5 +68,7 @@ void main() {
     new |= (previous & 0b10u) >> 1;
   }
 
-  color = vec4(edge.xy, uintBitsToFloat(new), 0);
+  WriteOutput(instanceId, vec4(edge.xy, uintBitsToFloat(new), edge.w));
+
+  // color = vec4(edge.xy, uintBitsToFloat(new), 0);
 }`);

@@ -1,18 +1,18 @@
 export const flag = `
-uniform sampler2D flagData;
+uniform buffer flagData;
 
 uniform int id;
 uniform bool set;
 uniform bool unsetOther;
 uniform int channel;
 
-out vec4 color;
+// out vec4 color;
 
 void main() {
-  vec4 data = texture(flagData, gl_FragCoord.xy / vec2(outputSize));
+  vec4 data = ReadBuffer(flagData, instanceId); //texture(flagData, gl_FragCoord.xy / vec2(outputSize));
   uint value = floatBitsToUint(data.z);
 
-  int fragId = int(gl_FragCoord.x) + int(gl_FragCoord.y) * outputSize.x;
+  int fragId = instanceId; //int(gl_FragCoord.x) + int(gl_FragCoord.y) * outputSize.x;
   
   if(fragId == id) {
     value = value & ~(1u << channel) | uint(set) << channel;
@@ -23,5 +23,7 @@ void main() {
 
   // value[channel] = uint(mix(mix(value[channel], 0.0, unsetOther), float(set), float(fragId == id)));
 
-  color = vec4(data.xy, uintBitsToFloat(value), 0);  
+  // color = vec4(data.xy, uintBitsToFloat(value), 0);  
+
+  WriteOutput(instanceId, vec4(data.xy, uintBitsToFloat(value), data.w));
 }`;

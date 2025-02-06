@@ -45,8 +45,8 @@ export class ComputeTexture {
 
   constructor(
     private readonly globals: ComputeGlobals,
-    public readonly width: number,
-    public readonly height: number,
+    public width: number,
+    public height: number,
     format: TextureFormat
   ) {
     this.textures = [
@@ -72,9 +72,29 @@ export class ComputeTexture {
     this.globals.renderer.initRenderTarget(this.textures[1]);
   }
 
-  async read(x: number, y: number, width: number, height: number) {
-    const buffer = new Float32Array(4 * width * height);
+  async resizeBuffer(size: number, preserveData = true) {
+    const newBuffer = this.globals.compute.createTextureBuffer(size);
 
+    if (preserveData) {
+      const array = new Float32Array(newBuffer.width * newBuffer.height * 4);
+      await this.read(0, 0, this.width, this.height, array);
+      newBuffer.write(0, 0, newBuffer.width, newBuffer.height, array);
+    }
+
+    this.textures[0].dispose();
+    this.textures[1].dispose();
+
+    this.textures = [
+      newBuffer.textures[0],
+      newBuffer.textures[1],
+    ];
+
+    this.width = newBuffer.width;
+    this.height = newBuffer.height;
+  }
+
+  async read(x: number, y: number, width: number, height: number, array?: Float32Array) {
+    const buffer = array ?? new Float32Array(4 * width * height);
 
     await this.globals.renderer.readRenderTargetPixelsAsync(
       this.readable(),
@@ -85,27 +105,7 @@ export class ComputeTexture {
       buffer
     );
 
-
     return buffer;
-  }
-
-  readUint(x: number, y: number, width: number, height: number) {
-    const gl = this.globals.renderer.getContext() as WebGL2RenderingContext;
-    const texture = (this.globals.renderer.properties.get(this.readable().texture) as any).texture as WebGLTexture;
-
-    const array = new Uint8Array(width * height + 500);
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    const format = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
-    const type = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
-
-    console.log(format, type);
-    // console.log(gl.RED_INTEGER, gl.UNSIGNED_BYTE);
-
-    gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-
-    return array;
   }
 
   write(
@@ -140,6 +140,7 @@ export class ComputeTexture {
     this.textures.reverse();
   }
 }
+
 
 /**
  * - Executed once for every pixel of output texture.

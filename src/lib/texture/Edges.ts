@@ -6,10 +6,12 @@ import {
   ShaderMaterial,
   Vector2,
 } from "three";
-import { EdgeBuffer } from "../EdgeBuffer";
+
 import type { ComputeTexture } from "./Compute";
 import type { Three } from "./Three";
 import { edgeFragment, edgeVertex } from "./edge.glsl";
+import type { ComputeBuffer } from "./compute/ComputeBuffer";
+import { EdgeBuffer } from "../EdgeBuffer";
 
 export class Edges {
   private edges: Mesh<InstancedBufferGeometry, ShaderMaterial>;
@@ -24,9 +26,8 @@ export class Edges {
 
   constructor(
     three: Three,
-    edgeCount: number,
-    edgeData: ComputeTexture,
-    vertexData: ComputeTexture,
+    edgeData: ComputeBuffer,
+    vertexData: ComputeBuffer,
   ) {
     const vertexSize = vertexData.width;
     const edgeSize = edgeData.width;
@@ -57,10 +58,13 @@ export class Edges {
 
     this.edges = new Mesh(edges.geometry, material);
     this.edges.frustumCulled = false;
+    this.edges.geometry.instanceCount = 0;
     this.edges.userData.raycastable = true;
 
     this.edges.onBeforeRender = (_, __, camera: OrthographicCamera) => {
       this.edges.material.uniforms.size.value = camera.zoom * 400;
+      this.edges.material.uniforms.vertexSize.value = vertexData.width;
+      this.edges.material.uniforms.edgeSize.value = edgeData.width;
 
       this.edges.material.uniforms.edgeData.value =
         edgeData.readable().texture;

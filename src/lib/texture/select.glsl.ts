@@ -1,7 +1,7 @@
 import { shader } from "./shader";
 
 export const select = shader(`
-uniform sampler2D vertexData;
+uniform buffer vertexData;
 
 uniform vec2 min;
 uniform vec2 max;
@@ -15,14 +15,14 @@ uniform float size;
 uniform bool select;
 uniform bool preview;
 
-out vec4 color;
+// out vec4 color;
 
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
   
-  vec2 uv = gl_FragCoord.xy / vec2(outputSize);
+  // vec2 uv = gl_FragCoord.xy / vec2(outputSize);
 
-  vec4 vertex = texture(vertexData, uv);
+  vec4 vertex = ReadBuffer(vertexData, instanceId); //texture(vertexData, uv);
 
   vec4 position = m * vec4(vertex.xy, 0, 1);
 
@@ -42,5 +42,6 @@ void main() {
     new |= (previous & 0b10u) >> 1;
   }
 
-  color = vec4(vertex.xy, uintBitsToFloat(new), 0);
+  // color = vec4(vertex.xy, uintBitsToFloat(new), 0);
+  WriteOutput(instanceId, vec4(vertex.xy, uintBitsToFloat(new), vertex.w));
 }`);

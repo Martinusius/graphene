@@ -1,11 +1,11 @@
 import { shader } from "./shader";
 
 export const attract = shader(`
-uniform sampler2D vertexData;
-uniform sampler2D edgeData;
+uniform buffer vertexData;
+uniform buffer edgeData;
 
-uniform ivec2 edgeDataSize;
-uniform ivec2 vertexDataSize;
+// uniform ivec2 edgeDataSize;
+// uniform ivec2 vertexDataSize;
 
 // uniform float strength;
 // uniform float springLength;
@@ -13,10 +13,10 @@ uniform ivec2 vertexDataSize;
 uniform vec2 offset;
 
 void main() {
-  int edgeIndex = gl_VertexID / 2;
-  int whichVertex = gl_VertexID % 2;
+  int edgeIndex = instanceId / 2;
+  int whichVertex = instanceId % 2;
 
-  vec4 edge = texture(edgeData, indexUv(edgeIndex, edgeDataSize));
+  vec4 edge = ReadBuffer(edgeData, edgeIndex); //texture(edgeData, indexUv(edgeIndex, edgeDataSize));
 
   uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
   float selection = float(floatBitsToUint(edge.z) & 1u);
@@ -24,8 +24,8 @@ void main() {
   uint thisVertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
   uint otherVertex = (whichVertex == 0 ? vertexIndices.y : vertexIndices.x) >> 1;
 
-  vec4 thisPosition = texture(vertexData, indexUv(int(thisVertex), vertexDataSize));
-  vec4 otherPosition = texture(vertexData, indexUv(int(otherVertex), vertexDataSize));
+  vec4 thisPosition = ReadBuffer(vertexData, thisVertex); //texture(vertexData, indexUv(int(thisVertex), vertexDataSize));
+  vec4 otherPosition = ReadBuffer(vertexData, otherVertex); //texture(vertexData, indexUv(int(otherVertex), vertexDataSize));
 
   uint selectionOr = 1u - (floatBitsToUint(thisPosition.z) >> 3) & 1u;
 
@@ -45,8 +45,8 @@ void main() {
 
   vec2 force = attract(thisPosition.xy, otherPosition.xy);
 
-
-  writeIndexDepth(int(thisVertex), vec4(force * float(selectionOr), 0, 0), 1.0);
+  WriteOutput(thisVertex, vec4(force * float(selectionOr), 0, 0));
+  //writeIndexDepth(int(thisVertex), vec4(force * float(selectionOr), 0, 0), 1.0);
 
   // if(selection < 0.5) Discard();
 }

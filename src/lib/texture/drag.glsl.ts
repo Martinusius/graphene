@@ -1,20 +1,20 @@
 import { shader } from "./shader";
 
 export const drag = shader(`
-uniform sampler2D vertexData;
-uniform sampler2D edgeData;
+uniform buffer vertexData;
+uniform buffer edgeData;
 
-uniform ivec2 edgeDataSize;
-uniform ivec2 vertexDataSize;
+// uniform ivec2 edgeDataSize;
+// uniform ivec2 vertexDataSize;
 
 uniform vec2 offset;
 
 void main() {
-  int edgeCutoff = vertexDataSize.x * vertexDataSize.y;
+  int edgeCutoff = vertexDataSize * vertexDataSize;
 
   if (gl_VertexID < edgeCutoff) {
     // drag vertex
-    vec4 vertex = texture(vertexData, indexUv(gl_VertexID, vertexDataSize));
+    vec4 vertex = ReadBuffer(vertexData, instanceId); //texture(vertexData, indexUv(gl_VertexID, vertexDataSize));
 
     uint flags = floatBitsToUint(vertex.z);
     
@@ -23,7 +23,8 @@ void main() {
 
     vertex.z = uintBitsToFloat((flags & ~0b1000u) | ((flags & 1u) << 3)); // drag flag
 
-    writeIndex(gl_VertexID, vertex);
+    WriteOutput(instanceId, vertex);
+    //writeIndex(gl_VertexID, vertex);
   }
   else {
     // drag edge
@@ -34,17 +35,21 @@ void main() {
 
     uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
 
-    uint flags = floatBitsToUint(edge.z);
-    float selection = float(flags & 1u);
+    uint edgeFlags = floatBitsToUint(edge.z);
+    float selection = float(edgeFlags & 1u);
 
     uint vertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
 
     vec4 position = texture(vertexData, indexUv(int(vertex), vertexDataSize));
     position.xy += selection * offset;
 
-    position.z = uintBitsToFloat((flags & ~0b1000u) | ((flags & 1u) << 3)); // drag flag
+    uint vertexFlags = floatBitsToUint(position.z);
 
-    writeIndexDepth(int(vertex), position, 1.0);
+    position.z = uintBitsToFloat((vertexFlags & ~0b1000u) | ((edgeFlags & 1u) << 3)); // drag flag
+
+    WriteOutput(int(vertex), position);
+
+    //writeIndexDepth(int(vertex), position, 1.0);
 
     if(selection < 0.5) Discard();
   }

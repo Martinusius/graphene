@@ -3,6 +3,12 @@ function allowBinaryRepresentations(code: string) {
   return code.replace(/0b([01]+)/g, (_, binary) => parseInt(binary, 2).toString());
 }
 
+
+
 export function shader(code: string) {
-  return allowBinaryRepresentations(code);
+  const features = [
+    allowBinaryRepresentations,
+  ];
+
+  return features.reduce((code, feature) => feature(code), code);
 }

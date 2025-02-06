@@ -8,6 +8,7 @@ import {
 import type { Three } from "./Three";
 import type { ComputeTexture } from "./Compute";
 import { vertexFragment, vertexVertex } from "./vertex.glsl";
+import type { ComputeBuffer } from "./compute/ComputeBuffer";
 
 export class Vertices {
   private points: Points<BufferGeometry, ShaderMaterial>;
@@ -22,11 +23,10 @@ export class Vertices {
 
   constructor(
     three: Three,
-    vertexCount: number,
-    vertexData: ComputeTexture,
+    vertexData: ComputeBuffer,
   ) {
     const geometry = new BufferGeometry();
-    geometry.setDrawRange(0, vertexCount);
+    geometry.setDrawRange(0, 0);
 
     const material = new ShaderMaterial({
       uniforms: {
@@ -51,6 +51,7 @@ export class Vertices {
 
     this.points.onBeforeRender = (_, __, camera: OrthographicCamera) => {
       this.points.material.uniforms.size.value = camera.zoom * 400;
+      this.points.material.uniforms.bufferSize.value = vertexData.width;
 
       this.points.material.uniforms.vertexData.value =
         vertexData.readable().texture;

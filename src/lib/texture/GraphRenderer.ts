@@ -1,5 +1,4 @@
 import { FloatType, RGBAFormat, Vector2, Vector3 } from "three";
-import { Compute, ComputeProgram, ComputeTexture, SpecialComputeProgram } from "./Compute";
 import { DynamicRenderTarget } from "./DynamicRenderTarget";
 import { Edges } from "./Edges";
 import type { Three } from "./Three";
@@ -13,7 +12,14 @@ import { Byte, Float2, Float4, Int, Int2, Ubyte4, Uint } from "./TextureFormat";
 import { floatBitsToUint, uintBitsToFloat } from "./reinterpret";
 import { hash } from "./hash.glsl";
 import { Forces } from "./Forces";
-import { EadesAlgorithm, FruchtermanReingoldAlgorithm } from "./forceAlgorithm";
+import { EadesAlgorithm, FruchtermanReingoldAlgorithm } from "./ForceAlgorithm";
+import { IndexedSet } from "../IndexedSet";
+import { Task } from "./Task";
+import { Counter } from "./Counter";
+import { countOnScreen } from "./countOnScreen.glsl";
+import { NewCompute } from "./compute/Compute";
+import type { ComputeBuffer } from "./compute/ComputeBuffer";
+import type { ComputeProgram } from "./compute/ComputeProgram";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -26,51 +32,57 @@ export type RaycastResult = {
   id: number;
 };
 
-export class Graph {
-  private compute: Compute;
+export class GraphRenderer {
+  private compute: NewCompute;
 
-  private vertexData: ComputeTexture;
-  private edgeData: ComputeTexture;
+  public vertexData: ComputeBuffer;
+  public edgeData: ComputeBuffer;
 
 
 
-  private vertices: Vertices;
-  private edges: Edges;
+  public vertices: Vertices;
+  public edges: Edges;
 
   private raycastTarget: DynamicRenderTarget;
 
-  private flagProgram: ComputeProgram;
   private selectProgram: ComputeProgram;
   private selectEdgesProgram: ComputeProgram;
 
-  private dragProgram: SpecialComputeProgram;
+  private flagProgram: ComputeProgram;
+
+  private dragProgram: ComputeProgram;
+
+  // private countOnScreenProgram: ComputeProgram;
+  // private screenCountBuffer: ComputeTexture;
 
 
   public forces: Forces;
+
+  private counter: Counter;
 
   constructor(
     private readonly three: Three,
     maxVertices: number,
     maxEdges: number
   ) {
-    this.compute = new Compute(three.renderer);
+    this.compute = new NewCompute(three.renderer);
+
+    this.counter = new Counter(this.compute);
 
     // const verticesSize = Math.ceil(Math.sqrt(maxVertices));
     // const edgesSize = Math.ceil(Math.sqrt(maxEdges));
 
-    this.vertexData = this.compute.createTextureBuffer(maxVertices);
+    this.vertexData = this.compute.createBuffer(maxVertices);
 
 
-
-    this.edgeData = this.compute.createTextureBuffer(maxEdges);
+    this.edgeData = this.compute.createBuffer(maxEdges);
 
     this.vertices = new Vertices(
       three,
-      maxVertices,
       this.vertexData,
     );
 
-    this.edges = new Edges(three, maxEdges, this.edgeData, this.vertexData);
+    this.edges = new Edges(three, this.edgeData, this.vertexData);
 
     this.raycastTarget = new DynamicRenderTarget(three.renderer, {
       format: RGBAFormat,
@@ -82,24 +94,51 @@ export class Graph {
     this.selectProgram = this.compute.createProgram(select);
     this.selectEdgesProgram = this.compute.createProgram(selectEdges);
 
-    this.dragProgram = this.compute.createSpecialProgram(drag);
+    this.dragProgram = this.compute.createProgram(drag);
+
+    // this.countOnScreenProgram = this.compute.createProgram(countOnScreen, true);
+    // this.screenCountBuffer = this.compute.createTextureBuffer(1);
 
     const algorithm = new EadesAlgorithm();
 
     algorithm.repulsionStrength = 3000;
+    algorithm.springLength = 25;
 
     // const algorithm = new FruchtermanReingoldAlgorithm();
+
+    // algorithm.springLength = 25;
+    // algorithm.factor = 0.05;
 
 
     this.forces = new Forces(algorithm, this.compute, maxVertices, this.vertexData, this.edgeData);
   }
 
 
+  // async resizeVertexBuffers(vertexCount: number) {
+  //   Task.begin();
+
+
+  //   await Promise.all([
+  //     this.vertexData.resizeBuffer(vertexCount),
+  //     this.forces.resizeBuffers(vertexCount),
+  //   ]);
+
+  //   Task.end();
+  // }
+
+  // async resizeEdgeBuffers(edgeCount: number) {
+  //   Task.begin();
+
+  //   await this.edgeData.resizeBuffer(edgeCount);
+
+  //   Task.end();
+  // }
+
+
 
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {
     this.three.camera.updateMatrixWorld();
-
 
     this.selectProgram.setUniform('min', min);
     this.selectProgram.setUniform('max', max);
@@ -158,12 +197,11 @@ export class Graph {
   }
 
   async isSelected(type: ObjectType, id: number) {
+    console.log(type);
     const texture = { vertex: this.vertexData, edge: this.edgeData }[type];
 
-    const x = id % texture.width;
-    const y = Math.floor(id / texture.width);
+    const data = await texture.read(id);
 
-    const data = await texture.read(x, y, 1, 1)
     return floatBitsToUint(data[2]) & 1;
   }
 
@@ -172,7 +210,7 @@ export class Graph {
     this.flag(2, "edge", -1, true, true);
   }
 
-  deselect() {
+  deselectAll() {
     this.flag(0, "vertex", -1, true, true);
     this.flag(0, "edge", -1, true, true);
     this.flag(1, "vertex", -1, true, true);
@@ -186,14 +224,16 @@ export class Graph {
 
     this.dragProgram.setUniform('offset', offset);
 
-    this.dragProgram.execute(this.vertexData.width * this.vertexData.height +
-      2 * this.edgeData.width * this.edgeData.height, this.vertexData);
+    this.dragProgram.execute(this.vertexData, this.vertexData.size +
+      2 * this.edgeData.size);
   }
 
   raycast(pointer: Vector2) {
     // render a PIXEL_RADIUS x PIXEL_RADIUS area around the pointer (mouse)
     // read the pixels in order from closest to furthest from the pointer
     // find the first pixel that contains an object and return the object
+
+    const start = performance.now();
 
     return new Promise<RaycastResult | undefined>((resolve) => {
       // hide all objects that are not raycastable
@@ -245,6 +285,7 @@ export class Graph {
 
       const size = max.clone().sub(min);
 
+
       this.three.renderer.readRenderTargetPixelsAsync(
         target,
         min.x,
@@ -253,6 +294,7 @@ export class Graph {
         size.y,
         pixelBuffer
       ).then(() => {
+
         for (let i = 0; i < pixels.length; i++) {
           const [x, y] = pixels[i];
 
@@ -275,6 +317,8 @@ export class Graph {
             type,
             id
           });
+
+
           break;
         }
 
@@ -295,64 +339,96 @@ export class Graph {
     });
   }
 
-  generateVertices() {
-    const size = this.vertexData.width;
-    const data = new Float32Array(size * size * 4);
+  async generateVertices() {
+    const size = this.vertexData.size;
+    const width = this.vertexData.width;
 
-    for (let i = 0; i < size * size; i++) {
-      data[i * 4 + 0] = (i % size) * 20 + Math.random() * 2000;
-      data[i * 4 + 1] = Math.floor(i / size) * 20 + Math.random() * 2000;
+    const data = new Float32Array(size * 4);
+
+    for (let i = 0; i < size; i++) {
+      data[i * 4 + 0] = (i % width) * 20 + Math.random() * 2000;
+      data[i * 4 + 1] = Math.floor(i / width) * 20 + Math.random() * 2000;
       data[i * 4 + 2] = uintBitsToFloat(0);
       data[i * 4 + 3] = 0;
     }
 
-    this.vertexData.write(0, 0, size, size, data);
-    this.vertices.count = size * size;
+    await this.vertexData.write(data);
+    this.vertices.count = size;
+    console.log('generated', size);
   }
 
-  generateEdges() {
-    const vertexSize = this.vertexData.width;
-    const size = this.edgeData.width;
+  async generateSpanningTree() {
+    const vertexCount = this.vertices.count;
+    if (vertexCount === 0) return;
 
-    console.log(size);
-    console.log(vertexSize);
+    const set = new IndexedSet<number>([0]);
+
+    const width = this.edgeData.width;
+    const data = new Float32Array(width * width * 4);
+
+
+    for (let i = 1; i < vertexCount; i++) {
+      const random = set.at(Math.floor(Math.random() * set.size));
+
+      data[(i - 1) * 4 + 0] = uintBitsToFloat(random * 2 + 1);
+      data[(i - 1) * 4 + 1] = uintBitsToFloat(i * 2 + 1);
+      data[(i - 1) * 4 + 2] = uintBitsToFloat(0);
+      data[(i - 1) * 4 + 3] = 0;
+
+      set.add(i);
+    }
+
+    await this.edgeData.write(data);
+    this.edges.count = vertexCount - 1;
+  }
+
+  async generateEdges() {
+    const size = this.edgeData.width;
 
     const data = new Float32Array(size * size * 4);
 
     let j = 0;
     for (let i = 0; i < size * size; i++) {
+      if (i + 1 >= this.vertices.count) continue;
       if (i % size === size - 1) continue;
 
-      data[j * 4 + 0] = uintBitsToFloat((i) * 2 + 1);
+      data[j * 4 + 0] = uintBitsToFloat(i * 2 + 1);
       data[j * 4 + 1] = uintBitsToFloat((i + 1) * 2 + 1);
       data[j * 4 + 2] = uintBitsToFloat(0);
       data[j * 4 + 3] = 0;
       j++;
     }
 
-    this.edgeData.write(0, 0, size, size, data);
+    await this.edgeData.write([...data].slice(0, j * 4));
     this.edges.count = j;
   }
+
+  // async countOnScreen() {
+  //   this.three.camera.updateMatrixWorld();
+
+  //   this.countOnScreenProgram.setUniform('vertexData', this.vertexData);
+
+  //   this.countOnScreenProgram.setUniform('projectionMatrix', this.three.camera.projectionMatrix);
+  //   this.countOnScreenProgram.setUniform('_viewMatrix', this.three.camera.matrixWorldInverse);
+  //   this.countOnScreenProgram.setUniform('screenResolution', this.three.resolution);
+  //   this.countOnScreenProgram.setUniform('size', this.three.camera.zoom * 400);
+
+
+  //   this.countOnScreenProgram.execute(this.vertexData.width * this.vertexData.height, this.screenCountBuffer);
+
+  //   const result = await this.screenCountBuffer.read(0, 0, 1, 1);
+  //   return result[0];
+  // }
 
 
 
   async countSelected() {
     const promises = [
-      this.vertexData.read(0, 0, this.vertexData.width, this.vertexData.height),
-      this.edgeData.read(0, 0, this.edgeData.width, this.edgeData.height)
+      this.counter.count(this.vertexData, 0),
+      this.counter.count(this.edgeData, 0)
     ];
 
-    const [vertices, edges] = await Promise.all(promises);
-
-    let vertexCount = 0;
-    for (let i = 0; i < this.vertices.count; i++) {
-      vertexCount += floatBitsToUint(vertices[i * 4 + 2]) & 1;
-    }
-
-    let edgeCount = 0;
-    for (let i = 0; i < this.edges.count; i++) {
-      edgeCount += floatBitsToUint(edges[i * 4 + 2]) & 1;
-    }
+    const [vertexCount, edgeCount] = await Promise.all(promises);
 
     console.log('vertexCount', vertexCount);
     console.log('edgeCount', edgeCount);

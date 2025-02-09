@@ -20,6 +20,8 @@ import { countOnScreen } from "./countOnScreen.glsl";
 import { NewCompute } from "./compute/Compute";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";
 import type { ComputeProgram } from "./compute/ComputeProgram";
+import { VertexText } from "./text/VertexText";
+import { Font } from "./text/Font";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -38,8 +40,6 @@ export class GraphRenderer {
   public vertexData: ComputeBuffer;
   public edgeData: ComputeBuffer;
 
-
-
   public vertices: Vertices;
   public edges: Edges;
 
@@ -55,13 +55,16 @@ export class GraphRenderer {
   // private countOnScreenProgram: ComputeProgram;
   // private screenCountBuffer: ComputeTexture;
 
+  public text: VertexText;
+  private font: Font;
+
 
   public forces: Forces;
 
   private counter: Counter;
 
   constructor(
-    private readonly three: Three,
+    public readonly three: Three,
     maxVertices: number,
     maxEdges: number
   ) {
@@ -110,29 +113,12 @@ export class GraphRenderer {
     // algorithm.factor = 0.05;
 
 
-    this.forces = new Forces(algorithm, this.compute, maxVertices, this.vertexData, this.edgeData);
+    this.forces = new Forces(algorithm, this.compute, this.vertices, this.edges, this.vertexData, this.edgeData);
+
+    this.font = new Font(this.compute);
+    this.text = new VertexText(this.three, this.compute, this.vertices, this.vertexData, this.edgeData, this.font);
+
   }
-
-
-  // async resizeVertexBuffers(vertexCount: number) {
-  //   Task.begin();
-
-
-  //   await Promise.all([
-  //     this.vertexData.resizeBuffer(vertexCount),
-  //     this.forces.resizeBuffers(vertexCount),
-  //   ]);
-
-  //   Task.end();
-  // }
-
-  // async resizeEdgeBuffers(edgeCount: number) {
-  //   Task.begin();
-
-  //   await this.edgeData.resizeBuffer(edgeCount);
-
-  //   Task.end();
-  // }
 
 
 
@@ -221,19 +207,18 @@ export class GraphRenderer {
   drag(offset: Vector2) {
     this.dragProgram.setUniform('vertexData', this.vertexData);
     this.dragProgram.setUniform('edgeData', this.edgeData);
+    this.dragProgram.setUniform('vertexCount', this.vertices.count);
 
     this.dragProgram.setUniform('offset', offset);
 
-    this.dragProgram.execute(this.vertexData, this.vertexData.size +
-      2 * this.edgeData.size);
+    this.dragProgram.execute(this.vertexData, this.vertices.count +
+      2 * this.edges.count);
   }
 
   raycast(pointer: Vector2) {
     // render a PIXEL_RADIUS x PIXEL_RADIUS area around the pointer (mouse)
     // read the pixels in order from closest to furthest from the pointer
     // find the first pixel that contains an object and return the object
-
-    const start = performance.now();
 
     return new Promise<RaycastResult | undefined>((resolve) => {
       // hide all objects that are not raycastable

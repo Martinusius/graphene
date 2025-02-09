@@ -16,8 +16,8 @@ export class Graph {
   public vertices = new Float32Array(1024);
   public edges = new Float32Array(1024);
 
-  private vertexId = 0;
-  private edgeId = 0;
+  private vertexId = 1;
+  private edgeId = 1;
 
   public whereVertex = new Map<number, number>();
   public whereEdge = new Map<number, number>();
@@ -28,26 +28,79 @@ export class Graph {
     this.incidency = [];
   }
 
+  reserve(vertices: number, edges: number) {
+    if (vertices * 4 > this.vertices.length) {
+      const newVertices = new Float32Array(Math.round(vertices * 4 * PHI / 4));
+      newVertices.set(this.vertices);
+      this.vertices = newVertices;
+    }
+
+    if (edges * 4 > this.edges.length) {
+      const newEdges = new Float32Array(Math.round(edges * 4 * PHI / 4));
+      newEdges.set(this.edges);
+      this.edges = newEdges;
+    }
+  }
+
+  merge(vertices: Vertex[]) {
+    if (vertices.length === 0) return;
+
+    const ids = new Set(vertices.map(vertex => vertex.id));
+    const neighborIds = new Set<number>();
+
+    const averagePosition = { x: 0, y: 0 };
+    const count = vertices.length;
+
+    for (const vertex of vertices) {
+      for (const edge of vertex.edges) {
+        const u = edge.u;
+        const v = edge.v;
+
+        if (!ids.has(u.id)) neighborIds.add(u.id);
+        if (!ids.has(v.id)) neighborIds.add(v.id);
+      }
+
+      averagePosition.x += vertex.x;
+      averagePosition.y += vertex.y;
+
+      vertex.delete();
+    }
+
+    const newVertex = this.addVertex(averagePosition.x / count, averagePosition.y / count);
+
+    for (const id of neighborIds) {
+      const vertex = this.getVertex(id)!;
+      this.addEdge(newVertex, vertex);
+    }
+
+    return newVertex;
+  }
+
   addEdge(u: Vertex, v: Vertex, forwards = true, backwards = true) {
     this.changed = true;
 
     const uIndex = u.index;
     const vIndex = v.index;
 
-    // console.log(i)
 
-    if (this.edgeCount >= this.edges.length) {
-      const newEdges = new Float32Array(Math.round(this.edges.length * PHI));
+    if (4 * (this.edgeCount + 1) >= this.edges.length) {
+      const newEdges = new Float32Array(Math.round(this.edges.length * PHI / 4) * 4);
       newEdges.set(this.edges);
       this.edges = newEdges;
     }
 
-    this.edges.set([
-      uintBitsToFloat((uIndex << 1) | Number(forwards)),
-      uintBitsToFloat((vIndex << 1) | Number(backwards)),
-      uintBitsToFloat(0),
-      uintBitsToFloat(this.edgeId++)
-    ], this.edgeCount++ * 4);
+    // this.edges.set([
+    //   uintBitsToFloat((uIndex << 1) | Number(forwards)),
+    //   uintBitsToFloat((vIndex << 1) | Number(backwards)),
+    //   uintBitsToFloat(0),
+    //   uintBitsToFloat(this.edgeId++)
+    // ], this.edgeCount++ * 4);
+
+    this.edges[this.edgeCount * 4] = uintBitsToFloat((uIndex << 1) | Number(forwards));
+    this.edges[this.edgeCount * 4 + 1] = uintBitsToFloat((vIndex << 1) | Number(backwards));
+    this.edges[this.edgeCount * 4 + 2] = uintBitsToFloat(0);
+    this.edges[this.edgeCount * 4 + 3] = uintBitsToFloat(this.edgeId++);
+    this.edgeCount++;
 
     this.incidency[uIndex].add(this.edgeId - 1);
     this.incidency[vIndex].add(this.edgeId - 1);
@@ -60,15 +113,19 @@ export class Graph {
   addVertex(x?: number, y?: number) {
     this.changed = true;
 
-    if (this.vertexCount >= this.vertices.length) {
-      const newVertices = new Float32Array(Math.round(this.vertices.length * PHI));
+    if (4 * (this.vertexCount + 1) >= this.vertices.length) {
+      const newVertices = new Float32Array(Math.round(this.vertices.length * PHI / 4) * 4);
       newVertices.set(this.vertices);
       this.vertices = newVertices;
     }
 
     this.incidency.push(new Set());
 
-    this.vertices.set([x ?? random(100), y ?? random(100), uintBitsToFloat(0), uintBitsToFloat(this.vertexId++)], this.vertexCount++ * 4);
+    this.vertices[this.vertexCount * 4 + 0] = x ?? random(100)
+    this.vertices[this.vertexCount * 4 + 1] = y ?? random(100)
+    this.vertices[this.vertexCount * 4 + 2] = uintBitsToFloat(0);
+    this.vertices[this.vertexCount * 4 + 3] = uintBitsToFloat(this.vertexId++);
+    this.vertexCount++;
 
     this.whereVertex.set(this.vertexId - 1, this.vertexCount - 1);
 
@@ -89,6 +146,7 @@ export class Graph {
     this.incidency[v].delete(id);
 
     this.edges.set(this.edges.slice(this.edgeCount * 4 - 4, this.edgeCount * 4), eIndex * 4);
+    this.edges[this.edgeCount * 4 - 1] = 0;
 
     this.whereEdge.delete(id);
 
@@ -113,8 +171,6 @@ export class Graph {
 
     const id = floatBitsToUint(this.vertices[vIndex * 4 + 3]);
 
-
-
     this.incidency[vIndex] = this.incidency[this.vertexCount - 1];
 
     this.incidency[vIndex].forEach(e => {
@@ -128,6 +184,7 @@ export class Graph {
     });
 
     this.vertices.set(this.vertices.slice(this.vertexCount * 4 - 4, this.vertexCount * 4), vIndex * 4);
+    this.vertices[this.vertexCount * 4 - 1] = uintBitsToFloat(0);
 
     this.whereVertex.delete(id);
 
@@ -138,14 +195,39 @@ export class Graph {
     this.vertexCount--;
   }
 
-  async refresh() {
+  getVertex(id: number): Vertex | undefined {
+    if (!this.whereVertex.has(id)) return undefined;
+    return new Vertex(this, id);
+  }
+
+  getEdge(id: number): Edge | undefined {
+    if (!this.whereEdge.has(id)) return undefined;
+    return new Edge(this, id);
+  }
+
+  async download() {
+    const [vertexData, edgeData] = await Promise.all([
+      this.renderer.vertexData.read(),
+      this.renderer.edgeData.read(),
+    ]);
+
+    this.vertices = vertexData;
+    this.edges = edgeData;
+
+    // this.vertexCount = vertexData.length / 4;
+    // this.edgeCount = edgeData.length / 4;
+  }
+
+  async upload() {
     if (!this.changed) return;
 
-    if (this.vertexCount > this.renderer.vertexData.size)
-      this.renderer.vertexData.resizeErase(this.vertexCount);
+    // console.log('uploading', this.vertexCount, this.renderer.vertexData.size);
 
-    if (this.edgeCount > this.renderer.edgeData.size)
-      this.renderer.edgeData.resizeErase(this.edgeCount);
+    if (this.vertices.length > 4 * this.renderer.vertexData.size)
+      this.renderer.vertexData.resizeErase(this.vertices.length / 4);
+
+    if (this.edges.length > 4 * this.renderer.edgeData.size)
+      this.renderer.edgeData.resizeErase(this.edges.length / 4);
 
     await Promise.all([
       this.renderer.vertexData.write(this.vertices),
@@ -155,23 +237,10 @@ export class Graph {
     this.renderer.vertices.count = this.vertexCount;
     this.renderer.edges.count = this.edgeCount;
 
+
+
+
     this.changed = false;
-
-    // await Promise.all([
-    //   this.renderer.vertexData.read(),
-    //   this.renderer.edgeData.read(),
-    // ])
-
-    // const vertexData = this.renderer.vertexData.read();
-    // const edgeData = this.renderer.edgeData.read();
-  }
-
-  getVertex(id: number) {
-    return new Vertex(this, id);
-  }
-
-  getEdge(id: number) {
-    return new Edge(this, id);
   }
 }
 
@@ -182,9 +251,25 @@ export class Vertex {
     return this.graph.whereVertex.get(this.id)!;
   }
 
+  get x() {
+    return this.graph.vertices[this.index * 4];
+  }
+
+  get y() {
+    return this.graph.vertices[this.index * 4 + 1];
+  }
+
+  set x(x: number) {
+    this.graph.vertices[this.index * 4] = x;
+  }
+
+  set y(y: number) {
+    this.graph.vertices[this.index * 4 + 1] = y;
+  }
+
   get edges() {
     // console.log('aaa', this.id, this.index);
-    return [...this.graph.incidency[this.index]].map(e => this.graph.getEdge(e));
+    return [...this.graph.incidency[this.index]].map(e => this.graph.getEdge(e)!);
   }
 
   delete() {
@@ -200,11 +285,15 @@ export class Edge {
   }
 
   get u() {
-    return floatBitsToUint(this.graph.edges[this.index * 4]) >> 1;
+    const index = floatBitsToUint(this.graph.edges[this.index * 4]) >> 1;
+    const id = floatBitsToUint(this.graph.vertices[index * 4 + 3]);
+    return this.graph.getVertex(id)!;
   }
 
   get v() {
-    return floatBitsToUint(this.graph.edges[this.index * 4 + 1]) >> 1;
+    const index = floatBitsToUint(this.graph.edges[this.index * 4 + 1]) >> 1;
+    const id = floatBitsToUint(this.graph.vertices[index * 4 + 3]);
+    return this.graph.getVertex(id)!;
   }
 
   get forwards() {
@@ -216,7 +305,7 @@ export class Edge {
   }
 
   delete() {
-    this.graph.deleteEdge(this.index);
+    this.graph.deleteEdge(this);
   }
 }
 

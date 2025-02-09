@@ -8,10 +8,7 @@
   import { GraphRenderer } from "./lib/texture/GraphRenderer";
   import { Three } from "./lib/texture/Three";
   import { Task } from "./lib/texture/Task";
-  import { ComputeBuffer } from "./lib/texture/compute/ComputeBuffer";
-  import { NewCompute } from "./lib/texture/compute/Compute";
-  import { Graph } from "./lib/texture/interface/Graph";
-  import { pingpong } from "three/src/math/MathUtils.js";
+  import { Graph, Vertex } from "./lib/texture/interface/Graph";
   import { floatBitsToUint } from "./lib/texture/reinterpret";
 
   let container: HTMLDivElement;
@@ -65,35 +62,98 @@
 
     const gi = new Graph(graph);
 
-    const a = gi.addVertex(100, 100);
-    const b = gi.addVertex(50, 200);
-    const c = gi.addVertex(200, 200);
-    const d = gi.addVertex(200, 50);
-    const e = gi.addVertex(50, 0);
-    const f = gi.addVertex(100, 50);
+    // const a = gi.addVertex(100, 100);
+    // const b = gi.addVertex(50, 200);
+    // const c = gi.addVertex(200, 200);
+    // const d = gi.addVertex(200, 50);
+    // const e = gi.addVertex(50, 0);
+    // const f = gi.addVertex(100, 50);
 
-    gi.addEdge(a, b);
-    gi.addEdge(b, c);
-    gi.addEdge(c, d);
-    gi.addEdge(d, e);
-    gi.addEdge(e, f);
-    gi.addEdge(f, a);
-    gi.addEdge(a, c);
+    // gi.addEdge(a, b);
+    // gi.addEdge(b, c);
+    // gi.addEdge(c, d);
+    // gi.addEdge(d, e);
+    // gi.addEdge(e, f);
+    // gi.addEdge(f, a);
+    // gi.addEdge(a, c);
+
+    const size = 4;
+
+    // let last = null;
+    const center = (size - 1) / 2;
+    const random = (x: number) => (Math.random() - 0.5) * 2 * x;
+    const pow = (x: number) => x * x * Math.sign(x) * 0.001;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const px = (x - center) * 20 + random(5);
+        const py = (y - center) * 20 + random(5);
+
+        gi.addVertex(px, py);
+
+        // if (last && x !== 0) {
+        //   gi.addEdge(last, current);
+        // }
+
+        // last = current;
+      }
+    }
+
+    let doRender = true;
+
+    const xy2i = (x: number, y: number) => y * size + x;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const me = gi.getVertex(xy2i(x, y) + 1);
+        const neighbors = [
+          [0, -1],
+          [-1, 0],
+          [-1, -1],
+          [-1, 1],
+        ];
+
+        for (const [dx, dy] of neighbors) {
+          const nx = x + dx;
+          const ny = y + dy;
+
+          const vertex = gi.getVertex(xy2i(nx, ny) + 1);
+
+          if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+
+          gi.addEdge(me!, vertex!);
+        }
+      }
+    }
 
     // gi.deleteVertex(f);
 
-    console.log(gi.incidency);
+    await gi.upload();
 
-    console.log(gi.edges.slice(0, 4));
-
-    await gi.refresh();
+    await graph.text.showVertices();
 
     console.log("edgeData", await graph.edgeData.read(0, 1));
     console.log("edgeCount", graph.edges.count);
 
     window.addEventListener("keydown", async (event) => {
       // delete
-      if (event.key === "Delete") {
+      if (event.key === "x") {
+        doRender = false;
+        await gi.download();
+        console.log("aaaaa");
+
+        const edges = await graph.edgeData.read();
+        for (let i = 0; i < graph.edges.count * 4; i += 4) {
+          const selected = floatBitsToUint(edges[i + 2]) & 1;
+          const id = floatBitsToUint(edges[i + 3]);
+
+          if (selected) {
+            const e = gi.getEdge(id);
+            if (!e) continue;
+            gi.deleteEdge(e);
+          }
+        }
+
         const vertices = await graph.vertexData.read();
         for (let i = 0; i < graph.vertices.count * 4; i += 4) {
           const selected = floatBitsToUint(vertices[i + 2]) & 1;
@@ -108,7 +168,33 @@
           }
         }
 
-        await gi.refresh();
+        console.log("bbbbbbb");
+        await gi.upload();
+        doRender = true;
+      } else if (event.key === "m") {
+        await gi.download();
+
+        // gi.addVertex(0, 0);
+
+        const vertices = await graph.vertexData.read();
+        const selectedVertices: Vertex[] = [];
+
+        for (let i = 0; i < graph.vertices.count * 4; i += 4) {
+          const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
+          const id = floatBitsToUint(vertices[i + 3]);
+
+          if (isSelected) {
+            selectedVertices.push(gi.getVertex(id)!);
+          }
+        }
+
+        console.log("merge");
+
+        gi.merge(selectedVertices);
+
+        await gi.upload();
+
+        graph.deselectAll();
       }
     });
 
@@ -116,12 +202,16 @@
     // await graph.generateEdges();
     // await graph.generateSpanningTree();
 
+    let i = 0;
+
     const render = async () => {
       requestAnimationFrame(render);
 
+      if (!doRender) return;
       if (!Task.idle()) return;
 
-      // graph.forces.update(0.1);
+      graph.forces.update(0.1);
+      // if (i++ % 10 === 0) graph.forces.update(0.1);
 
       // graph.countOnScreen().then(console.log);
 

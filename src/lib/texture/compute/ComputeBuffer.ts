@@ -1,4 +1,4 @@
-import { Box2, DataTexture, FloatType, NearestFilter, RGBAFormat, Vector2, WebGLRenderTarget } from "three";
+import { Box2, ClampToEdgeWrapping, DataTexture, FloatType, NearestFilter, RGBAFormat, Vector2, WebGLRenderTarget } from "three";
 import type { ComputeGlobals } from "./ComputeGlobals";
 
 function mod(a: number, b: number) {
@@ -33,6 +33,8 @@ export class ComputeBuffer {
         format: RGBAFormat,
         minFilter: NearestFilter,
         magFilter: NearestFilter,
+        wrapS: ClampToEdgeWrapping,
+        wrapT: ClampToEdgeWrapping,
         depthBuffer: false,
         stencilBuffer: false,
       }),
@@ -41,6 +43,8 @@ export class ComputeBuffer {
         format: RGBAFormat,
         minFilter: NearestFilter,
         magFilter: NearestFilter,
+        wrapS: ClampToEdgeWrapping,
+        wrapT: ClampToEdgeWrapping,
         depthBuffer: false,
         stencilBuffer: false,
       }),
@@ -78,10 +82,9 @@ export class ComputeBuffer {
   }
 
   resizeErase(size: number) {
-    if (size <= this.capacity) {
-      this.size = size;
-      return;
-    }
+    this.size = size;
+
+    if (size <= this.capacity) return;
 
     const width = Math.ceil(Math.sqrt(size));
 
@@ -111,11 +114,14 @@ export class ComputeBuffer {
     const width = ey - sy == 1 && (sx !== 0 || ex !== 0) ? mod(ex - sx, this.width) : this.width;
     const height = ey - sy;
 
+
     // if read is within a single row just read the specific range
     // otherwise we need to read all the rows that are affected
 
     const buffer = new Float32Array(4 * width * height);
     const data = new Float32Array(4 * length);
+
+    // console.log('length', data.length);
 
 
     await this.globals.renderer.readRenderTargetPixelsAsync(
@@ -140,6 +146,8 @@ export class ComputeBuffer {
   ) {
     if (length <= 0) throw new Error("length must be greater than 0");
     const end = start + length;
+
+    // console.log(end, this.capacity);
 
     if (end > this.capacity) throw new Error("end is greater than the buffer capacity");
 
@@ -183,7 +191,6 @@ export class ComputeBuffer {
         writeData[i] = buffer[i];
     }
 
-
     const texture = new DataTexture(writeData, width, height, RGBAFormat, FloatType);
     texture.needsUpdate = true;
     this.globals.renderer.copyTextureToTexture(
@@ -192,6 +199,7 @@ export class ComputeBuffer {
       new Box2(new Vector2(), new Vector2(width, height)),
       new Vector2(x, y)
     );
+
     texture.dispose();
 
     this.size = Math.max(this.size, end);

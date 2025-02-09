@@ -24,10 +24,17 @@ void main() {
 
   vec4 vertex = ReadBuffer(vertexData, instanceId); //texture(vertexData, uv);
 
+  uint valid = floatBitsToUint(vertex.w);
+  if(valid == 0u) {
+    Discard();
+    return;
+  }
+
   vec4 position = m * vec4(vertex.xy, 0, 1);
 
   vec2 screenPixel = position.xy * screenResolution;
   vec2 closestInside = clamp(screenPixel, min * screenResolution, max * screenResolution);
+
 
   float dist = length(screenPixel - closestInside);
 

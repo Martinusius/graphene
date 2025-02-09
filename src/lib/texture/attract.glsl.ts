@@ -16,7 +16,7 @@ void main() {
   int edgeIndex = instanceId / 2;
   int whichVertex = instanceId % 2;
 
-  vec4 edge = ReadBuffer(edgeData, edgeIndex); //texture(edgeData, indexUv(edgeIndex, edgeDataSize));
+  vec4 edge = ReadBuffer(edgeData, edgeIndex);
 
   uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
   float selection = float(floatBitsToUint(edge.z) & 1u);
@@ -24,8 +24,8 @@ void main() {
   uint thisVertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
   uint otherVertex = (whichVertex == 0 ? vertexIndices.y : vertexIndices.x) >> 1;
 
-  vec4 thisPosition = ReadBuffer(vertexData, thisVertex); //texture(vertexData, indexUv(int(thisVertex), vertexDataSize));
-  vec4 otherPosition = ReadBuffer(vertexData, otherVertex); //texture(vertexData, indexUv(int(otherVertex), vertexDataSize));
+  vec4 thisPosition = ReadBuffer(vertexData, thisVertex);
+  vec4 otherPosition = ReadBuffer(vertexData, otherVertex);
 
   uint selectionOr = 1u - (floatBitsToUint(thisPosition.z) >> 3) & 1u;
 
@@ -40,14 +40,8 @@ void main() {
     return;
   } 
 
-
-  // vec2 velocity = strength * log(max(1.0, length(diff)) / springLength) * direction;
-
   vec2 force = attract(thisPosition.xy, otherPosition.xy);
 
   WriteOutput(thisVertex, vec4(force * float(selectionOr), 0, 0));
-  //writeIndexDepth(int(thisVertex), vec4(force * float(selectionOr), 0, 0), 1.0);
-
-  // if(selection < 0.5) Discard();
 }
 `);

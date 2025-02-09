@@ -39,11 +39,6 @@ uint calculateHash(uint index, ivec2 offset) {
 }
 
 vec2 calculateRepulsion(uint myIndex, vec2 me, uint hash) {
-  /*
-  uint nextOffsetIndex = floatBitsToUint(texture(offsets, indexUv(hash / 4u, hashTableSize))[hash % 4u]);
-  uint offsetIndex = hash == 0u ? 0u : 
-    floatBitsToUint(texture(offsets, indexUv((hash - 1u) / 4u, hashTableSize))[(hash - 1u) % 4u]);
-  */
 
   uint nextOffsetIndex = floatBitsToUint(ReadBuffer(offsets, hash / 4u)[hash % 4u]);
   uint offsetIndex = hash == 0u ? 0u : 

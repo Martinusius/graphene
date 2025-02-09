@@ -1,4 +1,3 @@
-import { PIXEL_RADIUS } from "./pixels";
 import { shader } from "./shader";
 
 export const vertexVertex = shader(`

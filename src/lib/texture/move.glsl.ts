@@ -14,7 +14,10 @@ void main() {
   vec4 vertex = ReadBuffer(vertexData, instanceId); // texture(vertexData, uv);
   vec2 velocity =  ReadBuffer(velocities, instanceId).xy; // texture(velocities, uv).xy;
 
-  vertex.xy += velocity * deltaTime;
+  float speed = min(30.0, length(velocity));
+
+  if(speed > 0.001)
+    vertex.xy += normalize(velocity) * speed * deltaTime;
 
   WriteOutput(instanceId, vertex);
   //color = vertex;

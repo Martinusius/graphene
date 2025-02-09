@@ -4,7 +4,7 @@ const uintBuffer = new Uint32Array(buffer);
 
 export function floatBitsToUint(floatNumber: number) {
   if (typeof floatNumber !== "number")
-    throw new Error("A float number is expected.");
+    throw new Error(`A float number is expected, got ${floatNumber}`);
 
   floatBuffer[0] = floatNumber;
   return uintBuffer[0];
@@ -12,7 +12,7 @@ export function floatBitsToUint(floatNumber: number) {
 
 export function uintBitsToFloat(uintNumber: number) {
   if (typeof uintNumber !== "number")
-    throw new Error("A uint number is expected.");
+    throw new Error(`A uint number is expected, got ${uintNumber}`);
 
   uintBuffer[0] = uintNumber;
   return floatBuffer[0];

@@ -4,15 +4,17 @@ export const drag = shader(`
 uniform buffer vertexData;
 uniform buffer edgeData;
 
+uniform int vertexCount;
+
 // uniform ivec2 edgeDataSize;
 // uniform ivec2 vertexDataSize;
 
 uniform vec2 offset;
 
 void main() {
-  int edgeCutoff = vertexDataSize * vertexDataSize;
+  int edgeCutoff = vertexCount;
 
-  if (gl_VertexID < edgeCutoff) {
+  if (gl_VertexID < vertexCount) {
     // drag vertex
     vec4 vertex = ReadBuffer(vertexData, instanceId); //texture(vertexData, indexUv(gl_VertexID, vertexDataSize));
 

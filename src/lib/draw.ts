@@ -105,11 +105,11 @@ export class Draw {
     // meshlinegeometry
     const geometry2 = new MeshLineGeometry();
     geometry2.setPoints([
-      new Vector3(-sx / 2, -sy / 2, 0),
-      new Vector3(sx / 2, -sy / 2, 0),
-      new Vector3(sx / 2, sy / 2, 0),
-      new Vector3(-sx / 2, sy / 2, 0),
-      new Vector3(-sx / 2, -sy / 2, 0),
+      new Vector3(-sx / 2, -sy / 2, 3),
+      new Vector3(sx / 2, -sy / 2, 3),
+      new Vector3(sx / 2, sy / 2, 3),
+      new Vector3(-sx / 2, sy / 2, 3),
+      new Vector3(-sx / 2, -sy / 2, 3),
     ]);
 
     if (this.selection) {

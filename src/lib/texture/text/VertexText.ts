@@ -82,7 +82,6 @@ export class VertexText {
     this.letterBuffer.resizeErase(totalChars);
 
     const letterData = new Float32Array(totalChars * 4);
-    const offsetData = new Float32Array(totalChars * 4);
 
     let j = 0;
     let v = 0;
@@ -97,7 +96,7 @@ export class VertexText {
         totalWidthPct += letter.width / letter.height;
       }
 
-      const scale = Math.min(1, 1 / totalWidthPct) * 0.6;
+      const scale = Math.min(1, 1 / totalWidthPct) * 2 / 3;
 
 
       let totalOffset = 0;
@@ -121,6 +120,8 @@ export class VertexText {
     this.points.geometry.setDrawRange(0, totalChars);
 
     console.log(totalChars);
+
+    if (letterData.length === 0) return;
 
     await this.letterBuffer.write(letterData);
 

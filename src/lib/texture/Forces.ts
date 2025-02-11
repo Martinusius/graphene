@@ -180,7 +180,7 @@ export class Forces {
     this.moveProgram.setUniform('deltaTime', delta * this.cooling);
 
 
-    this.cooling *= 0.999;
+    //this.cooling *= 0.999;
 
     this.moveProgram.execute(this.vertexData);
   }

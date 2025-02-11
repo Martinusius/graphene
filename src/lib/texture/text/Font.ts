@@ -13,7 +13,9 @@ export class Font {
   public letterIndices: Record<string, number> = {};
   public atlasCoords: ComputeBuffer;
 
-  constructor(compute: NewCompute) {
+  public ready: Promise<void>;
+
+  constructor(compute: NewCompute, font: string = "Arial") {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not get 2d context");
@@ -46,7 +48,7 @@ export class Font {
     for (const fontSize of fontSizes) {
       const letters: Record<string, { x: number, y: number, width: number, height: number }> = {};
 
-      ctx.font = `${fontSize}px Arial`;
+      ctx.font = `${fontSize}px ${font}`;
       ctx.fillStyle = "black";
 
       for (let i = 0; i < Font.alphabet.length; i++) {
@@ -82,13 +84,13 @@ export class Font {
       this.maxFont = letters;
     }
 
-    this.atlasCoords.write(data);
 
 
     this.atlas = new CanvasTexture(canvas);
 
     this.atlas.magFilter = this.atlas.minFilter = LinearFilter;
 
+    this.ready = this.atlasCoords.write(data);
 
     // display the canvas in the body
     // canvas.classList.add('canvas');

@@ -97,6 +97,7 @@ export class ComputeBuffer {
   }
 
   async read(start: number | undefined = undefined, length = start === undefined ? this.size : 1) {
+
     start = start ?? 0;
 
     if (length <= 0) throw new Error("length must be greater than 0");
@@ -121,7 +122,6 @@ export class ComputeBuffer {
     const buffer = new Float32Array(4 * width * height);
     const data = new Float32Array(4 * length);
 
-    // console.log('length', data.length);
 
 
     await this.globals.renderer.readRenderTargetPixelsAsync(
@@ -148,6 +148,7 @@ export class ComputeBuffer {
     const end = start + length;
 
     // console.log(end, this.capacity);
+
 
     if (end > this.capacity) throw new Error("end is greater than the buffer capacity");
 
@@ -191,8 +192,16 @@ export class ComputeBuffer {
         writeData[i] = buffer[i];
     }
 
+    // console.log(width, height, x, y, this.readable().texture.image);
+    // if (width > (this.readable().width - x) || height > (this.readable().height - y)) {
+    //   console.error("ERROR");
+    // }
+
     const texture = new DataTexture(writeData, width, height, RGBAFormat, FloatType);
     texture.needsUpdate = true;
+
+    this.globals.renderer.resetState();
+
     this.globals.renderer.copyTextureToTexture(
       texture,
       this.readable().texture,

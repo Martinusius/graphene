@@ -10,6 +10,7 @@
   import { Task } from "./lib/texture/Task";
   import { Graph, Vertex } from "./lib/texture/interface/Graph";
   import { floatBitsToUint } from "./lib/texture/reinterpret";
+  import { GraphGenerator } from "./lib/texture/GraphGenerator";
 
   let container: HTMLDivElement;
 
@@ -77,124 +78,92 @@
     // gi.addEdge(f, a);
     // gi.addEdge(a, c);
 
-    const size = 4;
+    //const size = 2;
 
     // let last = null;
-    const center = (size - 1) / 2;
-    const random = (x: number) => (Math.random() - 0.5) * 2 * x;
-    const pow = (x: number) => x * x * Math.sign(x) * 0.001;
 
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const px = (x - center) * 20 + random(5);
-        const py = (y - center) * 20 + random(5);
+    //generateClique(gi, 10);
 
-        gi.addVertex(px, py);
+    //generateGrid(gi, size);
 
-        // if (last && x !== 0) {
-        //   gi.addEdge(last, current);
-        // }
+    const generator = new GraphGenerator(gi);
 
-        // last = current;
-      }
-    }
-
-    let doRender = true;
-
-    const xy2i = (x: number, y: number) => y * size + x;
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const me = gi.getVertex(xy2i(x, y) + 1);
-        const neighbors = [
-          [0, -1],
-          [-1, 0],
-          [-1, -1],
-          [-1, 1],
-        ];
-
-        for (const [dx, dy] of neighbors) {
-          const nx = x + dx;
-          const ny = y + dy;
-
-          const vertex = gi.getVertex(xy2i(nx, ny) + 1);
-
-          if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
-
-          gi.addEdge(me!, vertex!);
-        }
-      }
-    }
-
-    // gi.deleteVertex(f);
+    // generator.randomness = 5;
+    // generator.clique(10);
+    generator.grid(100, 100, true);
 
     await gi.upload();
 
-    await graph.text.showVertices();
+    let doRender = true;
 
     console.log("edgeData", await graph.edgeData.read(0, 1));
     console.log("edgeCount", graph.edges.count);
 
+    let doForce = false;
+
     window.addEventListener("keydown", async (event) => {
       // delete
       if (event.key === "x") {
-        doRender = false;
-        await gi.download();
-        console.log("aaaaa");
+        gi.transaction(async () => {
+          const edges = await graph.edgeData.read();
+          for (let i = 0; i < graph.edges.count * 4; i += 4) {
+            const selected = floatBitsToUint(edges[i + 2]) & 1;
+            const id = floatBitsToUint(edges[i + 3]);
 
-        const edges = await graph.edgeData.read();
-        for (let i = 0; i < graph.edges.count * 4; i += 4) {
-          const selected = floatBitsToUint(edges[i + 2]) & 1;
-          const id = floatBitsToUint(edges[i + 3]);
-
-          if (selected) {
-            const e = gi.getEdge(id);
-            if (!e) continue;
-            gi.deleteEdge(e);
+            if (selected) {
+              const e = gi.getEdge(id);
+              if (!e) continue;
+              gi.deleteEdge(e);
+            }
           }
-        }
 
-        const vertices = await graph.vertexData.read();
-        for (let i = 0; i < graph.vertices.count * 4; i += 4) {
-          const selected = floatBitsToUint(vertices[i + 2]) & 1;
-          const id = floatBitsToUint(vertices[i + 3]);
+          // await new Promise((resolve) => setTimeout(resolve, 1000));
 
-          if (selected) {
-            const v = gi.getVertex(id);
-            if (!v) continue;
-            // console.log(v.edges);
-            // console.log(v.edges.map((e) => e.index));
-            gi.deleteVertex(v);
+          const vertices = await graph.vertexData.read();
+          for (let i = 0; i < graph.vertices.count * 4; i += 4) {
+            const selected = floatBitsToUint(vertices[i + 2]) & 1;
+            const id = floatBitsToUint(vertices[i + 3]);
+
+            //console.log("selected");
+
+            if (selected) {
+              const v = gi.getVertex(id);
+              if (!v) continue;
+              // console.log(v.edges);
+              // console.log(v.edges.map((e) => e.index));
+              gi.deleteVertex(v);
+            }
           }
-        }
+        });
 
-        console.log("bbbbbbb");
-        await gi.upload();
-        doRender = true;
+        // console.log("DELETE");
+        // doRender = false;
+        // renderer.resetState();
+
+        // await gi.download();
+
+        // await gi.upload();
       } else if (event.key === "m") {
-        await gi.download();
+        gi.transaction(async () => {
+          const vertices = await graph.vertexData.read();
+          const selectedVertices: Vertex[] = [];
+
+          for (let i = 0; i < graph.vertices.count * 4; i += 4) {
+            const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
+            const id = floatBitsToUint(vertices[i + 3]);
+
+            if (isSelected) {
+              selectedVertices.push(gi.getVertex(id)!);
+            }
+          }
+
+          graph.deselectAll();
+          gi.merge(selectedVertices);
+        });
 
         // gi.addVertex(0, 0);
-
-        const vertices = await graph.vertexData.read();
-        const selectedVertices: Vertex[] = [];
-
-        for (let i = 0; i < graph.vertices.count * 4; i += 4) {
-          const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
-          const id = floatBitsToUint(vertices[i + 3]);
-
-          if (isSelected) {
-            selectedVertices.push(gi.getVertex(id)!);
-          }
-        }
-
-        console.log("merge");
-
-        gi.merge(selectedVertices);
-
-        await gi.upload();
-
-        graph.deselectAll();
+      } else if (event.key === "f") {
+        doForce = !doForce;
       }
     });
 
@@ -207,10 +176,12 @@
     const render = async () => {
       requestAnimationFrame(render);
 
+      await gi.tick();
+
       if (!doRender) return;
       if (!Task.idle()) return;
 
-      graph.forces.update(0.1);
+      if (doForce) graph.forces.update(0.1);
       // if (i++ % 10 === 0) graph.forces.update(0.1);
 
       // graph.countOnScreen().then(console.log);
@@ -292,9 +263,9 @@
         dragged = false;
 
         if (!selected) {
-          graph.deselectAll();
+          if (!event.shiftKey) graph.deselectAll();
           graph.select(hoveredType as any, hoveredId);
-        }
+        } else if (event.shiftKey) graph.select(hoveredType as any, hoveredId, false);
 
         startCoords.copy(worldCoords(event));
         return;

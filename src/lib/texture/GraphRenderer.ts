@@ -1,4 +1,4 @@
-import { FloatType, RGBAFormat, Vector2, Vector3 } from "three";
+import { FloatType, RGBAFormat, Vector2 } from "three";
 import { DynamicRenderTarget } from "./DynamicRenderTarget";
 import { Edges } from "./Edges";
 import type { Three } from "./Three";
@@ -8,20 +8,16 @@ import { flag } from "./flag.glsl";
 import { select } from "./select.glsl";
 import { drag } from "./drag.glsl";
 import { selectEdges } from "./selectEdges.glsl";
-import { Byte, Float2, Float4, Int, Int2, Ubyte4, Uint } from "./TextureFormat";
 import { floatBitsToUint, uintBitsToFloat } from "./reinterpret";
-import { hash } from "./hash.glsl";
 import { Forces } from "./Forces";
 import { EadesAlgorithm, FruchtermanReingoldAlgorithm } from "./ForceAlgorithm";
 import { IndexedSet } from "../IndexedSet";
-import { Task } from "./Task";
 import { Counter } from "./Counter";
-import { countOnScreen } from "./countOnScreen.glsl";
 import { NewCompute } from "./compute/Compute";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";
 import type { ComputeProgram } from "./compute/ComputeProgram";
-import { VertexText } from "./text/VertexText";
 import { Font } from "./text/Font";
+import { Text } from "./text/Text";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -55,7 +51,8 @@ export class GraphRenderer {
   // private countOnScreenProgram: ComputeProgram;
   // private screenCountBuffer: ComputeTexture;
 
-  public text: VertexText;
+  // public text: VertexText;
+  public text: Text;
   private font: Font;
 
 
@@ -116,8 +113,10 @@ export class GraphRenderer {
     this.forces = new Forces(algorithm, this.compute, this.vertices, this.edges, this.vertexData, this.edgeData);
 
     this.font = new Font(this.compute);
-    this.text = new VertexText(this.three, this.compute, this.vertices, this.vertexData, this.edgeData, this.font);
 
+    // this.text = new VertexText(this.three, this.compute, this.vertices, this.vertexData, this.edgeData, this.font);
+    //this.text = new Autotext(this.three, this.compute, this.vertices, this.vertexData, this.edgeData, this.font);
+    this.text = new Text(this.three, this.font, this.vertices, this.edges, this.vertexData, this.edgeData);
   }
 
 

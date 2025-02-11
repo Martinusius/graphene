@@ -18,8 +18,6 @@ uniform float size;
 uniform bool select;
 uniform bool preview;
 
-// out vec4 color;
-
 bool lineSegmentIntersection(vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   float denominator = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
   float ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / denominator;
@@ -29,21 +27,24 @@ bool lineSegmentIntersection(vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
 
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
-  
-  // vec2 uv = gl_FragCoord.xy / vec2(outputSize);
 
-  vec4 edge = ReadBuffer(edgeData, instanceId); //texture(edgeData, uv);
+  vec4 edge = ReadBuffer(edgeData, instanceId);
 
   uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
 
   bool vuArrow = bool(vertexIndices.x & 1u);
   bool uvArrow = bool(vertexIndices.y & 1u);
 
-  vec2 firstVertex = ReadBuffer(vertexData, vertexIndices.x >> 1).xy; //texture(vertexData, indexUv(vertexIndices.x >> 1, vertexDataSize)).xy;
-  vec2 secondVertex = ReadBuffer(vertexData,vertexIndices.y >> 1).xy; //texture(vertexData, indexUv(vertexIndices.y >> 1, vertexDataSize)).xy;
+  vec2 firstVertex = ReadBuffer(vertexData, vertexIndices.x >> 1).xy;
+  vec2 secondVertex = ReadBuffer(vertexData,vertexIndices.y >> 1).xy;
 
-  vec2 firstVertexScreen = (m * vec4(firstVertex, 0, 1)).xy;
-  vec2 secondVertexScreen = (m * vec4(secondVertex, 0, 1)).xy;
+  float dist = distance(firstVertex, secondVertex);
+
+  vec2 firstVertexArrow = mix(firstVertex, secondVertex, 4.0 / dist);
+  vec2 secondVertexArrow = mix(secondVertex, firstVertex, 4.0 / dist);
+
+  vec2 firstVertexScreen = (m * vec4(firstVertexArrow, 0, 1)).xy;
+  vec2 secondVertexScreen = (m * vec4(secondVertexArrow, 0, 1)).xy;
 
   bool intersectsLeft = lineSegmentIntersection(firstVertexScreen, secondVertexScreen, min, vec2(min.x, max.y));
   bool intersectsRight = lineSegmentIntersection(firstVertexScreen, secondVertexScreen, max, vec2(max.x, min.y));
@@ -69,6 +70,4 @@ void main() {
   }
 
   WriteOutput(instanceId, vec4(edge.xy, uintBitsToFloat(new), edge.w));
-
-  // color = vec4(edge.xy, uintBitsToFloat(new), 0);
 }`);

@@ -1,5 +1,5 @@
 import { CanvasTexture, LinearFilter, NearestFilter } from "three";
-import type { NewCompute } from "../compute/Compute";
+import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 
 export type Letter = { x: number, y: number, width: number, height: number };
@@ -15,7 +15,7 @@ export class Font {
 
   public ready: Promise<void>;
 
-  constructor(compute: NewCompute, font: string = "Arial") {
+  constructor(compute: Compute, font: string = "Arial") {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not get 2d context");

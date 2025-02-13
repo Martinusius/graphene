@@ -1,4 +1,4 @@
-import type { NewCompute } from "./compute/Compute";
+import type { Compute } from "./compute/Compute";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";
 import type { ComputeProgram } from "./compute/ComputeProgram";
 import { count } from "./count.glsl";
@@ -7,7 +7,7 @@ export class Counter {
   private countProgram: ComputeProgram;
   private countBuffer: ComputeBuffer;
 
-  constructor(compute: NewCompute) {
+  constructor(compute: Compute) {
     this.countProgram = compute.createProgram(count, { additive: true });
     this.countBuffer = compute.createBuffer(1);
   }

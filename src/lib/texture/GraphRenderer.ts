@@ -13,7 +13,7 @@ import { Forces } from "./Forces";
 import { EadesAlgorithm, FruchtermanReingoldAlgorithm } from "./ForceAlgorithm";
 import { IndexedSet } from "../IndexedSet";
 import { Counter } from "./Counter";
-import { NewCompute } from "./compute/Compute";
+import { Compute } from "./compute/Compute";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";
 import type { ComputeProgram } from "./compute/ComputeProgram";
 import { Font } from "./text/Font";
@@ -31,7 +31,7 @@ export type RaycastResult = {
 };
 
 export class GraphRenderer {
-  private compute: NewCompute;
+  private compute: Compute;
 
   public vertexData: ComputeBuffer;
   public edgeData: ComputeBuffer;
@@ -65,7 +65,7 @@ export class GraphRenderer {
     maxVertices: number,
     maxEdges: number
   ) {
-    this.compute = new NewCompute(three.renderer);
+    this.compute = new Compute(three.renderer);
 
     this.counter = new Counter(this.compute);
 

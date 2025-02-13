@@ -30,3 +30,13 @@ window.addEventListener('keyup', (event) => {
 export function isKeyPressed(key: string) {
   return keys[key];
 }
+
+const mouse = { x: 0, y: 0 };
+window.addEventListener('mousemove', (event) => {
+  mouse.x = event.clientX;
+  mouse.y = event.clientY;
+});
+
+export function getMousePosition() {
+  return { ...mouse };
+}

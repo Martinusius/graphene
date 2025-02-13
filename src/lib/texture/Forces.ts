@@ -1,5 +1,5 @@
 import { attract } from "./attract.glsl";
-import type { NewCompute } from "./compute/Compute";
+import type { Compute } from "./compute/Compute";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";
 import type { ComputeProgram } from "./compute/ComputeProgram";
 import type { Edges } from "./Edges";
@@ -33,7 +33,7 @@ export class Forces {
 
   public cooling = 1;
 
-  constructor(private algorithm: ForceAlgorithm, compute: NewCompute, private vertices: Vertices, private edges: Edges, private vertexData: ComputeBuffer, private edgeData: ComputeBuffer) {
+  constructor(private algorithm: ForceAlgorithm, compute: Compute, private vertices: Vertices, private edges: Edges, private vertexData: ComputeBuffer, private edgeData: ComputeBuffer) {
     this.hashTable = compute.createBuffer(Math.ceil(vertices.count / 4));
     this.offsets = compute.createBuffer(Math.ceil(vertices.count / 4));
     this.velocities = compute.createBuffer(vertices.count);

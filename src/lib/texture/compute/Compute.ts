@@ -2,7 +2,7 @@ import { Camera, Mesh, PlaneGeometry, Scene, WebGLRenderer } from "three";
 import { ComputeBuffer } from "./ComputeBuffer";
 import { ComputeProgram, type ComputeProgramOptions } from "./ComputeProgram";
 
-export class NewCompute {
+export class Compute {
   private scene: Scene;
   private camera: Camera;
   private mesh: Mesh;

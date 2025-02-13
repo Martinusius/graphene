@@ -100,5 +100,9 @@ void main() {
   vec2 uv = vFontCoords.xy - off + pos;
   uv.y = 1.0 - uv.y;
 
-  gl_FragColor = texture(fontAtlas, uv);
+  vec4 color = texture(fontAtlas, uv);
+
+  if(color.a < 0.2) discard;
+
+  gl_FragColor = color;
 }`);

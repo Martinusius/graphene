@@ -38,6 +38,11 @@ class Ids<V> {
   }
 }
 
+type Transaction = {
+  callback: () => void;
+  resolve: () => void;
+};
+
 export class Graph {
   public incidency: Set<number>[];
 
@@ -106,6 +111,20 @@ export class Graph {
 
     return newVertex;
   }
+
+  cliqueify(vertices: Vertex[]) {
+    for (const vertex of vertices) {
+      for (const other of vertices) {
+        if (vertex === other) continue;
+
+        if (!vertex.edges.some(edge => edge.u.id === other.id || edge.v.id === other.id)) {
+          console.log('aaa');
+          this.addEdge(vertex, other);
+        }
+      }
+    }
+  }
+
 
   addEdge(u: Vertex, v: Vertex, forwards = true, backwards = true) {
     this.changed = true;
@@ -249,10 +268,15 @@ export class Graph {
 
   }
 
-  private transactions: (() => void)[] = [];
+  private transactions: Transaction[] = [];
 
   transaction(callback: () => void) {
-    this.transactions.push(callback);
+    return new Promise<void>(resolve => {
+      this.transactions.push({
+        callback,
+        resolve
+      });
+    });
   }
 
   async tick() {
@@ -261,8 +285,13 @@ export class Graph {
     const transaction = this.transactions.shift()!;
 
     await this.download();
-    await transaction();
+    await transaction.callback();
     await this.upload();
+
+    transaction.resolve();
+
+
+    console.log('done');
   }
 
 
@@ -274,7 +303,6 @@ export class Graph {
 
     if (this.edges.length > 4 * this.renderer.edgeData.size)
       this.renderer.edgeData.resizeErase(this.edges.length / 4);
-
 
     await Promise.all([
       this.vertexCount > 0 ? this.renderer.vertexData.write(this.vertices) : Promise.resolve(),

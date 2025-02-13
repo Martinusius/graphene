@@ -3,7 +3,7 @@
   import { Scene, OrthographicCamera, WebGLRenderer, Vector2, Vector3 } from "three";
   import { OrbitControls } from "./lib/OrbitControls";
   import { initGrid } from "./lib/grid";
-  import { isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
+  import { getMousePosition, isKeyPressed, isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/Draw";
   import { GraphRenderer } from "./lib/texture/GraphRenderer";
   import { Three } from "./lib/texture/Three";
@@ -86,13 +86,14 @@
 
     //generateGrid(gi, size);
 
+    graph.text.edges.maxDigits = 0;
+
     const generator = new GraphGenerator(gi);
 
     // generator.randomness = 5;
-    // generator.clique(10);
-    generator.grid(100, 100, true);
-
-    await gi.upload();
+    generator.empty(10);
+    // generator.emptyO3mini(1000);
+    // generator.path(100);
 
     let doRender = true;
 
@@ -101,11 +102,23 @@
 
     let doForce = false;
 
-    window.addEventListener("keydown", async (event) => {
+    window.addEventListener("dblclick", async (event) => {
+      if (event.button !== LEFT_MOUSE_BUTTON) return;
+      if (hovering) return;
+
+      const { x, y } = worldCoords(event);
+
+      await gi.transaction(() => {
+        gi.addVertex(x, y);
+      });
+    });
+
+    window.addEventListener("keydown", (event) => {
       // delete
       if (event.key === "x") {
         gi.transaction(async () => {
-          const edges = await graph.edgeData.read();
+          const edges = gi.edges.slice(0);
+
           for (let i = 0; i < graph.edges.count * 4; i += 4) {
             const selected = floatBitsToUint(edges[i + 2]) & 1;
             const id = floatBitsToUint(edges[i + 3]);
@@ -119,7 +132,8 @@
 
           // await new Promise((resolve) => setTimeout(resolve, 1000));
 
-          const vertices = await graph.vertexData.read();
+          const vertices = gi.vertices.slice(0);
+
           for (let i = 0; i < graph.vertices.count * 4; i += 4) {
             const selected = floatBitsToUint(vertices[i + 2]) & 1;
             const id = floatBitsToUint(vertices[i + 3]);
@@ -145,8 +159,8 @@
         // await gi.upload();
       } else if (event.key === "m") {
         gi.transaction(async () => {
-          const vertices = await graph.vertexData.read();
           const selectedVertices: Vertex[] = [];
+          const vertices = gi.vertices.slice(0);
 
           for (let i = 0; i < graph.vertices.count * 4; i += 4) {
             const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
@@ -162,6 +176,51 @@
         });
 
         // gi.addVertex(0, 0);
+      } else if (event.key === "k") {
+        gi.transaction(async () => {
+          const selectedVertices: Vertex[] = [];
+          const vertices = gi.vertices.slice(0);
+
+          for (let i = 0; i < graph.vertices.count * 4; i += 4) {
+            const isSelected = floatBitsToUint(gi.vertices[i + 2]) & 1;
+            const id = floatBitsToUint(gi.vertices[i + 3]);
+
+            if (isSelected) {
+              selectedVertices.push(gi.getVertex(id)!);
+            }
+          }
+
+          graph.deselectAll();
+
+          gi.cliqueify(selectedVertices);
+        });
+      } else if (event.key === "v") {
+        const coords = getMousePosition();
+        const { x, y } = worldCoords({ clientX: coords.x, clientY: coords.y } as any);
+
+        gi.transaction(() => {
+          gi.addVertex(x, y);
+        });
+      } else if (event.key === "e") {
+        if (hoveredType !== "vertex") return;
+        const hid = hoveredId;
+
+        gi.transaction(async () => {
+          const vertices = gi.vertices;
+
+          const hoveredVertex = gi.getVertex(floatBitsToUint(vertices[hid * 4 + 3]))!;
+
+          for (let i = 0; i < graph.vertices.count * 4; i += 4) {
+            const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
+            const id = floatBitsToUint(vertices[i + 3]);
+
+            if (isSelected) {
+              const selectedVertex = gi.getVertex(id);
+              if (!selectedVertex || selectedVertex.id === hoveredVertex.id) continue;
+              gi.addEdge(selectedVertex, hoveredVertex);
+            }
+          }
+        });
       } else if (event.key === "f") {
         doForce = !doForce;
       }
@@ -182,9 +241,6 @@
       if (!Task.idle()) return;
 
       if (doForce) graph.forces.update(0.1);
-      // if (i++ % 10 === 0) graph.forces.update(0.1);
-
-      // graph.countOnScreen().then(console.log);
 
       renderer.render(scene, camera);
     };
@@ -282,8 +338,6 @@
     });
 
     function mouseMove(event: MouseEvent) {
-      // console.log(worldCoords(event));
-
       if (dragging) {
         const diff = worldCoords(event).sub(startCoords);
         startCoords.copy(worldCoords(event));
@@ -341,7 +395,6 @@
 
       graph.selection(min, max, select, false);
       graph.countSelected();
-      // graph.hash().then(console.log);
 
       Draw.reset();
       selection = false;
@@ -349,37 +402,7 @@
 
     window.addEventListener("contextmenu", (event) => {
       event.preventDefault();
-
-      // graph.updateForces();
     });
-
-    // const compute = new Compute(renderer);
-
-    // const texture = compute.createTexture(10, 10, Ubyte);
-    // const data = new Uint8Array(new Array(10 * 10 + 18).fill(0).map((_, i) => 120 - i));
-    // console.log(data);
-    // texture.write(0, 0, 10, 10, data);
-    // console.log(texture.readUint(0, 0, 10, 10));
-
-    // const compute = new NewCompute(renderer);
-
-    // const buffer = compute.createBuffer(4);
-
-    // const program = compute.createProgram(`
-    //   uniform buffer data;
-
-    //   void main() {
-    //     vec4 rgba = ReadBuffer(data, instanceId);
-
-    //     WriteOutput(instanceId, rgba + vec4(0, 1, 2, 3) + vec4(instanceId * 4));
-    //   }
-    // `);
-
-    // program.setUniform("data", buffer);
-
-    // program.execute(buffer);
-
-    // console.log("result", await buffer.read());
   });
 </script>
 

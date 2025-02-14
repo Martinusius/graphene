@@ -35,8 +35,16 @@ void main() {
   bool vuArrow = bool(vertexIndices.x & 1u);
   bool uvArrow = bool(vertexIndices.y & 1u);
 
-  vec2 firstVertex = ReadBuffer(vertexData, vertexIndices.x >> 1).xy;
-  vec2 secondVertex = ReadBuffer(vertexData,vertexIndices.y >> 1).xy;
+  bool isDual = bool(vertexIndices.x & 2u);
+
+  vec2 firstVertex = ReadBuffer(vertexData, vertexIndices.x >> 2).xy;
+  vec2 secondVertex = ReadBuffer(vertexData,vertexIndices.y >> 2).xy;
+
+  vec2 toSecond = normalize(secondVertex - firstVertex);
+  vec2 normal = vec2(-toSecond.y, toSecond.x);
+
+  firstVertex.xy += normal * float(isDual);
+  secondVertex.xy += normal * float(isDual);
 
   float dist = distance(firstVertex, secondVertex);
 

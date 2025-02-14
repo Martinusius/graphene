@@ -33,10 +33,16 @@ void main() {
   bool vuArrow = bool(vertexIndices.x & 1u);
   bool uvArrow = bool(vertexIndices.y & 1u);
 
-  vec2 firstVertex = texture2D(vertexData, indexUv(vertexIndices.x >> 1, vertexSize)).xy;
-  vec2 secondVertex = texture2D(vertexData, indexUv(vertexIndices.y >> 1, vertexSize)).xy;
+  bool isDual = bool(vertexIndices.x & 2u);
+
+  vec2 firstVertex = texture2D(vertexData, indexUv(vertexIndices.x >> 2, vertexSize)).xy;
+  vec2 secondVertex = texture2D(vertexData, indexUv(vertexIndices.y >> 2, vertexSize)).xy;
 
   vec2 toSecond = normalize(secondVertex - firstVertex);
+  vec2 normal = vec2(-toSecond.y, toSecond.x);
+
+  firstVertex.xy += normal * float(isDual);
+  secondVertex.xy += normal * float(isDual);
   
   firstVertex.xy += toSecond * 4.0;
   secondVertex.xy -= toSecond * 4.0;

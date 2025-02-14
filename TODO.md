@@ -1,8 +1,15 @@
-IMPORTANT
-- Force algo: attract and repulse with a single movement
+### IMPORTANT
+- Better access to all vertices and edges
+- Custom file format
+
+### LESS IMPORTANT
+- Fix disappearing selection rectangle bug
+- Only allow editing graph during a transaction
+- Better text scaling
+
+### DONE
 - Prevent duplicate edges
 - Support directed graphs
 
-LESS IMPORTANT
-- Fix disappearing selection rectangle bug
-- Only allow editing graph during a transaction
+### REJECTED
+- Force algo: attract and repulse with a single movement

@@ -47,12 +47,6 @@ vec2 calculateRepulsion(uint myIndex, vec2 me, uint hash) {
   vec2 totalForce = vec2(0.0);
 
   for(uint i = offsetIndex; i < nextOffsetIndex; i++) {
-    /*
-    uint vertexIndex = floatBitsToUint(texture(hashTable, indexUv(i / 4u, hashTableSize))[i % 4u]);
-    if(vertexIndex == myIndex) continue;
-    vec2 vertex = texture(vertexData, indexUv(vertexIndex, vertexDataSize)).xy;
-    */
-
     uint vertexIndex = floatBitsToUint(ReadBuffer(hashTable, i / 4u)[i % 4u]);
     if(vertexIndex == myIndex) continue;
     vec2 vertex = ReadBuffer(vertexData, vertexIndex).xy;
@@ -71,9 +65,9 @@ vec2 calculateRepulsion(uint myIndex, vec2 me, uint hash) {
 }
 
 void main() {
-  uint index = uint(instanceId); //uint(gl_FragCoord.x) + uint(gl_FragCoord.y) * uint(outputSize.x);
+  uint index = uint(instanceId);
 
-  vec4 vertex = ReadBuffer(vertexData, index); //texture(vertexData, indexUv(index, vertexDataSize));
+  vec4 vertex = ReadBuffer(vertexData, index);
   vec2 me = vertex.xy;
 
   uint selection = 1u - (floatBitsToUint(vertex.z) >> 3) & 1u;
@@ -86,7 +80,6 @@ void main() {
     }
   }
 
-  // color = vec4(totalForce * float(selection), 0, 0);
   WriteOutput(index, vec4(totalForce * float(selection), 0, 0));
 }
 `);

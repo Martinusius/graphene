@@ -1,9 +1,10 @@
 import { Vector2 } from "three";
 import type { Graph } from "./interface/Graph";
+import type { DirectedGraph } from "./interface/DirectedGraph";
 
 const random = (x: number) => (Math.random() - 0.5) * 2 * x;
-export class GraphGenerator {
-  constructor(public graph: Graph) { }
+export class DirectedGraphGenerator {
+  constructor(public graph: DirectedGraph) { }
 
   public position = new Vector2();
   public spacing = 20;
@@ -23,7 +24,6 @@ export class GraphGenerator {
 
           vertices.push(this.graph.addVertex(px, py));
         }
-
       }
 
       const patterns = {
@@ -51,6 +51,7 @@ export class GraphGenerator {
             if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
 
             this.graph.addEdge(me!, vertex!);
+            this.graph.addEdge(vertex!, me!);
           }
         }
       }

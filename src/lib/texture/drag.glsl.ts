@@ -40,7 +40,7 @@ void main() {
     uint edgeFlags = floatBitsToUint(edge.z);
     float selection = float(edgeFlags & 1u);
 
-    uint vertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
+    uint vertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 2;
 
     vec4 position = texture(vertexData, indexUv(int(vertex), vertexDataSize));
     position.xy += selection * offset;

@@ -92,12 +92,18 @@ void main() {
   bool vuArrow = bool(vertexIndices.x & 1u);
   bool uvArrow = bool(vertexIndices.y & 1u);
 
-  vec2 firstVertex = texture2D(vertexData, indexUv(vertexIndices.x >> 1, vertexDataSize)).xy;
-  vec2 secondVertex = texture2D(vertexData, indexUv(vertexIndices.y >> 1, vertexDataSize)).xy;
+  bool isDual = bool(vertexIndices.x & 2u);
 
-  vec2 center = (firstVertex + secondVertex) / 2.0;
+  vec2 firstVertex = texture2D(vertexData, indexUv(vertexIndices.x >> 2, vertexDataSize)).xy;
+  vec2 secondVertex = texture2D(vertexData, indexUv(vertexIndices.y >> 2, vertexDataSize)).xy;
+
   vec2 dir = normalize(firstVertex - secondVertex);
   vec2 normal = vec2(-dir.y, dir.x);
+
+  firstVertex.xy += normal * float(isDual);
+  secondVertex.xy += normal * float(isDual);
+
+  vec2 center = (firstVertex + secondVertex) / 2.0;
   
   uint fontSizeIndex = uint(min(ceil(log(size * scale) / log(SQRT_PHI) - log(8.0) / log(SQRT_PHI)), 12.0));
 
@@ -105,7 +111,7 @@ void main() {
 
   float far = abs(dot(abs(normal), vec2(width, height) / 2.0));
 
-  vec4 result = m * vec4(center + vec2(offset, 0) + normal * far, 2, 1);
+  vec4 result = m * vec4(center + vec2(offset, 0) + normal * far * 1.2, 2, 1);
 
   gl_PointSize = size * scale;
   gl_Position = result;

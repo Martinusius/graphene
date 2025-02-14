@@ -4,12 +4,6 @@ export const attract = shader(`
 uniform buffer vertexData;
 uniform buffer edgeData;
 
-// uniform ivec2 edgeDataSize;
-// uniform ivec2 vertexDataSize;
-
-// uniform float strength;
-// uniform float springLength;
-
 uniform vec2 offset;
 
 void main() {
@@ -21,8 +15,15 @@ void main() {
   uvec2 vertexIndices = uvec2(floatBitsToUint(edge.x), floatBitsToUint(edge.y));
   float selection = float(floatBitsToUint(edge.z) & 1u);
 
-  uint thisVertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 1;
-  uint otherVertex = (whichVertex == 0 ? vertexIndices.y : vertexIndices.x) >> 1;
+  bool isDual = bool(vertexIndices.x & 2u);
+
+  if(isDual && vertexIndices.x > vertexIndices.y) {
+    Discard();  
+    return;
+  }
+
+  uint thisVertex = (whichVertex == 0 ? vertexIndices.x : vertexIndices.y) >> 2;
+  uint otherVertex = (whichVertex == 0 ? vertexIndices.y : vertexIndices.x) >> 2;
 
   vec4 thisPosition = ReadBuffer(vertexData, thisVertex);
   vec4 otherPosition = ReadBuffer(vertexData, otherVertex);

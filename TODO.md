@@ -1,4 +1,6 @@
 ### IMPORTANT
+- Undo/Redo both directed and undirected
+- AUX buffers
 - Better access to all vertices and edges
 - Custom file format
 

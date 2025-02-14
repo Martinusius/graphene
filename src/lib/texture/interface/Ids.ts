@@ -1,6 +1,6 @@
 export class Ids<V> {
-  private values: (V | undefined)[] = [];
-  private free: number[] = [];
+  public values: (V | undefined)[] = [];
+  public free: number[] = [];
 
   create(value: V) {
     if (this.free.length > 0) {
@@ -28,4 +28,6 @@ export class Ids<V> {
   has(key: number) {
     return this.values[key - 1] !== undefined;
   }
+
+
 }

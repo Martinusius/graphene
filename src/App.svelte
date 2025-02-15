@@ -57,13 +57,6 @@
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
 
-    // const array = new DynamicArray(16);
-    // array.setUint32(8, 123);
-
-    // const array2 = new DynamicArray(16);
-    // array2.setFrom(array, 4, 5, 8);
-    // console.log(array2.getUint32(8));
-
     scene.add(initGrid(container, camera));
     Draw.init(scene, camera);
 
@@ -72,14 +65,14 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new Graph(graph);
+    const gi = new DirectedGraph(graph);
 
-    const generator = new GraphGenerator(gi);
+    const generator = new DirectedGraphGenerator(gi);
 
     generator.grid(100);
 
-    graph.text.edges.maxDigits = 0;
-    graph.text.vertices.maxDigits = 0;
+    // graph.text.edges.maxDigits = 0;
+    // graph.text.vertices.maxDigits = 0;
 
     let doRender = true,
       doForce = false;
@@ -97,20 +90,6 @@
       renderer.render(scene, camera);
     };
     render();
-
-    // const gi = new Graph(graph);
-
-    // graph.text.edges.maxDigits = 0;
-
-    // generator.grid(100, 100, "straight-and-diagonal");
-
-    // await gi.transaction(() => {
-    //   const u = gi.addVertex(0, 0);
-    //   const v = gi.addVertex(50, 50);
-
-    //   gi.addEdge(u, v);
-    //   gi.addEdge(v, u);
-    // });
 
     console.log("edgeData", await graph.edgeData.read(0, 1));
     console.log("edgeCount", graph.edges.count);
@@ -156,6 +135,7 @@
               gi.deleteVertex(v);
             }
           }
+          console.log("aaaa");
         });
       } else if (event.key === "m") {
         gi.transaction(async () => {
@@ -265,8 +245,7 @@
             console.log("undo");
             gi.undo();
           },
-          false,
-          false,
+          { undo: true },
         );
       } else if (event.key === "y") {
         gi.transaction(
@@ -274,8 +253,7 @@
             console.log("redo");
             gi.redo();
           },
-          true,
-          false,
+          { redo: true },
         );
       }
     });

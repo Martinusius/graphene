@@ -1,25 +1,12 @@
 import { DynamicArray } from "../DynamicArray";
 import type { GraphRenderer } from "../GraphRenderer";
-import { floatBitsToUint, uintBitsToFloat } from "../reinterpret";
-import { Ids } from "./Ids";
-
-const PHI = 1.6180339887;
+import { Ids } from "../Ids";
+import { Operation } from "./Operation";
+import type { Transaction, TransactionOptions } from "./Transaction";
 
 function random(r: number) {
   return r * 2 * (Math.random() - 1);
 }
-type Transaction = {
-  callback: () => void;
-  resolve: () => void;
-  undoable?: boolean;
-  erasesRedo?: boolean;
-};
-
-const ADD_VERTEX = 0;
-const ADD_EDGE = 1;
-const DELETE_VERTEX = 2;
-const DELETE_EDGE = 3;
-
 
 export class Graph {
   // for each vertex index: map from neighbor id to edge id
@@ -39,12 +26,11 @@ export class Graph {
   private undoStack = new DynamicArray(1024);
   private redoStack = new DynamicArray(1024);
 
+  private opCount = 0;
+
   constructor(public readonly renderer: GraphRenderer) {
     this.incidency = [];
   }
-
-  private opCount = 0;
-
 
   private undoAddVertex() {
     this.changed = true;
@@ -52,7 +38,7 @@ export class Graph {
     this.vertexCount--;
 
     this.redoStack.pushFrom(this.vertices, this.vertexCount * 16, 16);
-    this.redoStack.pushUint8(ADD_VERTEX);
+    this.redoStack.pushUint8(Operation.ADD_VERTEX);
 
     const id = this.vertices.getUint32(this.vertexCount * 16 + 12);
 
@@ -60,8 +46,6 @@ export class Graph {
     this.incidency.pop();
 
     this.vertices.setUint32(this.vertexCount * 16 + 12, 0);
-
-    // console.log('undo vertex id', this.vertices.getUint32(this.vertexCount * 16 + 12));
 
     this.vertices.length -= 16;
   }
@@ -72,9 +56,7 @@ export class Graph {
     this.edgeCount--;
 
     this.redoStack.pushFrom(this.edges, this.edgeCount * 16, 16);
-    this.redoStack.pushUint8(ADD_EDGE);
-
-    // console.log('undo edge u v ids', this.edges.getUint32(this.edgeCount * 16), this.edges.getUint32(this.edgeCount * 16 + 4));
+    this.redoStack.pushUint8(Operation.ADD_EDGE);
 
     const id = this.edges.getUint32(this.edgeCount * 16 + 12);
 
@@ -135,7 +117,7 @@ export class Graph {
     }
 
     this.redoStack.pushUint32(vIndex);
-    this.redoStack.pushUint8(DELETE_VERTEX);
+    this.redoStack.pushUint8(Operation.DELETE_VERTEX);
 
     this.vertexCount++;
   }
@@ -169,7 +151,7 @@ export class Graph {
     this.incidency[vIndex].set(uid, id);
 
     this.redoStack.pushUint32(eIndex);
-    this.redoStack.pushUint8(DELETE_EDGE);
+    this.redoStack.pushUint8(Operation.DELETE_EDGE);
 
     this.edgeCount++;
   }
@@ -186,16 +168,16 @@ export class Graph {
       const type = this.undoStack.popUint8();
 
       switch (type) {
-        case ADD_VERTEX:
+        case Operation.ADD_VERTEX:
           this.undoAddVertex();
           break;
-        case ADD_EDGE:
+        case Operation.ADD_EDGE:
           this.undoAddEdge();
           break;
-        case DELETE_VERTEX:
+        case Operation.DELETE_VERTEX:
           this.undoDeleteVertex();
           break;
-        case DELETE_EDGE:
+        case Operation.DELETE_EDGE:
           this.undoDeleteEdge();
           break;
       }
@@ -204,8 +186,6 @@ export class Graph {
   }
 
   private redoAddVertex() {
-    // console.log('redo add vertex', this.vertexCount);
-
     this.changed = true;
     this.opCount++;
 
@@ -221,21 +201,15 @@ export class Graph {
 
     this.vertexCount++;
 
-    this.undoStack.pushUint8(ADD_VERTEX);
-
-    return new Vertex(this, id);
+    this.undoStack.pushUint8(Operation.ADD_VERTEX);
   }
 
   private redoAddEdge() {
-    // console.log('redo add edge', this.edgeCount);
-
     this.changed = true;
     this.opCount++;
 
     const uIndex = this.redoStack.getUint32(this.redoStack.length - 16) >> 2;
     const vIndex = this.redoStack.getUint32(this.redoStack.length - 12) >> 2;
-
-    // console.log(uIndex, vIndex);
 
     const vid = this.vertices.getUint32(vIndex * 16 + 12);
     const uid = this.vertices.getUint32(uIndex * 16 + 12);
@@ -255,10 +229,7 @@ export class Graph {
     this.incidency[uIndex].set(vid, id);
     this.incidency[vIndex].set(uid, id);
 
-    this.undoStack.pushUint8(ADD_EDGE);
-
-
-    return new Edge(this, id);
+    this.undoStack.pushUint8(Operation.ADD_EDGE);
   }
 
   private redoDeleteVertex() {
@@ -289,7 +260,7 @@ export class Graph {
 
     this.undoStack.pushFrom(this.vertices, vIndex * 16, 16);
     this.undoStack.pushUint32(vIndex);
-    this.undoStack.pushUint8(DELETE_VERTEX);
+    this.undoStack.pushUint8(Operation.DELETE_VERTEX);
 
     this.vertices.setFrom(this.vertices, this.vertexCount * 16, vIndex * 16, 16);
 
@@ -329,7 +300,7 @@ export class Graph {
     this.undoStack.pushFrom(this.edges, eIndex * 16, 16);
 
     this.undoStack.pushUint32(eIndex);
-    this.undoStack.pushUint8(DELETE_EDGE);
+    this.undoStack.pushUint8(Operation.DELETE_EDGE);
 
     this.edges.setFrom(this.edges, this.edgeCount * 16, eIndex * 16, 16);
 
@@ -355,16 +326,16 @@ export class Graph {
       const type = this.redoStack.popUint8();
 
       switch (type) {
-        case ADD_VERTEX:
+        case Operation.ADD_VERTEX:
           this.redoAddVertex();
           break;
-        case ADD_EDGE:
+        case Operation.ADD_EDGE:
           this.redoAddEdge();
           break;
-        case DELETE_VERTEX:
+        case Operation.DELETE_VERTEX:
           this.redoDeleteVertex();
           break;
-        case DELETE_EDGE:
+        case Operation.DELETE_EDGE:
           this.redoDeleteEdge();
           break;
       }
@@ -439,8 +410,7 @@ export class Graph {
     this.incidency[uIndex].set(v.id, id);
     this.incidency[vIndex].set(u.id, id);
 
-    this.undoStack.pushUint8(ADD_EDGE);
-
+    this.undoStack.pushUint8(Operation.ADD_EDGE);
 
     return new Edge(this, id);
   }
@@ -460,7 +430,7 @@ export class Graph {
 
     this.vertexCount++;
 
-    this.undoStack.pushUint8(ADD_VERTEX);
+    this.undoStack.pushUint8(Operation.ADD_VERTEX);
 
     return new Vertex(this, id);
   }
@@ -484,9 +454,8 @@ export class Graph {
     this.incidency[v].delete(uid);
 
     this.undoStack.pushFrom(this.edges, eIndex * 16, 16);
-
     this.undoStack.pushUint32(eIndex);
-    this.undoStack.pushUint8(DELETE_EDGE);
+    this.undoStack.pushUint8(Operation.DELETE_EDGE);
 
     this.edges.setFrom(this.edges, this.edgeCount * 16, eIndex * 16, 16);
 
@@ -533,7 +502,7 @@ export class Graph {
 
     this.undoStack.pushFrom(this.vertices, vIndex * 16, 16);
     this.undoStack.pushUint32(vIndex);
-    this.undoStack.pushUint8(DELETE_VERTEX);
+    this.undoStack.pushUint8(Operation.DELETE_VERTEX);
 
     this.vertices.setFrom(this.vertices, this.vertexCount * 16, vIndex * 16, 16);
 
@@ -543,7 +512,6 @@ export class Graph {
     const id2 = this.vertices.getUint32(vIndex * 16 + 12);
 
     this.vertices.setUint32(this.vertexCount * 16 + 12, 0);
-
 
     this.whereVertex.delete(id);
 
@@ -578,13 +546,12 @@ export class Graph {
 
   private transactions: Transaction[] = [];
 
-  transaction(callback: () => void, undoable = true, erasesRedo = true) {
+  transaction(callback: () => void, options: TransactionOptions = {}) {
     return new Promise<void>(resolve => {
       this.transactions.push({
         callback,
         resolve,
-        undoable,
-        erasesRedo
+        ...options
       });
     });
   }
@@ -597,12 +564,14 @@ export class Graph {
     await this.download();
     await transaction.callback();
 
-    if (transaction.undoable && this.changed) {
+    if (!transaction.undo && this.changed) {
       this.undoStack.pushUint32(this.opCount);
       this.opCount = 0;
     }
 
-    if (transaction.erasesRedo) this.redoStack.length = 0;
+    if (!transaction.redo && !transaction.undo) {
+      this.redoStack.length = 0;
+    }
 
     await this.upload();
 

@@ -182,7 +182,6 @@ export class GraphRenderer {
   }
 
   async isSelected(type: ObjectType, id: number) {
-    console.log(type);
     const texture = { vertex: this.vertexData, edge: this.edgeData }[type];
 
     const data = await texture.read(id);

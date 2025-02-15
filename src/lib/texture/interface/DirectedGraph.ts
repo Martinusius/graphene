@@ -1,17 +1,12 @@
 import type { GraphRenderer } from "../GraphRenderer";
-import { floatBitsToUint, uintBitsToFloat } from "../reinterpret";
-import { Ids } from "./Ids";
-
-const PHI = 1.6180339887;
+import { Ids } from "../Ids";
+import { DynamicArray } from "../DynamicArray";
+import type { Transaction, TransactionOptions } from "./Transaction";
+import { Operation } from "./Operation";
 
 function random(r: number) {
   return r * 2 * (Math.random() - 1);
 }
-type Transaction = {
-  callback: () => void;
-  resolve: () => void;
-};
-
 
 export class DirectedGraph {
   // for each vertex index: map from neighbor id to edge id
@@ -21,32 +16,365 @@ export class DirectedGraph {
   private vertexCount = 0;
   private edgeCount = 0;
 
-  public vertices = new Float32Array(1024);
-  public edges = new Float32Array(1024);
+  public vertices = new DynamicArray(1024);
+  public edges = new DynamicArray(1024);
 
   public whereVertex = new Ids<number>();
   public whereEdge = new Ids<number>();
 
   private changed = false;
 
+  private undoStack = new DynamicArray(1024);
+  private redoStack = new DynamicArray(1024);
+
+  private opCount = 0;
+
   constructor(public readonly renderer: GraphRenderer) {
     this.incidency = [];
     this.outcidency = [];
   }
 
-  reserve(vertices: number, edges: number) {
-    if (vertices * 4 > this.vertices.length) {
-      const newVertices = new Float32Array(Math.round(vertices * 4 * PHI / 4));
-      newVertices.set(this.vertices);
-      this.vertices = newVertices;
+  private undoAddVertex() {
+    this.changed = true;
+
+    this.vertexCount--;
+
+    this.redoStack.pushFrom(this.vertices, this.vertexCount * 16, 16);
+    this.redoStack.pushUint8(Operation.ADD_VERTEX);
+
+    const id = this.vertices.getUint32(this.vertexCount * 16 + 12);
+
+    this.whereVertex.delete(id);
+    this.outcidency.pop();
+    this.incidency.pop();
+
+    this.vertices.setUint32(this.vertexCount * 16 + 12, 0);
+
+    this.vertices.length -= 16;
+  }
+
+  private undoAddEdge() {
+    this.changed = true;
+
+    this.edgeCount--;
+
+    this.redoStack.pushFrom(this.edges, this.edgeCount * 16, 16);
+    this.redoStack.pushUint8(Operation.ADD_EDGE);
+
+    const id = this.edges.getUint32(this.edgeCount * 16 + 12);
+
+
+    const u = this.edges.getUint32(this.edgeCount * 16) >> 2;
+    const uid = this.vertices.getUint32(u * 16 + 12);
+
+    const v = this.edges.getUint32(this.edgeCount * 16 + 4) >> 2;
+    const vid = this.vertices.getUint32(v * 16 + 12);
+
+    const existsInverse = this.edges.getUint32(this.edgeCount * 16) & 2;
+
+    if (existsInverse) {
+      const inverseId = this.outcidency[v].get(uid)!;
+      const inverseIndex = this.whereEdge.get(inverseId)!;
+      this.edges.setUint32(inverseIndex * 16, v << 2);
     }
 
-    if (edges * 4 > this.edges.length) {
-      const newEdges = new Float32Array(Math.round(edges * 4 * PHI / 4));
-      newEdges.set(this.edges);
-      this.edges = newEdges;
+    this.edges.setUint32(this.edgeCount * 16 + 12, 0);
+
+    this.outcidency[u].delete(vid);
+    this.incidency[v].delete(uid);
+
+    this.whereEdge.delete(id);
+
+    this.edges.length -= 16;
+  }
+
+  private undoDeleteVertex() {
+    this.changed = true;
+
+    const vIndex = this.undoStack.popUint32();
+
+    this.vertices.length += 16;
+    this.vertices.setFrom(this.vertices, vIndex * 16, this.vertexCount * 16, 16);
+
+    const id2 = this.vertices.getUint32(vIndex * 16 + 12);
+
+    this.vertices.popFrom(this.undoStack, vIndex * 16, 16);
+
+    const id = this.vertices.getUint32(vIndex * 16 + 12);
+
+    const nid = this.whereVertex.create(vIndex); // Ids implementation guarantees the id will be the same as last time
+
+    if (id !== nid) throw new Error('Id mismatch in undoDeleteVertex');
+
+
+    if (vIndex !== this.vertexCount) this.whereVertex.set(id2, this.vertexCount);
+
+    this.outcidency.push(this.outcidency[vIndex] ?? new Map());
+    this.outcidency[vIndex] = new Map();
+
+    this.incidency.push(this.incidency[vIndex] ?? new Map());
+    this.incidency[vIndex] = new Map();
+
+    for (const outcidentEdgeId of this.outcidency[this.vertexCount].values()) {
+      const eIndex = this.whereEdge.get(outcidentEdgeId)!;
+      this.edges.setUint32(eIndex * 16, (this.vertexCount << 2) | (this.edges.getUint32(eIndex * 16) & 3));
+    }
+
+    for (const incidentEdgeId of this.incidency[this.vertexCount].values()) {
+      const eIndex = this.whereEdge.get(incidentEdgeId)!;
+      this.edges.setUint32(eIndex * 16 + 4, (this.vertexCount << 2) | (this.edges.getUint32(eIndex * 16 + 4) & 3));
+    }
+
+    this.redoStack.pushUint32(vIndex);
+    this.redoStack.pushUint8(Operation.DELETE_VERTEX);
+
+    this.vertexCount++;
+  }
+
+  private undoDeleteEdge() {
+    this.changed = true;
+
+    const eIndex = this.undoStack.popUint32();
+
+    this.edges.length += 16;
+    this.edges.setFrom(this.edges, eIndex * 16, this.edgeCount * 16, 16);
+
+    const id2 = this.edges.getUint32(eIndex * 16 + 12);
+
+    this.edges.popFrom(this.undoStack, eIndex * 16, 16);
+
+    const id = this.edges.getUint32(eIndex * 16 + 12);
+
+    const nid = this.whereEdge.create(eIndex); // Ids implementation guarantees the id will be the same as last time
+    if (id !== nid) throw new Error('Id mismatch in undoDeleteEdge');
+
+    if (eIndex !== this.edgeCount) this.whereEdge.set(id2, this.edgeCount);
+
+    const uIndex = this.edges.getUint32(eIndex * 16) >> 2;
+    const uid = this.vertices.getUint32(uIndex * 16 + 12);
+
+    const vIndex = this.edges.getUint32(eIndex * 16 + 4) >> 2;
+    const vid = this.vertices.getUint32(vIndex * 16 + 12);
+
+    const inverseId = this.incidency[uIndex].get(vid);
+
+    this.outcidency[uIndex].set(vid, id);
+    this.incidency[vIndex].set(uid, id);
+
+    if (inverseId) {
+      const inverseIndex = this.whereEdge.get(inverseId)!;
+
+      this.edges.setUint32(inverseIndex * 16, this.edges.getUint32(inverseIndex * 16) | 2);
+    }
+
+    this.redoStack.pushUint32(eIndex);
+    this.redoStack.pushUint8(Operation.DELETE_EDGE);
+
+    this.edgeCount++;
+  }
+
+  undo() {
+    if (this.undoStack.length === 0) {
+      console.warn('Nothing to undo');
+      return;
+    }
+
+    const opCount = this.undoStack.popUint32();
+
+    for (let i = 0; i < opCount; i++) {
+      const type = this.undoStack.popUint8();
+
+      switch (type) {
+        case Operation.ADD_VERTEX:
+          this.undoAddVertex();
+          break;
+        case Operation.ADD_EDGE:
+          this.undoAddEdge();
+          break;
+        case Operation.DELETE_VERTEX:
+          this.undoDeleteVertex();
+          break;
+        case Operation.DELETE_EDGE:
+          this.undoDeleteEdge();
+          break;
+      }
+    }
+    this.redoStack.pushUint32(opCount);
+  }
+
+  private redoAddVertex() {
+    this.changed = true;
+    this.opCount++;
+
+    this.outcidency.push(new Map());
+    this.incidency.push(new Map());
+
+    const nid = this.whereVertex.create(this.vertexCount);
+    const id = this.redoStack.getUint32(this.redoStack.length - 4);
+
+    if (id !== nid) throw new Error(`Id mismatch in redoAddVertex ${id} vs ${nid}`);
+
+    this.vertices.pushFrom(this.redoStack, this.redoStack.length - 16, 16);
+    this.redoStack.length -= 16;
+
+    this.vertexCount++;
+
+    this.undoStack.pushUint8(Operation.ADD_VERTEX);
+  }
+
+  private redoAddEdge() {
+    this.changed = true;
+    this.opCount++;
+
+    const uIndex = this.redoStack.getUint32(this.redoStack.length - 16) >> 2;
+    const vIndex = this.redoStack.getUint32(this.redoStack.length - 12) >> 2;
+
+    const vid = this.vertices.getUint32(vIndex * 16 + 12);
+    const uid = this.vertices.getUint32(uIndex * 16 + 12);
+
+    if (this.outcidency[uIndex].has(vid)) throw new Error('Edge already exists in redoAddEdge (this should never happen)');
+
+
+    const id = this.redoStack.getUint32(this.redoStack.length - 4);
+    const nid = this.whereEdge.create(this.edgeCount);
+
+    if (id !== nid) throw new Error('Id mismatch in redoAddEdge');
+
+    this.edges.pushFrom(this.redoStack, this.redoStack.length - 16, 16);
+    this.redoStack.length -= 16;
+
+    const existsInverse = this.edges.getUint32(this.edgeCount * 16) & 2;
+
+    if (existsInverse) {
+      const inverseId = this.outcidency[vIndex].get(uid)!;
+      const inverseIndex = this.whereEdge.get(inverseId)!;
+      this.edges.setUint32(inverseIndex * 16, vIndex << 2 | 2);
+    }
+
+    this.edgeCount++;
+
+    this.outcidency[uIndex].set(vid, id);
+    this.incidency[vIndex].set(uid, id);
+
+    this.undoStack.pushUint8(Operation.ADD_EDGE);
+  }
+
+  private redoDeleteVertex() {
+    this.changed = true;
+    this.opCount++;
+
+    const vIndex = this.redoStack.popUint32();
+
+    this.vertexCount--;
+
+    const id = this.vertices.getUint32(vIndex * 16 + 12);
+
+    this.incidency[vIndex] = this.incidency[this.vertexCount];
+    this.outcidency[vIndex] = this.outcidency[this.vertexCount];
+
+    for (const outcidentEdgeId of this.outcidency[vIndex].values()) {
+      const eIndex = this.whereEdge.get(outcidentEdgeId)!;
+      this.edges.setUint32(eIndex * 16, (vIndex << 2) | (this.edges.getUint32(eIndex * 16) & 3));
+    }
+
+    for (const incidentEdgeId of this.incidency[vIndex].values()) {
+      const eIndex = this.whereEdge.get(incidentEdgeId)!;
+      this.edges.setUint32(eIndex * 16 + 4, (vIndex << 2) | (this.edges.getUint32(eIndex * 16 + 4) & 3));
+    }
+
+    this.undoStack.pushFrom(this.vertices, vIndex * 16, 16);
+    this.undoStack.pushUint32(vIndex);
+    this.undoStack.pushUint8(Operation.DELETE_VERTEX);
+
+    this.vertices.setFrom(this.vertices, this.vertexCount * 16, vIndex * 16, 16);
+
+    this.vertices.length -= 16;
+
+    const id2 = this.vertices.getUint32(vIndex * 16 + 12);
+
+    this.vertices.setUint32(this.vertexCount * 16 + 12, 0);
+
+    this.whereVertex.delete(id);
+
+    this.whereVertex.set(id2, vIndex);
+
+    this.outcidency.pop();
+    this.incidency.pop();
+  }
+
+  private redoDeleteEdge() {
+    this.changed = true;
+    this.edgeCount--;
+
+    this.opCount++;
+
+    const eIndex = this.redoStack.popUint32();
+
+    const u = this.edges.getUint32(eIndex * 16) >> 2;
+    const v = this.edges.getUint32(eIndex * 16 + 4) >> 2;
+    const id = this.edges.getUint32(eIndex * 16 + 12);
+
+    const uid = this.vertices.getUint32(u * 16 + 12);
+    const vid = this.vertices.getUint32(v * 16 + 12);
+
+    const existsInverse = this.edges.getUint32(eIndex * 16) & 2;
+
+    // if inverse edge exists, make it non-dual
+    if (existsInverse) {
+      const inverseId = this.outcidency[v].get(uid)!;
+      const inverseIndex = this.whereEdge.get(inverseId)!;
+      this.edges.setUint32(inverseIndex * 16, v << 2);
+    }
+
+    this.outcidency[u].delete(vid);
+    this.incidency[v].delete(uid);
+
+    this.undoStack.pushFrom(this.edges, eIndex * 16, 16);
+
+    this.undoStack.pushUint32(eIndex);
+    this.undoStack.pushUint8(Operation.DELETE_EDGE);
+
+    this.edges.setFrom(this.edges, this.edgeCount * 16, eIndex * 16, 16);
+
+    this.edges.length -= 16;
+
+    const id2 = this.edges.getUint32(eIndex * 16 + 12);
+
+    this.edges.setUint32(this.edgeCount * 16 + 12, 0);
+
+    this.whereEdge.delete(id);
+
+    this.whereEdge.set(id2, eIndex);
+  }
+
+  redo() {
+    if (this.redoStack.length === 0) {
+      console.warn('Nothing to redo');
+      return;
+    }
+
+    const opCount = this.redoStack.popUint32();
+    for (let i = 0; i < opCount; i++) {
+      const type = this.redoStack.popUint8();
+
+      switch (type) {
+        case Operation.ADD_VERTEX:
+          this.redoAddVertex();
+          break;
+        case Operation.ADD_EDGE:
+          this.redoAddEdge();
+          break;
+        case Operation.DELETE_VERTEX:
+          this.redoDeleteVertex();
+          break;
+        case Operation.DELETE_EDGE:
+          this.redoDeleteEdge();
+          break;
+      }
     }
   }
+
+
 
   merge(vertices: DirectedVertex[]) {
     if (vertices.length === 0) return;
@@ -103,106 +431,110 @@ export class DirectedGraph {
 
   addEdge(u: DirectedVertex, v: DirectedVertex) {
     this.changed = true;
+    this.opCount++;
 
     const uIndex = u.index;
     const vIndex = v.index;
 
     if (this.outcidency[uIndex].has(v.id)) throw new Error('Edge already exists');
 
-    if (4 * (this.edgeCount + 1) >= this.edges.length) {
-      const newEdges = new Float32Array(Math.round(this.edges.length * PHI / 4) * 4);
-      newEdges.set(this.edges);
-      this.edges = newEdges;
-    }
-
     const id = this.whereEdge.create(this.edgeCount);
 
     const inverseId = this.incidency[uIndex].get(v.id);
 
-    this.edges[this.edgeCount * 4] = uintBitsToFloat(uIndex << 2 | (inverseId ? 2 : 0));
-    this.edges[this.edgeCount * 4 + 1] = uintBitsToFloat((vIndex << 2) | 1);
-    this.edges[this.edgeCount * 4 + 2] = uintBitsToFloat(0);
-    this.edges[this.edgeCount * 4 + 3] = uintBitsToFloat(id);
+    this.edges.pushUint32(uIndex << 2 | (inverseId ? 2 : 0));
+    this.edges.pushUint32(vIndex << 2 | 1);
+    this.edges.pushUint32(0);
+    this.edges.pushUint32(id);
+
     this.edgeCount++;
 
     // if inverse edge exists, make it dual
     if (inverseId) {
       const inverseIndex = this.whereEdge.get(inverseId)!;
-      this.edges[inverseIndex * 4] = uintBitsToFloat(floatBitsToUint(this.edges[inverseIndex * 4]) | 2);
+
+      this.edges.setUint32(inverseIndex * 16, this.edges.getUint32(inverseIndex * 16) | 2);
     }
 
     this.outcidency[uIndex].set(v.id, id);
     this.incidency[vIndex].set(u.id, id);
+
+    this.undoStack.pushUint8(Operation.ADD_EDGE);
 
     return new DirectedEdge(this, id);
   }
 
   addVertex(x?: number, y?: number) {
     this.changed = true;
-
-    if (4 * (this.vertexCount + 1) >= this.vertices.length) {
-      const newVertices = new Float32Array(Math.round(this.vertices.length * PHI / 4) * 4);
-      newVertices.set(this.vertices);
-      this.vertices = newVertices;
-    }
+    this.opCount++;
 
     this.incidency.push(new Map());
     this.outcidency.push(new Map());
 
     const id = this.whereVertex.create(this.vertexCount);
 
-    this.vertices[this.vertexCount * 4 + 0] = x ?? random(100)
-    this.vertices[this.vertexCount * 4 + 1] = y ?? random(100)
-    this.vertices[this.vertexCount * 4 + 2] = uintBitsToFloat(0);
-    this.vertices[this.vertexCount * 4 + 3] = uintBitsToFloat(id);
+
+    this.vertices.pushFloat32(x ?? random(100));
+    this.vertices.pushFloat32(y ?? random(100));
+    this.vertices.pushFloat32(0);
+    this.vertices.pushUint32(id);
+
     this.vertexCount++;
 
+    this.undoStack.pushUint8(Operation.ADD_VERTEX);
 
     return new DirectedVertex(this, id);
   }
 
   deleteEdge(e: DirectedEdge) {
     this.changed = true;
+    this.edgeCount--;
+
+    this.opCount++;
 
     const eIndex = e.index;
 
-    const existsInverse = floatBitsToUint(this.edges[eIndex * 4]) & 2;
+    const u = this.edges.getUint32(eIndex * 16) >> 2;
+    const v = this.edges.getUint32(eIndex * 16 + 4) >> 2;
+    const id = this.edges.getUint32(eIndex * 16 + 12);
 
-    const u = floatBitsToUint(this.edges[eIndex * 4]) >> 2;
-    const v = floatBitsToUint(this.edges[eIndex * 4 + 1]) >> 2;
-    const id = floatBitsToUint(this.edges[eIndex * 4 + 3]);
+    const uid = this.vertices.getUint32(u * 16 + 12);
+    const vid = this.vertices.getUint32(v * 16 + 12);
 
-    const uid = floatBitsToUint(this.vertices[u * 4 + 3]);
-    const vid = floatBitsToUint(this.vertices[v * 4 + 3]);
+    const existsInverse = this.edges.getUint32(eIndex * 16) & 2;
 
     // if inverse edge exists, make it non-dual
     if (existsInverse) {
-      const inverseId = this.incidency[v].get(uid)!;
+      const inverseId = this.outcidency[v].get(uid)!;
       const inverseIndex = this.whereEdge.get(inverseId)!;
-      this.edges[inverseIndex * 4] = uintBitsToFloat(u << 2);
+      this.edges.setUint32(inverseIndex * 16, v << 2);
     }
 
     this.outcidency[u].delete(vid);
     this.incidency[v].delete(uid);
 
-    this.edges[eIndex * 4] = this.edges[this.edgeCount * 4 - 4];
-    this.edges[eIndex * 4 + 1] = this.edges[this.edgeCount * 4 - 3];
-    this.edges[eIndex * 4 + 2] = this.edges[this.edgeCount * 4 - 2];
-    this.edges[eIndex * 4 + 3] = this.edges[this.edgeCount * 4 - 1];
+    this.undoStack.pushFrom(this.edges, eIndex * 16, 16);
+    this.undoStack.pushUint32(eIndex);
+    this.undoStack.pushUint8(Operation.DELETE_EDGE);
 
-    const id2 = floatBitsToUint(this.edges[eIndex * 4 + 3]);
 
-    this.edges[this.edgeCount * 4 - 1] = uintBitsToFloat(0);
+    this.edges.setFrom(this.edges, this.edgeCount * 16, eIndex * 16, 16);
+
+    this.edges.length -= 16;
+
+    const id2 = this.edges.getUint32(eIndex * 16 + 12);
+
+    this.edges.setUint32(this.edgeCount * 16 + 12, 0);
 
     this.whereEdge.delete(id);
 
     this.whereEdge.set(id2, eIndex);
 
-    this.edgeCount--;
   }
 
   deleteVertex(v: DirectedVertex) {
     this.changed = true;
+    this.opCount++;
 
     const vIndex = v.index;
 
@@ -212,29 +544,35 @@ export class DirectedGraph {
     for (const e of v.out)
       this.deleteEdge(e);
 
-    const id = floatBitsToUint(this.vertices[vIndex * 4 + 3]);
+    this.vertexCount--;
 
-    this.incidency[vIndex] = this.incidency[this.vertexCount - 1];
-    this.outcidency[vIndex] = this.outcidency[this.vertexCount - 1];
+    const id = this.vertices.getUint32(vIndex * 16 + 12);
+
+
+    this.incidency[vIndex] = this.incidency[this.vertexCount];
+    this.outcidency[vIndex] = this.outcidency[this.vertexCount];
 
     for (const outcidentEdgeId of this.outcidency[vIndex].values()) {
       const eIndex = this.whereEdge.get(outcidentEdgeId)!;
-      this.edges[eIndex * 4] = uintBitsToFloat((vIndex << 2) | floatBitsToUint(this.edges[eIndex * 4]) & 3);
+      this.edges.setUint32(eIndex * 16, (vIndex << 2) | (this.edges.getUint32(eIndex * 16) & 3));
     }
 
     for (const incidentEdgeId of this.incidency[vIndex].values()) {
       const eIndex = this.whereEdge.get(incidentEdgeId)!;
-      this.edges[eIndex * 4 + 1] = uintBitsToFloat((vIndex << 2) | floatBitsToUint(this.edges[eIndex * 4 + 1]) & 3);
+      this.edges.setUint32(eIndex * 16 + 4, (vIndex << 2) | (this.edges.getUint32(eIndex * 16 + 4) & 3));
     }
 
-    this.vertices[vIndex * 4] = this.vertices[this.vertexCount * 4 - 4];
-    this.vertices[vIndex * 4 + 1] = this.vertices[this.vertexCount * 4 - 3];
-    this.vertices[vIndex * 4 + 2] = this.vertices[this.vertexCount * 4 - 2];
-    this.vertices[vIndex * 4 + 3] = this.vertices[this.vertexCount * 4 - 1];
+    this.undoStack.pushFrom(this.vertices, vIndex * 16, 16);
+    this.undoStack.pushUint32(vIndex);
+    this.undoStack.pushUint8(Operation.DELETE_VERTEX);
 
-    const id2 = floatBitsToUint(this.vertices[vIndex * 4 + 3]);
+    this.vertices.setFrom(this.vertices, this.vertexCount * 16, vIndex * 16, 16);
 
-    this.vertices[this.vertexCount * 4 - 1] = uintBitsToFloat(0);
+    this.vertices.length -= 16;
+
+    const id2 = this.vertices.getUint32(vIndex * 16 + 12);
+
+    this.vertices.setUint32(this.vertexCount * 16 + 12, 0);
 
     this.whereVertex.delete(id);
 
@@ -242,8 +580,6 @@ export class DirectedGraph {
 
     this.incidency.pop();
     this.outcidency.pop();
-
-    this.vertexCount--;
   }
 
   getVertex(id: number): DirectedVertex | undefined {
@@ -266,18 +602,18 @@ export class DirectedGraph {
       this.renderer.edgeData.read(),
     ]);
 
-    this.vertices = vertexData;
-    this.edges = edgeData;
-
+    this.vertices.buffer = vertexData.buffer;
+    this.edges.buffer = edgeData.buffer;
   }
 
   private transactions: Transaction[] = [];
 
-  transaction(callback: () => void) {
+  transaction(callback: () => void, options: TransactionOptions = {}) {
     return new Promise<void>(resolve => {
       this.transactions.push({
         callback,
-        resolve
+        resolve,
+        ...options
       });
     });
   }
@@ -289,6 +625,18 @@ export class DirectedGraph {
 
     await this.download();
     await transaction.callback();
+
+    console.log('transaction', this.opCount);
+
+    if (!transaction.undo && this.changed) {
+      this.undoStack.pushUint32(this.opCount);
+      this.opCount = 0;
+    }
+
+    if (!transaction.redo && !transaction.undo) {
+      this.redoStack.length = 0;
+    }
+
     await this.upload();
 
     transaction.resolve();
@@ -298,15 +646,15 @@ export class DirectedGraph {
   async upload() {
     if (!this.changed) return;
 
-    if (this.vertices.length > 4 * this.renderer.vertexData.size)
-      this.renderer.vertexData.resizeErase(this.vertices.length / 4);
+    if (this.vertices.length > 16 * this.renderer.vertexData.size)
+      this.renderer.vertexData.resizeErase(this.vertices.length / 16);
 
-    if (this.edges.length > 4 * this.renderer.edgeData.size)
-      this.renderer.edgeData.resizeErase(this.edges.length / 4);
+    if (this.edges.length > 16 * this.renderer.edgeData.size)
+      this.renderer.edgeData.resizeErase(this.edges.length / 16);
 
     await Promise.all([
-      this.vertexCount > 0 ? this.renderer.vertexData.write(this.vertices) : Promise.resolve(),
-      this.edgeCount > 0 ? this.renderer.edgeData.write(this.edges) : Promise.resolve(),
+      this.vertexCount > 0 ? this.renderer.vertexData.write(this.vertices.asFloat32Array(), 0, this.vertexCount) : Promise.resolve(),
+      this.edgeCount > 0 ? this.renderer.edgeData.write(this.edges.asFloat32Array(), 0, this.edgeCount) : Promise.resolve(),
     ]);
 
     this.renderer.vertices.count = this.vertexCount;
@@ -324,19 +672,19 @@ export class DirectedVertex {
   }
 
   get x() {
-    return this.graph.vertices[this.index * 4];
+    return this.graph.vertices.getFloat32(this.index * 16);
   }
 
   get y() {
-    return this.graph.vertices[this.index * 4 + 1];
+    return this.graph.vertices.getFloat32(this.index * 16 + 4);
   }
 
   set x(x: number) {
-    this.graph.vertices[this.index * 4] = x;
+    this.graph.vertices.setFloat32(this.index * 16, x);
   }
 
   set y(y: number) {
-    this.graph.vertices[this.index * 4 + 1] = y;
+    this.graph.vertices.setFloat32(this.index * 16 + 4, y);
   }
 
   get out() {
@@ -360,14 +708,14 @@ export class DirectedEdge {
   }
 
   get u() {
-    const index = floatBitsToUint(this.graph.edges[this.index * 4]) >> 2;
-    const id = floatBitsToUint(this.graph.vertices[index * 4 + 3]);
+    const index = this.graph.edges.getUint32(this.index * 16) >> 2;
+    const id = this.graph.vertices.getUint32(index * 16 + 12);
     return this.graph.getVertex(id)!;
   }
 
   get v() {
-    const index = floatBitsToUint(this.graph.edges[this.index * 4 + 1]) >> 2;
-    const id = floatBitsToUint(this.graph.vertices[index * 4 + 3]);
+    const index = this.graph.edges.getUint32(this.index * 16 + 4) >> 2;
+    const id = this.graph.vertices.getUint32(index * 16 + 12);
     return this.graph.getVertex(id)!;
   }
 

@@ -1,6 +1,6 @@
 import { Vector2 } from "three";
-import type { Graph } from "./interface/Graph";
-import type { DirectedGraph } from "./interface/DirectedGraph";
+import type { Graph } from "./interface/undirected/Graph";
+import type { DirectedGraph } from "./interface/directed/DirectedGraph";
 
 const random = (x: number) => (Math.random() - 0.5) * 2 * x;
 export class DirectedGraphGenerator {

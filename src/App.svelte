@@ -8,10 +8,10 @@
   import { GraphRenderer } from "./lib/texture/GraphRenderer";
   import { Three } from "./lib/texture/Three";
   import { Task } from "./lib/texture/Task";
-  import { Graph, Vertex } from "./lib/texture/interface/Graph";
+  import { Graph, Vertex } from "./lib/texture/interface/undirected/Graph";
   import { floatBitsToUint, uintBitsToFloat } from "./lib/texture/reinterpret";
   import { GraphGenerator } from "./lib/texture/GraphGenerator";
-  import { DirectedGraph } from "./lib/texture/interface/DirectedGraph";
+  import { DirectedGraph } from "./lib/texture/interface/directed/DirectedGraph";
   import { DirectedGraphGenerator } from "./lib/texture/DirectedGraphGenerator";
   import { DynamicArray } from "./lib/texture/DynamicArray";
   import { selectEdges } from "./lib/texture/selectEdges.glsl";
@@ -33,7 +33,7 @@
       container.clientHeight / 100,
       container.clientHeight / -100,
       0.1,
-      1000,
+      1000
     );
     camera.position.set(0, 0, 50);
     camera.lookAt(0, 0, 0);
@@ -69,7 +69,7 @@
 
     const generator = new DirectedGraphGenerator(gi);
 
-    generator.grid(100);
+    generator.grid(100, 100, "straight-and-diagonal");
 
     // graph.text.edges.maxDigits = 0;
     // graph.text.vertices.maxDigits = 0;
@@ -77,10 +77,15 @@
     let doRender = true,
       doForce = false;
 
+    const loop = async () => {
+      await gi.tick();
+      setTimeout(loop, 5);
+    };
+
+    loop();
+
     const render = async () => {
       requestAnimationFrame(render);
-
-      await gi.tick();
 
       if (!doRender) return;
       if (!Task.idle()) return;
@@ -111,8 +116,8 @@
           const edges = gi.edges.clone();
 
           for (let i = 0; i < graph.edges.count * 16; i += 16) {
-            const selected = edges.getUint32(i + 8) & 1; //floatBitsToUint(edges[i + 2]) & 1;
-            const id = edges.getUint32(i + 12); //floatBitsToUint(edges[i + 3]);
+            const selected = edges.getUint32(i + 8) & 1;
+            const id = edges.getUint32(i + 12);
 
             if (selected) {
               const e = gi.getEdge(id);
@@ -124,8 +129,6 @@
           const vertices = gi.vertices.clone();
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // const selected = floatBitsToUint(vertices[i + 2]) & 1;
-            // const id = floatBitsToUint(vertices[i + 3]);
             const selected = vertices.getUint32(i + 8) & 1;
             const id = vertices.getUint32(i + 12);
 
@@ -143,8 +146,6 @@
           const vertices = gi.vertices.clone();
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
-            // const id = floatBitsToUint(vertices[i + 3]);
             const isSelected = vertices.getUint32(i + 8) & 1;
             const id = vertices.getUint32(i + 12);
 
@@ -152,8 +153,6 @@
               selectedVertices.push(gi.getVertex(id)!);
             }
           }
-
-          // console.log(`merging ${selectedVertices.length}/${graph.vertices.count} vertices`);
 
           gi.merge(selectedVertices);
         });
@@ -165,8 +164,6 @@
           const vertices = gi.vertices;
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
-            // const id = floatBitsToUint(vertices[i + 3]);
             const isSelected = vertices.getUint32(i + 8) & 1;
             const id = vertices.getUint32(i + 12);
 
@@ -187,7 +184,6 @@
           const hoveredVertex = gi.addVertex(x, y);
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
             const isSelected = vertices.getUint32(i + 8) & 1;
             const id = vertices.getUint32(i + 12);
 
@@ -199,11 +195,9 @@
           }
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // vertices[i + 2] = uintBitsToFloat(0);
             vertices.setUint32(i + 8, 0);
           }
 
-          // vertices[hoveredVertex.index * 4 + 2] = uintBitsToFloat(3);
           vertices.setUint32(hoveredVertex.index * 16 + 8, 3);
         });
       } else if (event.key === "e") {
@@ -213,28 +207,27 @@
         gi.transaction(async () => {
           const vertices = gi.vertices;
 
-          // const hoveredVertex = gi.getVertex(floatBitsToUint(vertices[hid * 4 + 3]))!;
           const hoveredVertex = gi.getVertex(vertices.getUint32(hid * 16 + 12))!;
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // const isSelected = floatBitsToUint(vertices[i + 2]) & 1;
-            // const id = floatBitsToUint(vertices[i + 3]);
             const isSelected = vertices.getUint32(i + 8) & 1;
             const id = vertices.getUint32(i + 12);
 
             if (isSelected) {
               const selectedVertex = gi.getVertex(id);
               if (!selectedVertex || selectedVertex.id === hoveredVertex.id) continue;
-              gi.addEdge(selectedVertex, hoveredVertex);
+              try {
+                gi.addEdge(selectedVertex, hoveredVertex);
+              } catch (e) {
+                console.error(e);
+              }
             }
           }
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            // vertices[i + 2] = uintBitsToFloat(0);
             vertices.setUint32(i + 8, 0);
           }
 
-          // vertices[hid * 4 + 2] = uintBitsToFloat(3);
           vertices.setUint32(hid * 16 + 8, 3);
         });
       } else if (event.key === "f") {
@@ -245,7 +238,7 @@
             console.log("undo");
             gi.undo();
           },
-          { undo: true },
+          { undo: true }
         );
       } else if (event.key === "y") {
         gi.transaction(
@@ -253,7 +246,7 @@
             console.log("redo");
             gi.redo();
           },
-          { redo: true },
+          { redo: true }
         );
       }
     });

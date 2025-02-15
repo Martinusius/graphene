@@ -1,5 +1,5 @@
 import { Vector2 } from "three";
-import type { Graph } from "./interface/Graph";
+import type { Graph } from "./interface/undirected/Graph";
 
 const random = (x: number) => (Math.random() - 0.5) * 2 * x;
 export class GraphGenerator {

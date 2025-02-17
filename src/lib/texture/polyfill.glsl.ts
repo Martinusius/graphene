@@ -1,14 +1,15 @@
 // Weird WebGL float bug. Cannot properly read uint encoded as floats. Fix: Add 2**30 while encoding and subtract it while decoding.
 
 const enabled = true;
+const bit = 30;
 
 const polyfill = `
   uint floatBitsToUint_fixed(float value) {
-    return floatBitsToUint(value) - (1u << 30);
+    return floatBitsToUint(value) - (1u << ${bit});
   }
 
   float uintBitsToFloat_fixed(uint value) {
-    return uintBitsToFloat(value + (1u << 30));
+    return uintBitsToFloat(value + (1u << ${bit}));
   }
 `;
 
@@ -22,10 +23,10 @@ export function fixFloatUintBug(value: string) {
 
 export function getUint32Fix(value: number) {
   if (!enabled) return value;
-  return value - (1 << 30);
+  return value - (1 << bit);
 }
 
 export function setUint32Fix(value: number) {
   if (!enabled) return value;
-  return value + (1 << 30);
+  return value + (1 << bit);
 }

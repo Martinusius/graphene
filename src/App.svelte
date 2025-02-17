@@ -1,9 +1,21 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Scene, OrthographicCamera, WebGLRenderer, Vector2, Vector3 } from "three";
+  import {
+    Scene,
+    OrthographicCamera,
+    WebGLRenderer,
+    Vector2,
+    Vector3,
+  } from "three";
   import { OrbitControls } from "./lib/OrbitControls";
   import { initGrid } from "./lib/grid";
-  import { getMousePosition, isKeyPressed, isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
+  import {
+    getMousePosition,
+    isKeyPressed,
+    isMousePressed,
+    LEFT_MOUSE_BUTTON,
+    RIGHT_MOUSE_BUTTON,
+  } from "./lib/input";
   import { Draw } from "./lib/Draw";
   import { GraphRenderer } from "./lib/texture/GraphRenderer";
   import { Three } from "./lib/texture/Three";
@@ -65,11 +77,12 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new DirectedGraph(graph);
+    const gi = new Graph(graph);
 
-    const generator = new DirectedGraphGenerator(gi);
+    const generator = new GraphGenerator(gi);
 
-    generator.grid(100, 100, "straight-and-diagonal");
+    // generator.grid(10, 10, "straight-and-diagonal");
+    generator.grid(100);
 
     // graph.text.edges.maxDigits = 0;
     // graph.text.vertices.maxDigits = 0;
@@ -176,7 +189,10 @@
         });
       } else if (event.key === "q") {
         const coords = getMousePosition();
-        const { x, y } = worldCoords({ clientX: coords.x, clientY: coords.y } as any);
+        const { x, y } = worldCoords({
+          clientX: coords.x,
+          clientY: coords.y,
+        } as any);
 
         gi.transaction(() => {
           const vertices = gi.vertices;
@@ -189,7 +205,8 @@
 
             if (isSelected) {
               const selectedVertex = gi.getVertex(id);
-              if (!selectedVertex || selectedVertex.id === hoveredVertex.id) continue;
+              if (!selectedVertex || selectedVertex.id === hoveredVertex.id)
+                continue;
               gi.addEdge(selectedVertex, hoveredVertex);
             }
           }
@@ -207,7 +224,9 @@
         gi.transaction(async () => {
           const vertices = gi.vertices;
 
-          const hoveredVertex = gi.getVertex(vertices.getUint32(hid * 16 + 12))!;
+          const hoveredVertex = gi.getVertex(
+            vertices.getUint32(hid * 16 + 12)
+          )!;
 
           for (let i = 0; i < graph.vertices.count * 16; i += 16) {
             const isSelected = vertices.getUint32(i + 8) & 1;
@@ -215,7 +234,8 @@
 
             if (isSelected) {
               const selectedVertex = gi.getVertex(id);
-              if (!selectedVertex || selectedVertex.id === hoveredVertex.id) continue;
+              if (!selectedVertex || selectedVertex.id === hoveredVertex.id)
+                continue;
               try {
                 gi.addEdge(selectedVertex, hoveredVertex);
               } catch (e) {
@@ -252,8 +272,12 @@
     });
 
     function screenCoords(event: MouseEvent) {
-      const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
-      return new Vector2(((event.clientX - left) / width) * 2 - 1, ((height - (event.clientY - top)) / height) * 2 - 1);
+      const { top, left, width, height } =
+        renderer.domElement.getBoundingClientRect();
+      return new Vector2(
+        ((event.clientX - left) / width) * 2 - 1,
+        ((height - (event.clientY - top)) / height) * 2 - 1
+      );
     }
 
     function worldCoords(event: MouseEvent) {
@@ -326,7 +350,8 @@
         if (!selected) {
           if (!event.shiftKey) graph.deselectAll();
           graph.select(hoveredType as any, hoveredId);
-        } else if (event.shiftKey) graph.select(hoveredType as any, hoveredId, false);
+        } else if (event.shiftKey)
+          graph.select(hoveredType as any, hoveredId, false);
 
         startCoords.copy(worldCoords(event));
         return;

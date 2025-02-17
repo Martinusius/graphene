@@ -33,7 +33,14 @@ export class Forces {
 
   public cooling = 1;
 
-  constructor(private algorithm: ForceAlgorithm, compute: Compute, private vertices: Vertices, private edges: Edges, private vertexData: ComputeBuffer, private edgeData: ComputeBuffer) {
+  constructor(
+    private algorithm: ForceAlgorithm,
+    compute: Compute,
+    private vertices: Vertices,
+    private edges: Edges,
+    private vertexData: ComputeBuffer,
+    private edgeData: ComputeBuffer
+  ) {
     this.hashTable = compute.createBuffer(Math.ceil(vertices.count / 4));
     this.offsets = compute.createBuffer(Math.ceil(vertices.count / 4));
     this.velocities = compute.createBuffer(vertices.count);
@@ -44,12 +51,16 @@ export class Forces {
     this.buckets2 = new Float32Array(this.offsets.size * 4);
     this.vertexArray = new Float32Array(this.offsets.size * 4);
 
-    this.repulseProgram = compute.createProgram(algorithm.repulsionFunction() + repulse);
-    this.attractProgram = compute.createProgram(algorithm.attractionFunction() + attract, { additive: true });
+    this.repulseProgram = compute.createProgram(
+      algorithm.repulsionFunction() + repulse
+    );
+    this.attractProgram = compute.createProgram(
+      algorithm.attractionFunction() + attract,
+      { additive: true }
+    );
 
     this.moveProgram = compute.createProgram(move);
   }
-
 
   private async resizeBuffersIfNeeded() {
     // console.log('check');
@@ -85,55 +96,47 @@ export class Forces {
     if (this.hashTable.size === 0) return;
 
     const timer = new Timer();
-    timer.start('hash');
+    timer.start("hash");
 
     const hashTableSize = this.hashTable.size * 4;
 
     // calculate hashes for each vertex
-    this.hashProgram.setUniform('vertexData', this.vertexData);
-    this.hashProgram.setUniform('cellSize', this.cellSize);
-    this.hashProgram.setUniform('hashModulo', hashTableSize);
+    this.hashProgram.setUniform("vertexData", this.vertexData);
+    this.hashProgram.setUniform("cellSize", this.cellSize);
+    this.hashProgram.setUniform("hashModulo", hashTableSize);
 
     this.hashProgram.execute(this.hashTable);
 
-    timer.start('sort-read');
-
-
+    timer.start("sort-read");
 
     // download hashes
     const data = await this.hashTable.read();
-    timer.start('sort-sort');
-
+    timer.start("sort-sort");
 
     this.buckets.fill(0);
 
     if (this.vertices.count > data.length) {
-      console.log('miss');
+      console.log("miss");
 
       return;
     }
-
 
     // count how many vertices are in each bucket
     for (let i = 0; i < this.vertices.count; i++)
       this.buckets[floatBitsToUint(data[i])]++;
 
-    timer.start('offsets');
-
-
-
+    timer.start("offsets");
 
     // prefix sums to calculate where each bucket starts (offsets)
     for (let i = 1; i < hashTableSize; i++)
       this.buckets[i] = this.buckets[i] + this.buckets[i - 1];
-
 
     for (let i = 0; i < hashTableSize; i++)
       this.buckets2[i] = uintBitsToFloat(this.buckets[i]);
 
     const promiseOffsets = this.offsets.write(this.buckets2);
 
-    timer.start('vertices');
+    timer.start("vertices");
 
     let zero = 0;
 
@@ -147,38 +150,34 @@ export class Forces {
 
     await Promise.all([promiseOffsets, promiseVertices]);
 
-    timer.start('repulse');
+    timer.start("repulse");
 
-
-    this.repulseProgram.setUniform('vertexData', this.vertexData);
-    this.repulseProgram.setUniform('hashTable', this.hashTable);
-    this.repulseProgram.setUniform('offsets', this.offsets);
-    this.repulseProgram.setUniform('cellSize', this.cellSize);
-    this.repulseProgram.setUniform('hashModulo', hashTableSize);
+    this.repulseProgram.setUniform("vertexData", this.vertexData);
+    this.repulseProgram.setUniform("hashTable", this.hashTable);
+    this.repulseProgram.setUniform("offsets", this.offsets);
+    this.repulseProgram.setUniform("cellSize", this.cellSize);
+    this.repulseProgram.setUniform("hashModulo", hashTableSize);
     this.algorithm.setUniforms(this.repulseProgram);
 
     this.repulseProgram.execute(this.velocities);
 
-    this.moveProgram.setUniform('vertexData', this.vertexData);
-    this.moveProgram.setUniform('velocities', this.velocities);
-    this.moveProgram.setUniform('deltaTime', delta * this.cooling);
+    this.moveProgram.setUniform("vertexData", this.vertexData);
+    this.moveProgram.setUniform("velocities", this.velocities);
+    this.moveProgram.setUniform("deltaTime", delta * this.cooling);
 
     this.moveProgram.execute(this.vertexData);
 
+    timer.start("attract");
 
-    timer.start('attract');
-
-    this.attractProgram.setUniform('vertexData', this.vertexData);
-    this.attractProgram.setUniform('edgeData', this.edgeData);
+    this.attractProgram.setUniform("vertexData", this.vertexData);
+    this.attractProgram.setUniform("edgeData", this.edgeData);
     this.algorithm.setUniforms(this.attractProgram);
 
     this.attractProgram.execute(this.velocities, 2 * this.edges.count);
 
-
-    this.moveProgram.setUniform('vertexData', this.vertexData);
-    this.moveProgram.setUniform('velocities', this.velocities);
-    this.moveProgram.setUniform('deltaTime', delta * this.cooling);
-
+    this.moveProgram.setUniform("vertexData", this.vertexData);
+    this.moveProgram.setUniform("velocities", this.velocities);
+    this.moveProgram.setUniform("deltaTime", delta * this.cooling);
 
     //this.cooling *= 0.999;
 

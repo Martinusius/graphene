@@ -27,7 +27,7 @@ export class Edges {
   constructor(
     three: Three,
     edgeData: ComputeBuffer,
-    vertexData: ComputeBuffer,
+    vertexData: ComputeBuffer
   ) {
     const vertexSize = vertexData.width;
     const edgeSize = edgeData.width;
@@ -66,12 +66,11 @@ export class Edges {
       this.edges.material.uniforms.vertexSize.value = vertexData.width;
       this.edges.material.uniforms.edgeSize.value = edgeData.width;
 
-      this.edges.material.uniforms.edgeData.value =
-        edgeData.readable().texture;
+      this.edges.material.uniforms.edgeData.value = edgeData.readable().texture;
       this.edges.material.uniforms.vertexData.value =
         vertexData.readable().texture;
 
-      this.edges.material.uniforms.resolution.value.copy(three.resolution)
+      this.edges.material.uniforms.resolution.value.copy(three.resolution);
     };
 
     three.scene.add(this.edges);

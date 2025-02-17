@@ -21,10 +21,7 @@ export class Vertices {
     return this.points.geometry.drawRange.count;
   }
 
-  constructor(
-    three: Three,
-    vertexData: ComputeBuffer,
-  ) {
+  constructor(three: Three, vertexData: ComputeBuffer) {
     const geometry = new BufferGeometry();
     geometry.setDrawRange(0, 0);
 
@@ -50,7 +47,8 @@ export class Vertices {
     this.points.userData.raycastable = true;
 
     this.points.onBeforeRender = (_, __, camera: OrthographicCamera) => {
-      this.points.material.uniforms.size.value = camera.zoom * 400;
+      this.points.material.uniforms.size.value =
+        camera.zoom * 400 * window.devicePixelRatio;
       this.points.material.uniforms.bufferSize.value = vertexData.width;
 
       this.points.material.uniforms.vertexData.value =

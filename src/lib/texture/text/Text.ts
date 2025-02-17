@@ -1,4 +1,10 @@
-import { BufferGeometry, OrthographicCamera, Points, ShaderMaterial, Vector2 } from "three";
+import {
+  BufferGeometry,
+  OrthographicCamera,
+  Points,
+  ShaderMaterial,
+  Vector2,
+} from "three";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 import { Font } from "./Font";
 import type { Three } from "../Three";
@@ -7,21 +13,20 @@ import { textEdgeFragment, textEdgeVertex } from "./textEdge.glsl";
 
 import { uintBitsToFloat } from "../reinterpret";
 
-type CountInfo = { count: number; }
+type CountInfo = { count: number };
 
 export class GraphText {
   public static defaultMaxDigits = 8;
 
   private points: Points<BufferGeometry, ShaderMaterial>;
 
-
   private encodeString(string: string) {
-    string = string.split('').reverse().join('');
+    string = string.split("").reverse().join("");
 
     const array = new Array(Math.ceil(string.length / 4));
     for (let i = 0; i < string.length; i++) {
       const char = this.font.letterIndices[string[i]];
-      array[Math.floor(i / 4)] |= char << (8 * (i % 4))
+      array[Math.floor(i / 4)] |= char << (8 * (i % 4));
     }
 
     return new Vector2(uintBitsToFloat(array[0]), uintBitsToFloat(array[1]));
@@ -29,7 +34,13 @@ export class GraphText {
 
   public auxBuffer: ComputeBuffer;
 
-  constructor(three: Three, private font: Font, private countInfo: CountInfo, vertexData: ComputeBuffer, edgeData?: ComputeBuffer,) {
+  constructor(
+    three: Three,
+    private font: Font,
+    private countInfo: CountInfo,
+    vertexData: ComputeBuffer,
+    edgeData?: ComputeBuffer
+  ) {
     this.auxBuffer = edgeData ?? vertexData;
 
     const geometry = new BufferGeometry();
@@ -63,22 +74,26 @@ export class GraphText {
     this.points = new Points(geometry, material);
     this.points.frustumCulled = false;
 
-
     this.points.onBeforeRender = (_, __, camera: OrthographicCamera) => {
       geometry.setDrawRange(0, this.maxDigits * this.countInfo.count);
 
-      //console.log('aaaa', geometry.drawRange.count);
-      this.points.material.uniforms.size.value = camera.zoom * 400;
+      this.points.material.uniforms.size.value =
+        camera.zoom * 400 * window.devicePixelRatio;
 
       this.points.material.uniforms.vertexDataSize.value = vertexData.width;
-      this.points.material.uniforms.fontAtlasCoordsSize.value = this.font.atlasCoords.width;
+      this.points.material.uniforms.fontAtlasCoordsSize.value =
+        this.font.atlasCoords.width;
       this.points.material.uniforms.auxSize.value = this.auxBuffer.width;
       this.points.material.uniforms.edgeDataSize.value = edgeData?.width ?? 0;
 
-      this.points.material.uniforms.vertexData.value = vertexData.readable().texture;
-      this.points.material.uniforms.aux.value = this.auxBuffer.readable().texture;
-      this.points.material.uniforms.fontAtlasCoords.value = this.font.atlasCoords.readable().texture;
-      this.points.material.uniforms.edgeData.value = edgeData?.readable().texture;
+      this.points.material.uniforms.vertexData.value =
+        vertexData.readable().texture;
+      this.points.material.uniforms.aux.value =
+        this.auxBuffer.readable().texture;
+      this.points.material.uniforms.fontAtlasCoords.value =
+        this.font.atlasCoords.readable().texture;
+      this.points.material.uniforms.edgeData.value =
+        edgeData?.readable().texture;
 
       this.points.material.uniforms.alphabetSize.value = Font.alphabet.length;
       this.points.material.uniforms.resolution.value.copy(three.resolution);
@@ -113,7 +128,14 @@ export class Text {
   public vertices: GraphText;
   public edges: GraphText;
 
-  constructor(three: Three, font: Font, vertices: CountInfo, edges: CountInfo, vertexData: ComputeBuffer, edgeData: ComputeBuffer) {
+  constructor(
+    three: Three,
+    font: Font,
+    vertices: CountInfo,
+    edges: CountInfo,
+    vertexData: ComputeBuffer,
+    edgeData: ComputeBuffer
+  ) {
     this.vertices = new GraphText(three, font, vertices, vertexData);
     this.edges = new GraphText(three, font, edges, vertexData, edgeData);
   }

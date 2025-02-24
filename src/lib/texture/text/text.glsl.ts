@@ -41,7 +41,7 @@ void main() {
   int whichCharacter  = gl_VertexID % maxDigits;
 
   float floatValue = texture(aux, indexUv(uint(whichVertex), auxSize))[auxChannel];
-  int value = int(floatValue);
+  int value = int(floatBitsToUint(floatValue));
 
   int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
 

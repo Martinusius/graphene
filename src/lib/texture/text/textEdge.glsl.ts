@@ -7,7 +7,7 @@ uniform sampler2D vertexData;
 uniform sampler2D edgeData;
 uniform sampler2D aux;
 
-uniform int auxIndex;
+uniform int auxChannel;
 uniform int decimalPlaces;
 
 uniform int maxDigits;
@@ -49,11 +49,10 @@ void main() {
   int whichEdge = gl_VertexID / maxDigits;
   int whichCharacter  = gl_VertexID % maxDigits;
 
-  float floatValue = texture(aux, indexUv(uint(whichEdge), auxSize))[auxIndex];
+  float floatValue = texture(aux, indexUv(uint(whichEdge), auxSize))[auxChannel];
   int value = int(floatBitsToUint(floatValue));
 
   int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
-
 
   float totalWidth = 0.0;
   float totalOffset = 0.0;

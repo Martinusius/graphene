@@ -7,7 +7,6 @@ import {
   Vector2,
 } from "three";
 
-import type { ComputeTexture } from "./Compute";
 import type { Three } from "./Three";
 import { edgeFragment, edgeVertex } from "./edge.glsl";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";

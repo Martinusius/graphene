@@ -2,12 +2,10 @@ import type { GraphRenderer } from "../../GraphRenderer";
 import { Ids } from "../../Ids";
 import { DynamicArray } from "../../DynamicArray";
 import type { Transaction, TransactionOptions } from "../Transaction";
-import { Operation } from "../Operation";
 import { EDGE_SIZE, VERTEX_SIZE, VertexProperty } from "../Constants";
 import { EdgeProperty } from "../Constants";
-import { DirectedGraphUndo } from "./DirectedGraphUndo";
-import { DirectedGraphRedo } from "./DirectedGraphRedo";
 import { Auxiliary } from "../Auxiliary";
+import { Versioner } from "../../Versioner";
 
 function random(r: number) {
   return r * 2 * (Math.random() - 1);
@@ -58,95 +56,89 @@ export class DirectedGraph {
 
   public changed = false;
 
-  public undoStack = new DynamicArray(1024);
-  public redoStack = new DynamicArray(1024);
-
   public opCount = 0;
 
-  private undoManager: DirectedGraphUndo;
-  private redoManager: DirectedGraphRedo;
+  // private undoManager: DirectedGraphUndo;
+  // private redoManager: DirectedGraphRedo;
 
   public vertexAuxiliary: Auxiliary;
   public edgeAuxiliary: Auxiliary;
+
+  private versioner = new Versioner();
 
   constructor(public readonly renderer: GraphRenderer) {
     this.incidency = [];
     this.outcidency = [];
 
-    this.vertexAuxiliary = new Auxiliary(this.renderer.compute, false, this);
-    this.edgeAuxiliary = new Auxiliary(this.renderer.compute, true, this);
-
-    this.undoManager = new DirectedGraphUndo(
-      this.outcidency,
-      this.incidency,
+    this.versioner.track(
       this,
-      this.vertices,
-      this.edges,
-      this.undoStack,
-      this.redoStack,
-      this.whereVertex,
-      this.whereEdge,
-      this.vertexAuxiliary,
-      this.edgeAuxiliary
+      "outcidency",
+      "incidency",
+      "vertexCount",
+      "edgeCount",
+      "vertices",
+      "edges",
+      "whereVertex",
+      "whereEdge"
     );
 
-    this.redoManager = new DirectedGraphRedo(
-      this.outcidency,
-      this.incidency,
-      this,
-      this.vertices,
-      this.edges,
-      this.undoStack,
-      this.redoStack,
-      this.whereVertex,
-      this.whereEdge,
-      this.vertexAuxiliary,
-      this.edgeAuxiliary
-    );
+    this.vertexAuxiliary = new Auxiliary(this.renderer.compute);
+    this.edgeAuxiliary = new Auxiliary(this.renderer.compute);
+
+    [this.vertexAuxiliary, this.edgeAuxiliary].forEach((auxiliary) => {
+      this.versioner.track(
+        auxiliary,
+        "arrays",
+        "whereProperty",
+        "objectCount",
+        "propertyCount"
+      );
+    });
+
+    [this.renderer.text.vertices, this.renderer.text.edges].forEach((text) => {
+      this.versioner.track(text, "aux");
+    });
+
+    // this.vertexAuxiliary = new Auxiliary(this.renderer.compute, false, this);
+    // this.edgeAuxiliary = new Auxiliary(this.renderer.compute, true, this);
+
+    // this.undoManager = new DirectedGraphUndo(
+    //   this.outcidency,
+    //   this.incidency,
+    //   this,
+    //   this.vertices,
+    //   this.edges,
+    //   this.undoStack,
+    //   this.redoStack,
+    //   this.whereVertex,
+    //   this.whereEdge,
+    //   this.vertexAuxiliary,
+    //   this.edgeAuxiliary
+    // );
+
+    // this.redoManager = new DirectedGraphRedo(
+    //   this.outcidency,
+    //   this.incidency,
+    //   this,
+    //   this.vertices,
+    //   this.edges,
+    //   this.undoStack,
+    //   this.redoStack,
+    //   this.whereVertex,
+    //   this.whereEdge,
+    //   this.vertexAuxiliary,
+    //   this.edgeAuxiliary
+    // );
   }
 
   undo() {
-    if (this.undoStack.length === 0) {
-      console.warn('Nothing to undo');
-      return;
-    }
-
-    const opCount = this.undoStack.popUint32();
-    console.log('undo opCount', opCount);
-    for (let i = 0; i < opCount; i++) {
-      const opIndex = this.undoStack.popUint8();
-
-      const valid = this.undoManager.undo(opIndex) ||
-        this.vertexAuxiliary.undo(opIndex) ||
-        this.edgeAuxiliary.undo(opIndex);
-
-      if (!valid) throw new Error('Invalid undo operation');
-    }
-
-    this.changed ||= opCount > 0;
-    this.redoStack.pushUint32(opCount);
+    this.changed = true;
+    this.versioner.undo();
   }
 
   redo() {
-    if (this.redoStack.length === 0) {
-      console.warn('Nothing to redo');
-      return;
-    }
-
-    const opCount = this.redoStack.popUint32();
-    console.log('redo opCount', opCount);
-    for (let i = 0; i < opCount; i++) {
-      const opIndex = this.redoStack.popUint8();
-
-      const valid = this.redoManager.redo(opIndex) ||
-        this.vertexAuxiliary.redo(opIndex) ||
-        this.edgeAuxiliary.redo(opIndex);
-
-      if (!valid) throw new Error('Invalid redo operation');
-    }
-
-    this.changed ||= opCount > 0;
-    this.opCount += opCount;
+    this.changed = true;
+    this.versioner.redo();
   }
 
   merge(vertices: DirectedVertex[]) {
@@ -239,8 +231,6 @@ export class DirectedGraph {
 
     this.edgeAuxiliary.pushObject();
 
-    this.undoStack.pushUint8(Operation.ADD_EDGE);
-
     return new DirectedEdge(this, id);
   }
 
@@ -258,11 +248,9 @@ export class DirectedGraph {
     this.vertices.pushUint32(0);
     this.vertices.pushUint32(id);
 
-    this.vertexCount++;
-
     this.vertexAuxiliary.pushObject();
 
-    this.undoStack.pushUint8(Operation.ADD_VERTEX);
+    this.vertexCount++;
 
     return new DirectedVertex(this, id);
   }
@@ -294,13 +282,8 @@ export class DirectedGraph {
     this.outcidency[u].delete(vid);
     this.incidency[v].delete(uid);
 
-    this.edgeAuxiliary.swapObjectsLast(edgeIndex);
-    this.edgeAuxiliary.popObjectToArray(this.redoStack);
-
-    this.undoStack.pushFrom(this.edges, edgeIndex * EDGE_SIZE, EDGE_SIZE);
-    this.undoStack.pushUint32(edgeIndex);
-    this.undoStack.pushUint8(Operation.DELETE_EDGE);
-
+    this.edgeAuxiliary.swapObjectWithLast(edgeIndex);
+    this.edgeAuxiliary.popObject();
 
     const id = this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
     this.whereEdge.delete(id);
@@ -334,6 +317,9 @@ export class DirectedGraph {
     this.incidency[vertexIndex] = this.incidency[this.vertexCount];
     this.outcidency[vertexIndex] = this.outcidency[this.vertexCount];
 
+    this.vertexAuxiliary.swapObjectWithLast(vertexIndex);
+    this.vertexAuxiliary.popObject();
+
     for (const outcidentEdgeId of this.outcidency[vertexIndex].values()) {
       const eIndex = this.whereEdge.get(outcidentEdgeId)!;
       const u = this.edges.getUint32(eIndex * EDGE_SIZE + EdgeProperty.U_INDEX);
@@ -351,18 +337,6 @@ export class DirectedGraph {
         (vertexIndex << 2) | (v & 3)
       );
     }
-
-    this.vertexAuxiliary.swapObjectsLast(vertexIndex);
-    this.vertexAuxiliary.popObjectToArray(this.undoStack);
-
-    this.undoStack.pushFrom(
-      this.vertices,
-      vertexIndex * VERTEX_SIZE,
-      VERTEX_SIZE
-    );
-
-    this.undoStack.pushUint32(vertexIndex);
-    this.undoStack.pushUint8(Operation.DELETE_VERTEX);
 
     const id = this.vertices.getUint32(
       vertexIndex * VERTEX_SIZE + VertexProperty.ID
@@ -433,13 +407,18 @@ export class DirectedGraph {
     await this.download();
     await transaction.callback();
 
-    if (!transaction.undo && this.changed) {
-      this.undoStack.pushUint32(this.opCount);
-      this.opCount = 0;
+    if (
+      !transaction.undo &&
+      !transaction.redo &&
+      (this.changed ||
+        this.vertexAuxiliary.changed ||
+        this.edgeAuxiliary.changed)
+    ) {
+      this.versioner.commit();
     }
 
     if (!transaction.redo && !transaction.undo) {
-      this.redoStack.length = 0;
+      this.versioner.clearRedo();
     }
 
     await this.upload();
@@ -461,17 +440,17 @@ export class DirectedGraph {
     await Promise.all([
       this.vertexCount > 0
         ? this.renderer.vertexData.write(
-          this.vertices.asFloat32Array(),
-          0,
-          this.vertexCount
-        )
+            this.vertices.asFloat32Array(),
+            0,
+            this.vertexCount
+          )
         : Promise.resolve(),
       this.edgeCount > 0
         ? this.renderer.edgeData.write(
-          this.edges.asFloat32Array(),
-          0,
-          this.edgeCount
-        )
+            this.edges.asFloat32Array(),
+            0,
+            this.edgeCount
+          )
         : Promise.resolve(),
     ]);
 
@@ -486,7 +465,7 @@ export class DirectedVertex {
   constructor(
     public readonly graph: DirectedGraph,
     public readonly id: number
-  ) { }
+  ) {}
 
   get index() {
     return this.graph.whereVertex.get(this.id)!;
@@ -526,7 +505,7 @@ export class DirectedVertex {
 }
 
 export class DirectedEdge {
-  constructor(public readonly graph: DirectedGraph, public id: number) { }
+  constructor(public readonly graph: DirectedGraph, public id: number) {}
 
   get index() {
     return this.graph.whereEdge.get(this.id)!;

@@ -21,8 +21,6 @@ import {
   MeshLineMaterial,
 } from "@lume/three-meshline";
 
-import { v4 } from "uuid";
-
 // @ts-ignore
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils";
 
@@ -161,7 +159,7 @@ export class Draw {
   static reset() {
     this.scene.children
       .filter((child) => (child as any).userData.temporary)
-      .forEach((child) => child.visible = false);
+      .forEach((child) => (child.visible = false));
   }
 
   static ruler(start: Vector3, end: Vector3) {

@@ -96,8 +96,9 @@ export class GraphText {
 
       this.points.material.uniforms.vertexData.value =
         vertexData.readable().texture;
-      this.points.material.uniforms.aux.value =
-        this.aux.buffer().readable().texture;
+      this.points.material.uniforms.aux.value = this.aux
+        .buffer()
+        .readable().texture;
       this.points.material.uniforms.fontAtlasCoords.value =
         this.font.atlasCoords.readable().texture;
       this.points.material.uniforms.edgeData.value =

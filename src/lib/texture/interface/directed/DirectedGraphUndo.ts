@@ -1,9 +1,14 @@
 import type { DynamicArray } from "../../DynamicArray";
 import type { Ids } from "../../Ids";
+import type { Auxiliary } from "../Auxiliary";
 import { EDGE_SIZE, EdgeProperty, VERTEX_SIZE, VertexProperty } from "../Constants";
 import { Operation } from "../Operation";
 
-type State = { vertexCount: number; edgeCount: number; changed: boolean };
+type State = {
+  vertexCount: number;
+  edgeCount: number;
+  changed: boolean;
+};
 
 export class DirectedGraphUndo {
   constructor(
@@ -15,19 +20,23 @@ export class DirectedGraphUndo {
     private undoStack: DynamicArray,
     private redoStack: DynamicArray,
     private whereVertex: Ids<number>,
-    private whereEdge: Ids<number>
+    private whereEdge: Ids<number>,
+    private vertexAuxiliary: Auxiliary,
+    private edgeAuxiliary: Auxiliary
   ) { }
 
   private undoAddVertex() {
     this.state.vertexCount--;
 
     // Push vertex data to redo stack
+    this.vertexAuxiliary.popObjectToArray(this.redoStack);
     this.redoStack.pushFrom(this.vertices, this.state.vertexCount * VERTEX_SIZE, VERTEX_SIZE);
     this.redoStack.pushUint8(Operation.ADD_VERTEX);
 
     // Free the vertex id
     const id = this.vertices.getUint32(this.state.vertexCount * VERTEX_SIZE + VertexProperty.ID);
     this.whereVertex.delete(id);
+
 
     // Delete the incidency data of the vertex
     this.outcidency.pop();
@@ -41,6 +50,7 @@ export class DirectedGraphUndo {
     this.state.edgeCount--;
 
     // Push edge data to redo stack
+    this.edgeAuxiliary.popObjectToArray(this.redoStack);
     this.redoStack.pushFrom(this.edges, this.state.edgeCount * EDGE_SIZE, EDGE_SIZE);
     this.redoStack.pushUint8(Operation.ADD_EDGE);
 
@@ -82,6 +92,8 @@ export class DirectedGraphUndo {
     // Get the id of the moved vertex
     const swappedId = this.vertices.getUint32(vertexIndex * VERTEX_SIZE + VertexProperty.ID);
     this.vertices.popFrom(this.undoStack, vertexIndex * VERTEX_SIZE, VERTEX_SIZE);
+    this.vertexAuxiliary.pushObjectFromArray(this.undoStack);
+    this.vertexAuxiliary.swapObjectsLast(vertexIndex);
 
     // Generate new id and make sure it matches the old one (it should!)
     const id = this.vertices.getUint32(vertexIndex * VERTEX_SIZE + VertexProperty.ID);
@@ -126,6 +138,8 @@ export class DirectedGraphUndo {
 
     const swappedId = this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
     this.edges.popFrom(this.undoStack, edgeIndex * EDGE_SIZE, EDGE_SIZE);
+    this.edgeAuxiliary.pushObjectFromArray(this.undoStack);
+    this.edgeAuxiliary.swapObjectsLast(edgeIndex);
 
     const id = this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
     const nid = this.whereEdge.create(edgeIndex); // Ids implementation guarantees the id will be the same as last time
@@ -155,34 +169,36 @@ export class DirectedGraphUndo {
     this.state.edgeCount++;
   }
 
-  undo() {
-    if (this.undoStack.length === 0) {
-      console.warn('Nothing to undo');
-      return;
+  undo(operation: Operation) {
+    // if (this.undoStack.length === 0) {
+    //   console.warn('Nothing to undo');
+    //   return;
+    // }
+
+    // const opCount = this.undoStack.popUint32();
+
+    // for (let i = 0; i < opCount; i++) {
+    // const type = this.undoStack.popUint8();
+
+    switch (operation) {
+      case Operation.ADD_VERTEX:
+        this.undoAddVertex();
+        return true;
+      case Operation.ADD_EDGE:
+        this.undoAddEdge();
+        return true;
+      case Operation.DELETE_VERTEX:
+        this.undoDeleteVertex();
+        return true;
+      case Operation.DELETE_EDGE:
+        this.undoDeleteEdge();
+        return true;
+      default:
+        return false;
     }
+    // }
 
-    const opCount = this.undoStack.popUint32();
-
-    for (let i = 0; i < opCount; i++) {
-      const type = this.undoStack.popUint8();
-
-      switch (type) {
-        case Operation.ADD_VERTEX:
-          this.undoAddVertex();
-          break;
-        case Operation.ADD_EDGE:
-          this.undoAddEdge();
-          break;
-        case Operation.DELETE_VERTEX:
-          this.undoDeleteVertex();
-          break;
-        case Operation.DELETE_EDGE:
-          this.undoDeleteEdge();
-          break;
-      }
-    }
-
-    this.state.changed = this.state.changed || opCount > 0;
-    this.redoStack.pushUint32(opCount);
+    // this.state.changed = this.state.changed || opCount > 0;
+    // this.redoStack.pushUint32(opCount);
   }
 }

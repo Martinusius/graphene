@@ -12,6 +12,7 @@ import { textFragment, textVertex } from "./text.glsl";
 import { textEdgeFragment, textEdgeVertex } from "./textEdge.glsl";
 
 import { uintBitsToFloat } from "../reinterpret";
+import type { AuxiliaryRef } from "../interface/Auxiliary";
 
 type CountInfo = { count: number };
 
@@ -32,7 +33,8 @@ export class GraphText {
     return new Vector2(uintBitsToFloat(array[0]), uintBitsToFloat(array[1]));
   }
 
-  public auxBuffer: ComputeBuffer;
+  // public auxBuffer: ComputeBuffer;
+  public aux: AuxiliaryRef;
 
   constructor(
     three: Three,
@@ -41,7 +43,12 @@ export class GraphText {
     vertexData: ComputeBuffer,
     edgeData?: ComputeBuffer
   ) {
-    this.auxBuffer = edgeData ?? vertexData;
+    // this.auxBuffer = edgeData ?? vertexData;
+
+    this.aux = {
+      buffer: () => edgeData ?? vertexData,
+      channel: () => 3,
+    };
 
     const geometry = new BufferGeometry();
 
@@ -56,10 +63,10 @@ export class GraphText {
         resolution: { value: three.resolution },
         vertexDataSize: { value: vertexData.width },
         edgeDataSize: { value: edgeData?.width ?? 0 },
-        auxSize: { value: this.auxBuffer.width },
+        auxSize: { value: this.aux.buffer().width },
         fontAtlasCoordsSize: { value: 2048 },
         alphabetSize: { value: 64 },
-        auxIndex: { value: 3 },
+        auxChannel: { value: this.aux.channel() },
         maxDigits: { value: GraphText.defaultMaxDigits },
         size: { value: 40 },
         overflowString: { value: this.encodeString("Overflow") },
@@ -83,13 +90,14 @@ export class GraphText {
       this.points.material.uniforms.vertexDataSize.value = vertexData.width;
       this.points.material.uniforms.fontAtlasCoordsSize.value =
         this.font.atlasCoords.width;
-      this.points.material.uniforms.auxSize.value = this.auxBuffer.width;
+      this.points.material.uniforms.auxSize.value = this.aux.buffer().width;
+      this.points.material.uniforms.auxChannel.value = this.aux.channel();
       this.points.material.uniforms.edgeDataSize.value = edgeData?.width ?? 0;
 
       this.points.material.uniforms.vertexData.value =
         vertexData.readable().texture;
       this.points.material.uniforms.aux.value =
-        this.auxBuffer.readable().texture;
+        this.aux.buffer().readable().texture;
       this.points.material.uniforms.fontAtlasCoords.value =
         this.font.atlasCoords.readable().texture;
       this.points.material.uniforms.edgeData.value =
@@ -113,14 +121,6 @@ export class GraphText {
 
   get maxDigits() {
     return this.points.material.uniforms.maxDigits.value;
-  }
-
-  set auxIndex(value: number) {
-    this.points.material.uniforms.auxIndex.value = value;
-  }
-
-  get auxIndex() {
-    return this.points.material.uniforms.auxIndex.value;
   }
 }
 

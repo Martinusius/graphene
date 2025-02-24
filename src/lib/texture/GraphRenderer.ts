@@ -31,7 +31,7 @@ export type RaycastResult = {
 };
 
 export class GraphRenderer {
-  private compute: Compute;
+  public compute: Compute;
 
   public vertexData: ComputeBuffer;
   public edgeData: ComputeBuffer;

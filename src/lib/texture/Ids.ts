@@ -8,7 +8,6 @@ export class Ids<V> {
       return this.free.pop()!;
     }
 
-
     return this.values.push(value);
   }
 

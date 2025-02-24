@@ -1,5 +1,6 @@
 import type { DynamicArray } from "../../DynamicArray";
 import type { Ids } from "../../Ids";
+import type { Auxiliary } from "../Auxiliary";
 import { EDGE_SIZE, EdgeProperty, VERTEX_SIZE, VertexProperty } from "../Constants";
 import { Operation } from "../Operation";
 
@@ -15,7 +16,9 @@ export class DirectedGraphRedo {
     private undoStack: DynamicArray,
     private redoStack: DynamicArray,
     private whereVertex: Ids<number>,
-    private whereEdge: Ids<number>
+    private whereEdge: Ids<number>,
+    private vertexAuxiliary: Auxiliary,
+    private edgeAuxiliary: Auxiliary
   ) { }
 
   private redoAddVertex() {
@@ -29,6 +32,9 @@ export class DirectedGraphRedo {
 
     this.vertices.pushFrom(this.redoStack, this.redoStack.length - VERTEX_SIZE, VERTEX_SIZE);
     this.redoStack.length -= VERTEX_SIZE;
+
+    this.vertexAuxiliary.pushObjectFromArray(this.redoStack);
+
 
     this.state.vertexCount++;
 
@@ -50,6 +56,8 @@ export class DirectedGraphRedo {
 
     this.edges.pushFrom(this.redoStack, this.redoStack.length - EDGE_SIZE, EDGE_SIZE);
     this.redoStack.length -= EDGE_SIZE;
+
+    this.edgeAuxiliary.pushObjectFromArray(this.redoStack);
 
     const existsInverse = this.edges.getUint32(this.state.edgeCount * EDGE_SIZE) & 2;
 
@@ -90,6 +98,9 @@ export class DirectedGraphRedo {
       this.edges.setUint32(edgeIndex * EDGE_SIZE + EdgeProperty.V_INDEX, vertexIndex << 2 | v & 3);
     }
 
+    this.vertexAuxiliary.swapObjectsLast(vertexIndex);
+    this.vertexAuxiliary.popObjectToArray(this.undoStack);
+
     this.undoStack.pushFrom(this.vertices, vertexIndex * VERTEX_SIZE, VERTEX_SIZE);
     this.undoStack.pushUint32(vertexIndex);
     this.undoStack.pushUint8(Operation.DELETE_VERTEX);
@@ -129,6 +140,9 @@ export class DirectedGraphRedo {
     this.outcidency[uIndex].delete(vid);
     this.incidency[vIndex].delete(uid);
 
+    this.edgeAuxiliary.swapObjectsLast(edgeIndex);
+    this.edgeAuxiliary.popObjectToArray(this.undoStack);
+
     this.undoStack.pushFrom(this.edges, edgeIndex * EDGE_SIZE, EDGE_SIZE);
     this.undoStack.pushUint32(edgeIndex);
     this.undoStack.pushUint8(Operation.DELETE_EDGE);
@@ -140,33 +154,35 @@ export class DirectedGraphRedo {
     this.whereEdge.set(swappedId, edgeIndex);
   }
 
-  redo() {
-    if (this.redoStack.length === 0) {
-      console.warn('Nothing to redo');
-      return;
+  redo(operation: Operation) {
+    // if (this.redoStack.length === 0) {
+    //   console.warn('Nothing to redo');
+    //   return;
+    // }
+
+    // const opCount = this.redoStack.popUint32();
+    // for (let i = 0; i < opCount; i++) {
+    //   const type = this.redoStack.popUint8();
+
+    switch (operation) {
+      case Operation.ADD_VERTEX:
+        this.redoAddVertex();
+        return true;
+      case Operation.ADD_EDGE:
+        this.redoAddEdge();
+        return true;
+      case Operation.DELETE_VERTEX:
+        this.redoDeleteVertex();
+        return true;
+      case Operation.DELETE_EDGE:
+        this.redoDeleteEdge();
+        return true;
+      default:
+        return false;
     }
+    // }
 
-    const opCount = this.redoStack.popUint32();
-    for (let i = 0; i < opCount; i++) {
-      const type = this.redoStack.popUint8();
-
-      switch (type) {
-        case Operation.ADD_VERTEX:
-          this.redoAddVertex();
-          break;
-        case Operation.ADD_EDGE:
-          this.redoAddEdge();
-          break;
-        case Operation.DELETE_VERTEX:
-          this.redoDeleteVertex();
-          break;
-        case Operation.DELETE_EDGE:
-          this.redoDeleteEdge();
-          break;
-      }
-    }
-
-    this.state.changed = this.state.changed || opCount > 0;
-    this.state.opCount += opCount;
+    // this.state.changed = this.state.changed || opCount > 0;
+    // this.state.opCount += opCount;
   }
 }

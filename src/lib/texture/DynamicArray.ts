@@ -24,7 +24,6 @@ export class DynamicArray {
     if (this._length + 4 > this.array.length) this.resize(this._length + 4);
 
     this.view.setUint32(this._length, setUint32Fix(value), true);
-    // this.view.setFloat32(this._length, value, true);
 
     this._length += 4;
   }

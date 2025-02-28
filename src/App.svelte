@@ -88,11 +88,43 @@
     // generator.spacing *= 2;
     // generator.randomness = 20;
 
+    function primes(n: number): number[] {
+      const primes: number[] = [];
+      let candidate = 2; // Start checking from the first prime number
+
+      // Continue until we have collected n prime numbers
+      while (primes.length < n) {
+        let isPrime = true;
+        const sqrtCandidate = Math.sqrt(candidate);
+
+        // Check divisibility only up to the square root of candidate
+        for (let i = 2; i <= sqrtCandidate; i++) {
+          if (candidate % i === 0) {
+            isPrime = false;
+            break;
+          }
+        }
+
+        // If candidate is prime, add it to the list
+        if (isPrime) {
+          primes.push(candidate);
+        }
+
+        candidate++; // Move to the next number
+      }
+
+      return primes;
+    }
+
     // generator.empty(1000);
-    generator.grid(10).then(() => {
+    generator.grid(2).then(() => {
       gi.transaction(() => {
         const semtex = gi.vertexAuxiliary.createProperty();
-        semtex.set(0, 71828);
+        // semtex.set(0, 71828);
+        primes(gi.vertexCount).forEach((prime, index) => {
+          semtex.set(index, prime);
+        });
+
         graph.text.vertices.aux = semtex.ref;
         console.log("set");
       });

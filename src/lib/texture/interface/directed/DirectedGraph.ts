@@ -58,9 +58,6 @@ export class DirectedGraph {
 
   public opCount = 0;
 
-  // private undoManager: DirectedGraphUndo;
-  // private redoManager: DirectedGraphRedo;
-
   public vertexAuxiliary: Auxiliary;
   public edgeAuxiliary: Auxiliary;
 
@@ -98,46 +95,21 @@ export class DirectedGraph {
     [this.renderer.text.vertices, this.renderer.text.edges].forEach((text) => {
       this.versioner.track(text, "aux");
     });
-
-    // this.vertexAuxiliary = new Auxiliary(this.renderer.compute, false, this);
-    // this.edgeAuxiliary = new Auxiliary(this.renderer.compute, true, this);
-
-    // this.undoManager = new DirectedGraphUndo(
-    //   this.outcidency,
-    //   this.incidency,
-    //   this,
-    //   this.vertices,
-    //   this.edges,
-    //   this.undoStack,
-    //   this.redoStack,
-    //   this.whereVertex,
-    //   this.whereEdge,
-    //   this.vertexAuxiliary,
-    //   this.edgeAuxiliary
-    // );
-
-    // this.redoManager = new DirectedGraphRedo(
-    //   this.outcidency,
-    //   this.incidency,
-    //   this,
-    //   this.vertices,
-    //   this.edges,
-    //   this.undoStack,
-    //   this.redoStack,
-    //   this.whereVertex,
-    //   this.whereEdge,
-    //   this.vertexAuxiliary,
-    //   this.edgeAuxiliary
-    // );
   }
 
   undo() {
     this.changed = true;
+    this.vertexAuxiliary.changed = true;
+    this.edgeAuxiliary.changed = true;
+
     this.versioner.undo();
   }
 
   redo() {
     this.changed = true;
+    this.vertexAuxiliary.changed = true;
+    this.edgeAuxiliary.changed = true;
+
     this.versioner.redo();
   }
 
@@ -472,19 +444,29 @@ export class DirectedVertex {
   }
 
   get x() {
-    return this.graph.vertices.getFloat32(this.index * 16);
+    return this.graph.vertices.getFloat32(
+      this.index * VERTEX_SIZE + VertexProperty.POSITION_X
+    );
   }
 
   get y() {
-    return this.graph.vertices.getFloat32(this.index * 16 + 4);
+    return this.graph.vertices.getFloat32(
+      this.index * VERTEX_SIZE + VertexProperty.POSITION_Y
+    );
   }
 
   set x(x: number) {
-    this.graph.vertices.setFloat32(this.index * 16, x);
+    this.graph.vertices.setFloat32(
+      this.index * VERTEX_SIZE + VertexProperty.POSITION_X,
+      x
+    );
   }
 
   set y(y: number) {
-    this.graph.vertices.setFloat32(this.index * 16 + 4, y);
+    this.graph.vertices.setFloat32(
+      this.index * VERTEX_SIZE + VertexProperty.POSITION_Y,
+      y
+    );
   }
 
   get out() {
@@ -512,14 +494,24 @@ export class DirectedEdge {
   }
 
   get u() {
-    const index = this.graph.edges.getUint32(this.index * 16) >> 2;
-    const id = this.graph.vertices.getUint32(index * 16 + 12);
+    const index =
+      this.graph.edges.getUint32(
+        this.index * EDGE_SIZE + EdgeProperty.U_INDEX
+      ) >> 2;
+    const id = this.graph.vertices.getUint32(
+      index * VERTEX_SIZE + VertexProperty.ID
+    );
     return this.graph.getVertex(id)!;
   }
 
   get v() {
-    const index = this.graph.edges.getUint32(this.index * 16 + 4) >> 2;
-    const id = this.graph.vertices.getUint32(index * 16 + 12);
+    const index =
+      this.graph.edges.getUint32(
+        this.index * EDGE_SIZE + EdgeProperty.V_INDEX
+      ) >> 2;
+    const id = this.graph.vertices.getUint32(
+      index * VERTEX_SIZE + VertexProperty.ID
+    );
     return this.graph.getVertex(id)!;
   }
 

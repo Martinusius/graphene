@@ -18,9 +18,6 @@ function clone(object: any): any {
 
   // Default object behavior: Shallow copy
   return { ...object };
-
-  // console.error("Unable to clone", object);
-  // throw Error("");
 }
 
 type Key = string | number | symbol;
@@ -61,6 +58,7 @@ export class Versioner {
 
       tracked.redo.push(clone(tracked.object[tracked.property]));
       tracked.object[tracked.property] = tracked.undo.pop();
+
       tracked.last = clone(tracked.object[tracked.property]);
     });
   }

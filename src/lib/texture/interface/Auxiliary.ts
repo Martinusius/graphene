@@ -21,29 +21,48 @@ export class Auxiliary {
     this.changed = true;
     this.objectCount++;
 
-    this.arrays.forEach((array) => array.pushUint32(0));
+    this.arrays.forEach(array => {
+      for(let i = 0; i < 4; i++)
+        array.pushUint32(0);
+    })
+
+    // for (let i = 0; i < this.propertyCount; i++) {
+    //   const array = this.arrays[Math.floor(i / 4)];
+    //   array.pushUint32(0);
+    // }
   }
 
   popObject() {
     this.changed = true;
     this.objectCount--;
 
-    this.arrays.forEach((array) => array.popUint32());
+    // for (let i = this.propertyCount - 1; i >= 0; i--) {
+    //   const array = this.arrays[Math.floor(i / 4)];
+    //   array.popUint32();
+    // }
+    this.arrays.forEach(array => {
+      for(let i = 0; i < 4; i++)
+        array.popUint32();
+    })
   }
 
   swapObjects(i: number, j: number) {
     this.changed = true;
 
-    const iChannel = i % 4;
-    const jChannel = j % 4;
-
     this.arrays.forEach((array) => {
-      const temp = array.getUint32(i * 16 + iChannel * 4);
-      array.setUint32(
-        i * 16 + iChannel * 4,
-        array.getUint32(j * 16 + jChannel * 4)
-      );
-      array.setUint32(j * 16 + jChannel * 4, temp);
+      const temp = [];
+
+      for (let k = 0; k < 4; k++) {
+        temp.push(array.getUint32(i * 16 + k * 4));
+      }
+
+      for (let k = 0; k < 4; k++) {
+        array.setUint32(i * 16 + k * 4, array.getUint32(j * 16 + k * 4));
+      }
+
+      for (let k = 0; k < 4; k++) {
+        array.setUint32(j * 16 + k * 4, temp[k]);
+      }
     });
   }
 
@@ -135,6 +154,13 @@ export class Auxiliary {
   }
 
   async upload() {
+    // Cleanup after undo/redo
+    while (this.buffers.length > this.arrays.length)
+      this.buffers.pop()?.dispose();
+
+    while (this.arrays.length > this.buffers.length)
+      this.buffers.push(this.compute.createBuffer(this.objectCount));
+
     if (!this.changed || this.buffers.length === 0 || this.objectCount === 0)
       return;
 
@@ -142,8 +168,8 @@ export class Auxiliary {
       this.buffers.forEach((buffer) => buffer.resizeErase(this.objectCount));
 
     await Promise.all(
-      this.buffers.map((buffer, i) =>
-        buffer.write(this.arrays[i].asFloat32Array(), 0, this.objectCount)
+      this.arrays.map((array, i) =>
+        this.buffers[i].write(array.asFloat32Array(), 0, this.objectCount)
       )
     );
 

@@ -112,13 +112,13 @@ export class DynamicArray {
     );
   }
 
-  // uints(n: number) {
-  //   const uints = [];
-  //   for (let i = 0; i < n; i++) {
-  //     uints.push(this.getUint32(i * 4));
-  //   }
-  //   return uints;
-  // }
+  uints(n = this.length / 4) {
+    const uints = [];
+    for (let i = 0; i < n; i++) {
+      uints.push(this.getUint32(i * 4));
+    }
+    return uints;
+  }
 
   asFloat32Array() {
     return new Float32Array(this.array.buffer);

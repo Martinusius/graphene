@@ -30,13 +30,7 @@ export class Graph {
 
   public changed = false;
 
-  // public undoStack = new DynamicArray(1024);
-  // public redoStack = new DynamicArray(1024);
-
   public opCount = 0;
-
-  // private undoManager: GraphUndo;
-  // private redoManager: GraphRedo;
 
   private versioner = new Versioner();
 
@@ -53,40 +47,16 @@ export class Graph {
       "whereVertex",
       "whereEdge"
     );
-
-    // this.undoManager = new GraphUndo(
-    //   this.incidency,
-    //   this,
-    //   this.vertices,
-    //   this.edges,
-    //   this.undoStack,
-    //   this.redoStack,
-    //   this.whereVertex,
-    //   this.whereEdge
-    // );
-
-    // this.redoManager = new GraphRedo(
-    //   this.incidency,
-    //   this,
-    //   this.vertices,
-    //   this.edges,
-    //   this.undoStack,
-    //   this.redoStack,
-    //   this.whereVertex,
-    //   this.whereEdge
-    // );
   }
 
   undo() {
     this.changed = true;
     this.versioner.undo();
-    // this.undoManager.undo();
   }
 
   redo() {
     this.changed = true;
     this.versioner.redo();
-    // this.redoManager.redo();
   }
 
   merge(vertices: Vertex[]) {
@@ -158,8 +128,6 @@ export class Graph {
     this.incidency[uIndex].set(v.id, id);
     this.incidency[vIndex].set(u.id, id);
 
-    // this.undoStack.pushUint8(Operation.ADD_EDGE);
-
     return new Edge(this, id);
   }
 
@@ -177,8 +145,6 @@ export class Graph {
     this.vertices.pushUint32(id);
 
     this.vertexCount++;
-
-    // this.undoStack.pushUint8(Operation.ADD_VERTEX);
 
     return new Vertex(this, id);
   }
@@ -200,10 +166,6 @@ export class Graph {
 
     this.incidency[u].delete(vid);
     this.incidency[v].delete(uid);
-
-    // this.undoStack.pushFrom(this.edges, edgeIndex * EDGE_SIZE, EDGE_SIZE);
-    // this.undoStack.pushUint32(edgeIndex);
-    // this.undoStack.pushUint8(Operation.DELETE_EDGE);
 
     const id = this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
     this.whereEdge.delete(id);
@@ -252,14 +214,6 @@ export class Graph {
         );
       }
     }
-
-    // this.undoStack.pushFrom(
-    //   this.vertices,
-    //   vertexIndex * VERTEX_SIZE,
-    //   VERTEX_SIZE
-    // );
-    // this.undoStack.pushUint32(vertexIndex);
-    // this.undoStack.pushUint8(Operation.DELETE_VERTEX);
 
     const id = this.vertices.getUint32(
       vertexIndex * VERTEX_SIZE + VertexProperty.ID
@@ -328,17 +282,9 @@ export class Graph {
 
     if (!transaction.undo && !transaction.redo && this.changed) {
       this.versioner.commit();
-
-      // this.undoStack.pushUint32(this.opCount);
-      // this.opCount = 0;
     }
 
-    // if (transaction.undo) {
-    //   console.log("undos", this.vertexCount);
-    // }
-
     if (!transaction.redo && !transaction.undo) {
-      // this.redoStack.length = 0;
       this.versioner.clearRedo();
     }
 

@@ -2,6 +2,7 @@ import { DynamicArray } from "../../DynamicArray";
 import type { GraphRenderer } from "../../GraphRenderer";
 import { Ids } from "../../Ids";
 import { Versioner } from "../../Versioner";
+import { Auxiliary } from "../Auxiliary";
 import {
   EDGE_SIZE,
   EdgeProperty,
@@ -22,8 +23,8 @@ export class Graph {
   public vertexCount = 0;
   public edgeCount = 0;
 
-  public vertices = new DynamicArray(1024);
-  public edges = new DynamicArray(1024);
+  public vertexData = new DynamicArray(1024);
+  public edgeData = new DynamicArray(1024);
 
   public whereVertex = new Ids<number>();
   public whereEdge = new Ids<number>();
@@ -31,6 +32,9 @@ export class Graph {
   public changed = false;
 
   public opCount = 0;
+
+  private vertexAuxiliary: Auxiliary;
+  private edgeAuxiliary: Auxiliary;
 
   private versioner = new Versioner();
 
@@ -42,20 +46,39 @@ export class Graph {
       "incidency",
       "vertexCount",
       "edgeCount",
-      "vertices",
-      "edges",
+      "vertexData",
+      "edgeData",
       "whereVertex",
       "whereEdge"
     );
+
+    this.vertexAuxiliary = new Auxiliary(this.renderer.compute);
+    this.edgeAuxiliary = new Auxiliary(this.renderer.compute);
+
+    [this.vertexAuxiliary, this.edgeAuxiliary].forEach((auxiliary) => {
+      this.versioner.track(
+        auxiliary,
+        "arrays",
+        "whereProperty",
+        "objectCount",
+        "propertyCount"
+      );
+    });
   }
 
   undo() {
     this.changed = true;
+    this.vertexAuxiliary.changed = true;
+    this.edgeAuxiliary.changed = true;
+
     this.versioner.undo();
   }
 
   redo() {
     this.changed = true;
+    this.vertexAuxiliary.changed = true;
+    this.edgeAuxiliary.changed = true;
+
     this.versioner.redo();
   }
 
@@ -118,15 +141,17 @@ export class Graph {
 
     const id = this.whereEdge.create(this.edgeCount);
 
-    this.edges.pushUint32(uIndex << 2);
-    this.edges.pushUint32(vIndex << 2);
-    this.edges.pushUint32(0);
-    this.edges.pushUint32(id);
+    this.edgeData.pushUint32(uIndex << 2);
+    this.edgeData.pushUint32(vIndex << 2);
+    this.edgeData.pushUint32(0);
+    this.edgeData.pushUint32(id);
 
-    this.edgeCount++;
+    this.edgeAuxiliary.pushObject();
 
     this.incidency[uIndex].set(v.id, id);
     this.incidency[vIndex].set(u.id, id);
+
+    this.edgeCount++;
 
     return new Edge(this, id);
   }
@@ -139,10 +164,12 @@ export class Graph {
 
     const id = this.whereVertex.create(this.vertexCount);
 
-    this.vertices.pushFloat32(x ?? random(100));
-    this.vertices.pushFloat32(y ?? random(100));
-    this.vertices.pushUint32(0);
-    this.vertices.pushUint32(id);
+    this.vertexData.pushFloat32(x ?? random(100));
+    this.vertexData.pushFloat32(y ?? random(100));
+    this.vertexData.pushUint32(0);
+    this.vertexData.pushUint32(id);
+
+    this.vertexAuxiliary.pushObject();
 
     this.vertexCount++;
 
@@ -158,27 +185,30 @@ export class Graph {
     const edgeIndex = e.index;
 
     const u =
-      this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.U_INDEX) >> 2;
+      this.edgeData.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.U_INDEX) >> 2;
     const v =
-      this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.V_INDEX) >> 2;
-    const uid = this.vertices.getUint32(u * VERTEX_SIZE + VertexProperty.ID);
-    const vid = this.vertices.getUint32(v * VERTEX_SIZE + VertexProperty.ID);
+      this.edgeData.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.V_INDEX) >> 2;
+    const uid = this.vertexData.getUint32(u * VERTEX_SIZE + VertexProperty.ID);
+    const vid = this.vertexData.getUint32(v * VERTEX_SIZE + VertexProperty.ID);
 
     this.incidency[u].delete(vid);
     this.incidency[v].delete(uid);
 
-    const id = this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
+    this.edgeAuxiliary.swapObjectWithLast(edgeIndex);
+    this.edgeAuxiliary.popObject();
+
+    const id = this.edgeData.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
     this.whereEdge.delete(id);
 
-    this.edges.setFrom(
-      this.edges,
+    this.edgeData.setFrom(
+      this.edgeData,
       this.edgeCount * EDGE_SIZE,
       edgeIndex * EDGE_SIZE,
       EDGE_SIZE
     );
-    this.edges.length -= EDGE_SIZE;
+    this.edgeData.length -= EDGE_SIZE;
 
-    const swappedId = this.edges.getUint32(
+    const swappedId = this.edgeData.getUint32(
       edgeIndex * EDGE_SIZE + EdgeProperty.ID
     );
     this.whereEdge.set(swappedId, edgeIndex);
@@ -196,39 +226,42 @@ export class Graph {
 
     this.incidency[vertexIndex] = this.incidency[this.vertexCount];
 
+    this.vertexAuxiliary.swapObjectWithLast(vertexIndex);
+    this.vertexAuxiliary.popObject();
+
     for (const incidentEdgeId of this.incidency[vertexIndex].values()) {
       const eIndex = this.whereEdge.get(incidentEdgeId)!;
 
-      const u = this.edges.getUint32(eIndex * EDGE_SIZE + EdgeProperty.U_INDEX);
-      const v = this.edges.getUint32(eIndex * EDGE_SIZE + EdgeProperty.V_INDEX);
+      const u = this.edgeData.getUint32(eIndex * EDGE_SIZE + EdgeProperty.U_INDEX);
+      const v = this.edgeData.getUint32(eIndex * EDGE_SIZE + EdgeProperty.V_INDEX);
 
       if (u >> 2 === this.vertexCount) {
-        this.edges.setUint32(
+        this.edgeData.setUint32(
           eIndex * EDGE_SIZE + EdgeProperty.U_INDEX,
           (vertexIndex << 2) | (u & 3)
         );
       } else if (v >> 2 === this.vertexCount) {
-        this.edges.setUint32(
+        this.edgeData.setUint32(
           eIndex * EDGE_SIZE + EdgeProperty.V_INDEX,
           (vertexIndex << 2) | (v & 3)
         );
       }
     }
 
-    const id = this.vertices.getUint32(
+    const id = this.vertexData.getUint32(
       vertexIndex * VERTEX_SIZE + VertexProperty.ID
     );
     this.whereVertex.delete(id);
 
-    this.vertices.setFrom(
-      this.vertices,
+    this.vertexData.setFrom(
+      this.vertexData,
       this.vertexCount * VERTEX_SIZE,
       vertexIndex * VERTEX_SIZE,
       VERTEX_SIZE
     );
-    this.vertices.length -= VERTEX_SIZE;
+    this.vertexData.length -= VERTEX_SIZE;
 
-    const swappedId = this.vertices.getUint32(
+    const swappedId = this.vertexData.getUint32(
       vertexIndex * VERTEX_SIZE + VertexProperty.ID
     );
     this.whereVertex.set(swappedId, vertexIndex);
@@ -256,8 +289,8 @@ export class Graph {
       this.renderer.edgeData.read(),
     ]);
 
-    this.vertices.buffer = vertexData.buffer;
-    this.edges.buffer = edgeData.buffer;
+    this.vertexData.buffer = vertexData.buffer;
+    this.edgeData.buffer = edgeData.buffer;
   }
 
   private transactions: Transaction[] = [];
@@ -273,14 +306,19 @@ export class Graph {
   }
 
   async tick() {
-    if (!this.transactions.length) return;
+    if (!this.transactions.length) return false;
 
     const transaction = this.transactions.shift()!;
 
     await this.download();
     await transaction.callback();
 
-    if (!transaction.undo && !transaction.redo && this.changed) {
+    if (!transaction.undo &&
+      !transaction.redo &&
+      (this.changed ||
+        this.vertexAuxiliary.changed ||
+        this.edgeAuxiliary.changed)
+    ) {
       this.versioner.commit();
     }
 
@@ -289,33 +327,37 @@ export class Graph {
     }
 
     await this.upload();
+    await this.vertexAuxiliary.upload();
+    await this.edgeAuxiliary.upload();
 
     transaction.resolve();
+
+    return true;
   }
 
   async upload() {
     if (!this.changed) return;
 
-    if (this.vertices.length > 16 * this.renderer.vertexData.size)
-      this.renderer.vertexData.resizeErase(this.vertices.length / 16);
+    if (this.vertexData.length > 16 * this.renderer.vertexData.size)
+      this.renderer.vertexData.resizeErase(this.vertexData.length / 16);
 
-    if (this.edges.length > 16 * this.renderer.edgeData.size)
-      this.renderer.edgeData.resizeErase(this.edges.length / 16);
+    if (this.edgeData.length > 16 * this.renderer.edgeData.size)
+      this.renderer.edgeData.resizeErase(this.edgeData.length / 16);
 
     await Promise.all([
       this.vertexCount > 0
         ? this.renderer.vertexData.write(
-            this.vertices.asFloat32Array(),
-            0,
-            this.vertexCount
-          )
+          this.vertexData.asFloat32Array(),
+          0,
+          this.vertexCount
+        )
         : Promise.resolve(),
       this.edgeCount > 0
         ? this.renderer.edgeData.write(
-            this.edges.asFloat32Array(),
-            0,
-            this.edgeCount
-          )
+          this.edgeData.asFloat32Array(),
+          0,
+          this.edgeCount
+        )
         : Promise.resolve(),
     ]);
 
@@ -324,29 +366,55 @@ export class Graph {
 
     this.changed = false;
   }
+
+  get vertices() {
+    const result: Vertex[] = [];
+
+    for (let i = 0; i < this.vertexCount; i++) {
+      result.push(new Vertex(this, this.vertexData.getUint32(i * VERTEX_SIZE + VertexProperty.ID)));
+    }
+
+    return result;
+  }
+
+  get edges() {
+    const result: Edge[] = [];
+
+    for (let i = 0; i < this.edgeCount; i++) {
+      result.push(new Edge(this, this.edgeData.getUint32(i * EDGE_SIZE + EdgeProperty.ID)));
+    }
+
+    return result;
+  }
 }
 
 export class Vertex {
-  constructor(public readonly graph: Graph, public readonly id: number) {}
+  constructor(public readonly graph: Graph, public readonly id: number) { }
 
   get index() {
     return this.graph.whereVertex.get(this.id)!;
   }
 
   get x() {
-    return this.graph.vertices.getFloat32(this.index * 16);
+    return this.graph.vertexData.getFloat32(this.index * VERTEX_SIZE + VertexProperty.POSITION_X);
   }
 
   get y() {
-    return this.graph.vertices.getFloat32(this.index * 16 + 4);
+    return this.graph.vertexData.getFloat32(this.index * VERTEX_SIZE + VertexProperty.POSITION_Y);
   }
 
   set x(x: number) {
-    this.graph.vertices.setFloat32(this.index * 16, x);
+    this.graph.changed = true;
+    this.graph.vertexData.setFloat32(this.index * VERTEX_SIZE + VertexProperty.POSITION_X, x);
   }
 
   set y(y: number) {
-    this.graph.vertices.setFloat32(this.index * 16 + 4, y);
+    this.graph.changed = true;
+    this.graph.vertexData.setFloat32(this.index * VERTEX_SIZE + VertexProperty.POSITION_Y, y);
+  }
+
+  get isSelected() {
+    return (this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS) & 1) === 1;
   }
 
   get edges() {
@@ -361,24 +429,28 @@ export class Vertex {
 }
 
 export class Edge {
-  constructor(public readonly graph: Graph, public id: number) {}
+  constructor(public readonly graph: Graph, public id: number) { }
 
   get index() {
     return this.graph.whereEdge.get(this.id)!;
   }
 
   get u() {
-    const index = this.graph.edges.getUint32(this.index * 16) >> 2;
-    const id = this.graph.vertices.getUint32(index * 16 + 12);
+    const index = this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.U_INDEX) >> 2;
+    const id = this.graph.vertexData.getUint32(index * VERTEX_SIZE + VertexProperty.ID);
 
     return this.graph.getVertex(id)!;
   }
 
   get v() {
-    const index = this.graph.edges.getUint32(this.index * 16 + 4) >> 2;
-    const id = this.graph.vertices.getUint32(index * 16 + 12);
+    const index = this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.V_INDEX) >> 2;
+    const id = this.graph.vertexData.getUint32(index * VERTEX_SIZE + VertexProperty.ID);
 
     return this.graph.getVertex(id)!;
+  }
+
+  get isSelected() {
+    return (this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS) & 1) === 1;
   }
 
   delete() {

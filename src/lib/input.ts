@@ -40,3 +40,30 @@ window.addEventListener('mousemove', (event) => {
 export function getMousePosition() {
   return { ...mouse };
 }
+
+export function onKeybind(keybind: string, callback: (event: KeyboardEvent) => void) {
+  const keys = keybind.replace(/\s/g, '').toLowerCase().split('+').reverse();
+
+  const specialKeys = ['ctrl', 'shift', 'alt', 'meta'];
+
+  const special = keys.filter(key => specialKeys.includes(key));
+  const notSpecial = keys.filter(key => !specialKeys.includes(key));
+
+  if (notSpecial.length === 0) {
+    throw new Error('No key specified');
+  }
+
+  if (notSpecial.length > 1) {
+    throw new Error('Only one regular key can be specified (you can use Ctrl, Shift, Alt and Meta as well)');
+  }
+
+
+  window.addEventListener('keydown', (event) => {
+    const areSpecialKeysPressed = special.every(key => event[key + 'Key' as 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey']);
+
+    if (!areSpecialKeysPressed) return;
+    if (notSpecial[0] !== event.key.toLowerCase()) return;
+
+    callback(event);
+  });
+}

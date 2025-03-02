@@ -1,11 +1,6 @@
-export function array<T = number>(size: number, value?: T): T[] {
-  return Array(size).fill(value ?? 0);
-}
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-export function repeat<T>(array: T[], count: number): T[] {
-  const result = [];
-  for (let i = 0; i < count; i++) {
-    result.push(...array);
-  }
-  return result;
+export function cn(...inputs: ClassValue[]) {
+	return twMerge(clsx(inputs));
 }

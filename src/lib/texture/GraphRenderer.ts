@@ -18,6 +18,7 @@ import type { ComputeBuffer } from "./compute/ComputeBuffer";
 import type { ComputeProgram } from "./compute/ComputeProgram";
 import { Font } from "./text/Font";
 import { Text } from "./text/Text";
+import { selectInfo } from "./selectInfo.glsl";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -58,7 +59,10 @@ export class GraphRenderer {
 
   public forces: Forces;
 
-  private counter: Counter;
+  // private counter: Counter;
+
+  private selectInfoProgram: ComputeProgram;
+  private selectInfoBuffers: ComputeBuffer[] = [];
 
   constructor(
     public readonly three: Three,
@@ -67,7 +71,10 @@ export class GraphRenderer {
   ) {
     this.compute = new Compute(three.renderer);
 
-    this.counter = new Counter(this.compute);
+    this.selectInfoProgram = this.compute.createProgram(selectInfo, { additive: true });
+    this.selectInfoBuffers = [this.compute.createBuffer(1), this.compute.createBuffer(1)];
+
+    // this.counter = new Counter(this.compute);
 
     // const verticesSize = Math.ceil(Math.sqrt(maxVertices));
     // const edgesSize = Math.ceil(Math.sqrt(maxEdges));
@@ -405,15 +412,38 @@ export class GraphRenderer {
 
 
 
-  async countSelected() {
-    const promises = [
-      this.counter.count(this.vertexData, 0),
-      this.counter.count(this.edgeData, 0)
-    ];
+  async selectionInfo() {
+    this.selectInfoProgram.setUniform('isVertices', true);
+    this.selectInfoProgram.setUniform('dataBuffer', this.vertexData);
+    this.selectInfoProgram.execute(this.selectInfoBuffers[0], this.vertices.count);
 
-    const [vertexCount, edgeCount] = await Promise.all(promises);
+    this.selectInfoProgram.setUniform('isVertices', false);
+    this.selectInfoProgram.setUniform('dataBuffer', this.edgeData);
+    this.selectInfoProgram.execute(this.selectInfoBuffers[1], this.edges.count);
 
-    console.log('vertexCount', vertexCount);
-    console.log('edgeCount', edgeCount);
+
+    const [vertexInfo, edgeInfo] = await Promise.all(this.selectInfoBuffers.map((buffer) => buffer.read()));
+
+    const vertexCount = vertexInfo[0];
+    const edgeCount = edgeInfo[0];
+
+    const averageVertexPosition = new Vector2(vertexInfo[2], vertexInfo[3]).divideScalar(vertexCount);
+
+    const result = {
+      vertexCount,
+      edgeCount,
+      vertexIndex: null as null | number,
+      edgeIndex: null as null | number,
+      averageVertexPosition
+    };
+
+    if (vertexCount === 1 && edgeCount === 0) {
+      result.vertexIndex = floatBitsToUint(vertexInfo[1]);
+    }
+    else if (vertexCount === 0 && edgeCount === 1) {
+      result.edgeIndex = floatBitsToUint(edgeInfo[1]);
+    }
+
+    return result;
   }
 }

@@ -187,7 +187,7 @@ export class DirectedGraph {
     this.edges.pushUint32(0);
     this.edges.pushUint32(id);
 
-    this.edgeCount++;
+    this.edgeAuxiliary.pushObject();
 
     // if inverse edge exists, make it dual
     if (inverseId) {
@@ -201,7 +201,8 @@ export class DirectedGraph {
     this.outcidency[uIndex].set(v.id, id);
     this.incidency[vIndex].set(u.id, id);
 
-    this.edgeAuxiliary.pushObject();
+    this.edgeCount++;
+
 
     return new DirectedEdge(this, id);
   }
@@ -332,8 +333,8 @@ export class DirectedGraph {
     this.outcidency.pop();
   }
 
-  getVertex(id: number): DirectedVertex | undefined {
-    if (!this.whereVertex.has(id)) return undefined;
+  getVertex(id: number): DirectedVertex {
+    if (!this.whereVertex.has(id)) return undefined as any;
     return new DirectedVertex(this, id);
   }
 
@@ -372,7 +373,7 @@ export class DirectedGraph {
   }
 
   async tick() {
-    if (!this.transactions.length) return;
+    if (!this.transactions.length) return false;
 
     const transaction = this.transactions.shift()!;
 
@@ -398,6 +399,8 @@ export class DirectedGraph {
     await this.edgeAuxiliary.upload();
 
     transaction.resolve();
+
+    return true;
   }
 
   async upload() {
@@ -412,17 +415,17 @@ export class DirectedGraph {
     await Promise.all([
       this.vertexCount > 0
         ? this.renderer.vertexData.write(
-            this.vertices.asFloat32Array(),
-            0,
-            this.vertexCount
-          )
+          this.vertices.asFloat32Array(),
+          0,
+          this.vertexCount
+        )
         : Promise.resolve(),
       this.edgeCount > 0
         ? this.renderer.edgeData.write(
-            this.edges.asFloat32Array(),
-            0,
-            this.edgeCount
-          )
+          this.edges.asFloat32Array(),
+          0,
+          this.edgeCount
+        )
         : Promise.resolve(),
     ]);
 
@@ -437,7 +440,7 @@ export class DirectedVertex {
   constructor(
     public readonly graph: DirectedGraph,
     public readonly id: number
-  ) {}
+  ) { }
 
   get index() {
     return this.graph.whereVertex.get(this.id)!;
@@ -456,6 +459,7 @@ export class DirectedVertex {
   }
 
   set x(x: number) {
+    this.graph.changed = true;
     this.graph.vertices.setFloat32(
       this.index * VERTEX_SIZE + VertexProperty.POSITION_X,
       x
@@ -463,6 +467,7 @@ export class DirectedVertex {
   }
 
   set y(y: number) {
+    this.graph.changed = true;
     this.graph.vertices.setFloat32(
       this.index * VERTEX_SIZE + VertexProperty.POSITION_Y,
       y
@@ -487,7 +492,7 @@ export class DirectedVertex {
 }
 
 export class DirectedEdge {
-  constructor(public readonly graph: DirectedGraph, public id: number) {}
+  constructor(public readonly graph: DirectedGraph, public id: number) { }
 
   get index() {
     return this.graph.whereEdge.get(this.id)!;

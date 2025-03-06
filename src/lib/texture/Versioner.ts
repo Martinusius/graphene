@@ -33,6 +33,14 @@ type TrackedObject = {
 export class Versioner {
   private tracked: TrackedObject[] = [];
 
+  isUndoable() {
+    return this.tracked.some((tracked) => tracked.undo.length > 0);
+  }
+
+  isRedoable() {
+    return this.tracked.some((tracked) => tracked.redo.length > 0);
+  }
+
   track<T>(object: T, ...properties: (keyof T)[]) {
     properties.forEach((property) => {
       this.tracked.push({

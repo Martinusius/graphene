@@ -48,8 +48,8 @@ export class DirectedGraph {
   public vertexCount = 0;
   public edgeCount = 0;
 
-  public vertices = new DynamicArray(1024);
-  public edges = new DynamicArray(1024);
+  public vertexData = new DynamicArray(1024);
+  public edgeData = new DynamicArray(1024);
 
   public whereVertex = new Ids<number>();
   public whereEdge = new Ids<number>();
@@ -61,7 +61,7 @@ export class DirectedGraph {
   public vertexAuxiliary: Auxiliary;
   public edgeAuxiliary: Auxiliary;
 
-  private versioner = new Versioner();
+  public versioner = new Versioner();
 
   constructor(public readonly renderer: GraphRenderer) {
     this.incidency = [];
@@ -73,8 +73,8 @@ export class DirectedGraph {
       "incidency",
       "vertexCount",
       "edgeCount",
-      "vertices",
-      "edges",
+      "vertexData",
+      "edgeData",
       "whereVertex",
       "whereEdge"
     );
@@ -182,19 +182,19 @@ export class DirectedGraph {
 
     const inverseId = this.incidency[uIndex].get(v.id);
 
-    this.edges.pushUint32((uIndex << 2) | (inverseId ? 2 : 0));
-    this.edges.pushUint32((vIndex << 2) | 1);
-    this.edges.pushUint32(0);
-    this.edges.pushUint32(id);
+    this.edgeData.pushUint32((uIndex << 2) | (inverseId ? 2 : 0));
+    this.edgeData.pushUint32((vIndex << 2) | 1);
+    this.edgeData.pushUint32(0);
+    this.edgeData.pushUint32(id);
 
     this.edgeAuxiliary.pushObject();
 
     // if inverse edge exists, make it dual
     if (inverseId) {
       const inverseIndex = this.whereEdge.get(inverseId)!;
-      this.edges.setUint32(
+      this.edgeData.setUint32(
         inverseIndex * EDGE_SIZE,
-        this.edges.getUint32(inverseIndex * EDGE_SIZE) | 2
+        this.edgeData.getUint32(inverseIndex * EDGE_SIZE) | 2
       );
     }
 
@@ -216,10 +216,10 @@ export class DirectedGraph {
 
     const id = this.whereVertex.create(this.vertexCount);
 
-    this.vertices.pushFloat32(x ?? random(100));
-    this.vertices.pushFloat32(y ?? random(100));
-    this.vertices.pushUint32(0);
-    this.vertices.pushUint32(id);
+    this.vertexData.pushFloat32(x ?? random(100));
+    this.vertexData.pushFloat32(y ?? random(100));
+    this.vertexData.pushUint32(0);
+    this.vertexData.pushUint32(id);
 
     this.vertexAuxiliary.pushObject();
 
@@ -237,19 +237,19 @@ export class DirectedGraph {
     const edgeIndex = e.index;
 
     const u =
-      this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.U_INDEX) >> 2;
+      this.edgeData.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.U_INDEX) >> 2;
     const v =
-      this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.V_INDEX) >> 2;
-    const uid = this.vertices.getUint32(u * VERTEX_SIZE + VertexProperty.ID);
-    const vid = this.vertices.getUint32(v * VERTEX_SIZE + VertexProperty.ID);
+      this.edgeData.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.V_INDEX) >> 2;
+    const uid = this.vertexData.getUint32(u * VERTEX_SIZE + VertexProperty.ID);
+    const vid = this.vertexData.getUint32(v * VERTEX_SIZE + VertexProperty.ID);
 
-    const existsInverse = this.edges.getUint32(edgeIndex * EDGE_SIZE) & 2;
+    const existsInverse = this.edgeData.getUint32(edgeIndex * EDGE_SIZE) & 2;
 
     // if inverse edge exists, make it non-dual
     if (existsInverse) {
       const inverseId = this.outcidency[v].get(uid)!;
       const inverseIndex = this.whereEdge.get(inverseId)!;
-      this.edges.setUint32(inverseIndex * EDGE_SIZE, v << 2);
+      this.edgeData.setUint32(inverseIndex * EDGE_SIZE, v << 2);
     }
 
     this.outcidency[u].delete(vid);
@@ -258,18 +258,18 @@ export class DirectedGraph {
     this.edgeAuxiliary.swapObjectWithLast(edgeIndex);
     this.edgeAuxiliary.popObject();
 
-    const id = this.edges.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
+    const id = this.edgeData.getUint32(edgeIndex * EDGE_SIZE + EdgeProperty.ID);
     this.whereEdge.delete(id);
 
-    this.edges.setFrom(
-      this.edges,
+    this.edgeData.setFrom(
+      this.edgeData,
       this.edgeCount * EDGE_SIZE,
       edgeIndex * EDGE_SIZE,
       EDGE_SIZE
     );
-    this.edges.length -= EDGE_SIZE;
+    this.edgeData.length -= EDGE_SIZE;
 
-    const swappedId = this.edges.getUint32(
+    const swappedId = this.edgeData.getUint32(
       edgeIndex * EDGE_SIZE + EdgeProperty.ID
     );
     this.whereEdge.set(swappedId, edgeIndex);
@@ -295,8 +295,8 @@ export class DirectedGraph {
 
     for (const outcidentEdgeId of this.outcidency[vertexIndex].values()) {
       const eIndex = this.whereEdge.get(outcidentEdgeId)!;
-      const u = this.edges.getUint32(eIndex * EDGE_SIZE + EdgeProperty.U_INDEX);
-      this.edges.setUint32(
+      const u = this.edgeData.getUint32(eIndex * EDGE_SIZE + EdgeProperty.U_INDEX);
+      this.edgeData.setUint32(
         eIndex * EDGE_SIZE + EdgeProperty.U_INDEX,
         (vertexIndex << 2) | (u & 3)
       );
@@ -304,27 +304,27 @@ export class DirectedGraph {
 
     for (const incidentEdgeId of this.incidency[vertexIndex].values()) {
       const eIndex = this.whereEdge.get(incidentEdgeId)!;
-      const v = this.edges.getUint32(eIndex * EDGE_SIZE + EdgeProperty.V_INDEX);
-      this.edges.setUint32(
+      const v = this.edgeData.getUint32(eIndex * EDGE_SIZE + EdgeProperty.V_INDEX);
+      this.edgeData.setUint32(
         eIndex * EDGE_SIZE + EdgeProperty.V_INDEX,
         (vertexIndex << 2) | (v & 3)
       );
     }
 
-    const id = this.vertices.getUint32(
+    const id = this.vertexData.getUint32(
       vertexIndex * VERTEX_SIZE + VertexProperty.ID
     );
     this.whereVertex.delete(id);
 
-    this.vertices.setFrom(
-      this.vertices,
+    this.vertexData.setFrom(
+      this.vertexData,
       this.vertexCount * VERTEX_SIZE,
       vertexIndex * VERTEX_SIZE,
       VERTEX_SIZE
     );
-    this.vertices.length -= VERTEX_SIZE;
+    this.vertexData.length -= VERTEX_SIZE;
 
-    const swappedId = this.vertices.getUint32(
+    const swappedId = this.vertexData.getUint32(
       vertexIndex * VERTEX_SIZE + VertexProperty.ID
     );
     this.whereVertex.set(swappedId, vertexIndex);
@@ -356,8 +356,8 @@ export class DirectedGraph {
       this.renderer.edgeData.read(),
     ]);
 
-    this.vertices.buffer = vertexData.buffer;
-    this.edges.buffer = edgeData.buffer;
+    this.vertexData.buffer = vertexData.buffer;
+    this.edgeData.buffer = edgeData.buffer;
   }
 
   private transactions: Transaction[] = [];
@@ -406,23 +406,23 @@ export class DirectedGraph {
   async upload() {
     if (!this.changed) return;
 
-    if (this.vertices.length > 16 * this.renderer.vertexData.size)
-      this.renderer.vertexData.resizeErase(this.vertices.length / 16);
+    if (this.vertexData.length > 16 * this.renderer.vertexData.size)
+      this.renderer.vertexData.resizeErase(this.vertexData.length / 16);
 
-    if (this.edges.length > 16 * this.renderer.edgeData.size)
-      this.renderer.edgeData.resizeErase(this.edges.length / 16);
+    if (this.edgeData.length > 16 * this.renderer.edgeData.size)
+      this.renderer.edgeData.resizeErase(this.edgeData.length / 16);
 
     await Promise.all([
       this.vertexCount > 0
         ? this.renderer.vertexData.write(
-          this.vertices.asFloat32Array(),
+          this.vertexData.asFloat32Array(),
           0,
           this.vertexCount
         )
         : Promise.resolve(),
       this.edgeCount > 0
         ? this.renderer.edgeData.write(
-          this.edges.asFloat32Array(),
+          this.edgeData.asFloat32Array(),
           0,
           this.edgeCount
         )
@@ -433,6 +433,26 @@ export class DirectedGraph {
     this.renderer.edges.count = this.edgeCount;
 
     this.changed = false;
+  }
+
+  get vertices() {
+    const result: DirectedVertex[] = [];
+
+    for (let i = 0; i < this.vertexCount; i++) {
+      result.push(new DirectedVertex(this, this.vertexData.getUint32(i * VERTEX_SIZE + VertexProperty.ID)));
+    }
+
+    return result;
+  }
+
+  get edges() {
+    const result: DirectedEdge[] = [];
+
+    for (let i = 0; i < this.edgeCount; i++) {
+      result.push(new DirectedEdge(this, this.edgeData.getUint32(i * EDGE_SIZE + EdgeProperty.ID)));
+    }
+
+    return result;
   }
 }
 
@@ -447,20 +467,20 @@ export class DirectedVertex {
   }
 
   get x() {
-    return this.graph.vertices.getFloat32(
+    return this.graph.vertexData.getFloat32(
       this.index * VERTEX_SIZE + VertexProperty.POSITION_X
     );
   }
 
   get y() {
-    return this.graph.vertices.getFloat32(
+    return this.graph.vertexData.getFloat32(
       this.index * VERTEX_SIZE + VertexProperty.POSITION_Y
     );
   }
 
   set x(x: number) {
     this.graph.changed = true;
-    this.graph.vertices.setFloat32(
+    this.graph.vertexData.setFloat32(
       this.index * VERTEX_SIZE + VertexProperty.POSITION_X,
       x
     );
@@ -468,7 +488,7 @@ export class DirectedVertex {
 
   set y(y: number) {
     this.graph.changed = true;
-    this.graph.vertices.setFloat32(
+    this.graph.vertexData.setFloat32(
       this.index * VERTEX_SIZE + VertexProperty.POSITION_Y,
       y
     );
@@ -486,6 +506,10 @@ export class DirectedVertex {
       .map((e) => this.graph.getEdge(e)!);
   }
 
+  get isSelected() {
+    return (this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS) & 1) === 1;
+  }
+
   delete() {
     this.graph.deleteVertex(this);
   }
@@ -500,10 +524,10 @@ export class DirectedEdge {
 
   get u() {
     const index =
-      this.graph.edges.getUint32(
+      this.graph.edgeData.getUint32(
         this.index * EDGE_SIZE + EdgeProperty.U_INDEX
       ) >> 2;
-    const id = this.graph.vertices.getUint32(
+    const id = this.graph.vertexData.getUint32(
       index * VERTEX_SIZE + VertexProperty.ID
     );
     return this.graph.getVertex(id)!;
@@ -511,13 +535,17 @@ export class DirectedEdge {
 
   get v() {
     const index =
-      this.graph.edges.getUint32(
+      this.graph.edgeData.getUint32(
         this.index * EDGE_SIZE + EdgeProperty.V_INDEX
       ) >> 2;
-    const id = this.graph.vertices.getUint32(
+    const id = this.graph.vertexData.getUint32(
       index * VERTEX_SIZE + VertexProperty.ID
     );
     return this.graph.getVertex(id)!;
+  }
+
+  get isSelected() {
+    return (this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS) & 1) === 1;
   }
 
   delete() {

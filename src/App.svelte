@@ -34,6 +34,7 @@
   import Circle from "lucide-svelte/icons/circle";
   import Grid3x3 from "lucide-svelte/icons/grid-3x3";
   import { onKeybind } from "$lib/input";
+  import type { EditorInterface } from "./EditorInterface";
 
   let selection = $state(null);
 
@@ -41,6 +42,18 @@
 
   let forcesEnabled = $state(false);
   let gridEnabled = $state(false);
+
+  let editor = $state({} as EditorInterface);
+
+  onKeybind('X', () => editor.operations.delete());
+  onKeybind('Delete', () => editor.operations.delete());
+
+  onKeybind('M', () => editor.operations.merge());
+  onKeybind('K', () => editor.operations.cliqueify());
+  onKeybind('H', () => editor.operations.subgraph());
+
+  onKeybind('Ctrl+Z', () => editor.operations.undo());
+  onKeybind('Ctrl+Y', () => editor.operations.redo());
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
@@ -57,12 +70,12 @@
           New
           <Menubar.Shortcut>Ctrl+N</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" disabled>
           <FolderOpen strokeWidth="1" class="mr-2" size="16" />
           Open
           <Menubar.Shortcut>Ctrl+O</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" disabled>
           <Download strokeWidth="1" class="mr-2" size="16" />
           Download
           <Menubar.Shortcut>Ctrl+S</Menubar.Shortcut>
@@ -73,13 +86,13 @@
     <Menubar.Menu>
       <Menubar.Trigger>Edit</Menubar.Trigger>
       <Menubar.Content>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.undo()} disabled={!editor.flags.isUndoable}>
           <Undo strokeWidth="1" class="mr-2" size="16" />
           Undo
           <Menubar.Shortcut>Ctrl+Z</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
-          <Redo strokeWidth="1" class="mr-2" size="16" />
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.redo()} disabled={!editor.flags.isRedoable}>
+          <Redo strokeWidth="1" class="mr-2" size="16"/>
           Redo
           <Menubar.Shortcut>Ctrl+Y</Menubar.Shortcut>
         </Menubar.Item>
@@ -119,7 +132,7 @@
         <Menubar.Item class="cursor-pointer">
           <CircleSmall strokeWidth="1" class="mr-2" size="16" />
           Only Vertices
-          <Menubar.Shortcut>Ctrl+Shift-V</Menubar.Shortcut>
+          <Menubar.Shortcut>Ctrl+Shift+V</Menubar.Shortcut>
         </Menubar.Item>
         <Menubar.Item class="cursor-pointer">
           <Spline strokeWidth="1" class="mr-2" size="16" />
@@ -148,20 +161,20 @@
     <Menubar.Menu>
       <Menubar.Trigger>Tools</Menubar.Trigger>
       <Menubar.Content class="w-64">
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.merge()}>
           <Combine strokeWidth="1" class="mr-2" size="16" />
           Merge
           <Menubar.Shortcut>M</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.cliqueify()}>
           <Globe strokeWidth="1" class="mr-2" size="16" />
           Cliqueify
           <Menubar.Shortcut>K</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Separator />
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.subgraph()}>
           <Crop strokeWidth="1" class="mr-2" size="16" />
           Subgraph
+          <Menubar.Shortcut>H</Menubar.Shortcut>
         </Menubar.Item>
       </Menubar.Content>
     </Menubar.Menu>
@@ -221,7 +234,7 @@
   </Menubar.Root>
 
   <div class="relative flex-1">
-    <Editor onselect={(info: any) => (selection = info)} bind:updateSelected />
+    <Editor onselect={(info: any) => (selection = info)} bind:updateSelected bind:editor />
     <Sidebar.Provider>
       <AppSidebar {selection} {updateSelected} />
     </Sidebar.Provider>

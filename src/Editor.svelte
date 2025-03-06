@@ -18,8 +18,14 @@
   import { selectEdges } from "./lib/texture/selectEdges.glsl";
   import { Auxiliary } from "./lib/texture/interface/Auxiliary";
   import { vertexIndex } from "three/webgpu";
+  import type { EditorInterface, Operations } from "./EditorInterface";
 
-  let { onselect, updateSelected = $bindable() } = $props();
+  let { 
+    onselect,
+    updateSelected = $bindable(),
+    editor = $bindable() as EditorInterface,
+    
+  } = $props();
 
   let container: HTMLDivElement;
 
@@ -70,9 +76,9 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new Graph(graph);
+    const gi = new DirectedGraph(graph);
 
-    const generator = new GraphGenerator(gi);
+    const generator = new DirectedGraphGenerator(gi);
 
     let lastSelection: any;
 
@@ -172,66 +178,71 @@
     let doRender = true,
       doForce = false;
 
-    const loop = async () => {
-      if (await gi.tick()) {
-        updateSelectionInfo();
+    editor = {
+      operations: {
+        delete: () => {
+          return gi.transaction(async () => {
+            const edges = gi.edges;
+            for (const edge of edges) {
+              if (edge.isSelected) edge.delete();
+            }
+
+            const vertices = gi.vertices;
+            for (const vertex of vertices) {
+              if (vertex.isSelected) vertex.delete();
+            }
+          });
+        },
+        merge: () => {
+          return gi.transaction(async () => {
+            gi.merge(gi.vertices.filter((v) => v.isSelected));
+          });
+        },
+        cliqueify: () => {
+          return gi.transaction(async () => {
+            gi.cliqueify(gi.vertices.filter((v) => v.isSelected));
+          });
+        },
+        subgraph: () => {
+          return gi.transaction(async () => {
+            const edges = gi.edges;
+            for (const edge of edges) {
+              if (!edge.isSelected) edge.delete();
+            }
+
+            const vertices = gi.vertices;
+            for (const vertex of vertices) {
+              if (!vertex.isSelected) vertex.delete();
+            }
+          });
+        },
+        undo: () => {
+          return gi.transaction(
+            () => {
+              gi.undo();
+            },
+            { undo: true }
+          );
+        },
+        redo: () => {
+          gi.transaction(
+            () => {
+              gi.redo();
+            },
+            { redo: true }
+          );
+        },
+      },
+      flags: {
+        isUndoable: false,
+        isRedoable: false,
       }
-
-      setTimeout(loop, 5);
     };
 
-    loop();
-
-    const render = async () => {
-      requestAnimationFrame(render);
-
-      if (!doRender) return;
-      if (!Task.idle()) return;
-
-      if (doForce) graph.forces.update(0.1);
-
-      renderer.render(scene, camera);
-    };
-    render();
-
-    console.log("edgeData", await graph.edgeData.read(0, 1));
-    console.log("edgeCount", graph.edges.count);
-
-    container.addEventListener("dblclick", async (event) => {
-      if (event.button !== LEFT_MOUSE_BUTTON) return;
-      if (hovering) return;
-
-      const { x, y } = worldCoords(event);
-
-      await gi.transaction(() => {
-        gi.addVertex(x, y);
-      });
-    });
+    
 
     window.addEventListener("keydown", (event) => {
-      if (event.key === "x") {
-        gi.transaction(async () => {
-          const edges = gi.edges;
-          for (const edge of edges) {
-            if (edge.isSelected) edge.delete();
-          }
-
-          const vertices = gi.vertices;
-          for (const vertex of vertices) {
-            if (vertex.isSelected) vertex.delete();
-          }
-        });
-      } else if (event.key === "m") {
-        gi.transaction(async () => {
-          gi.merge(gi.vertices.filter((v) => v.isSelected));
-        });
-
-        // gi.addVertex(0, 0);
-      } else if (event.key === "k") {
-        gi.transaction(async () => {
-          gi.cliqueify(gi.vertices.filter((v) => v.isSelected));
-        });
-      } else if (event.key === "q") {
+      if (event.key === "q") {
         const coords = getMousePosition();
         const { x, y } = worldCoords({
           clientX: coords.x,
@@ -292,24 +303,50 @@
         });
       } else if (event.key === "f") {
         doForce = !doForce;
-      } else if (event.key === "z") {
-        gi.transaction(
-          () => {
-            console.log("undo");
-            gi.undo();
-          },
-          { undo: true }
-        );
-      } else if (event.key === "y") {
-        gi.transaction(
-          () => {
-            console.log("redo");
-            gi.redo();
-          },
-          { redo: true }
-        );
       }
     });
+
+    
+
+    const loop = async () => {
+      if (await gi.tick()) {
+        editor.flags.isUndoable = gi.versioner.isUndoable();
+        editor.flags.isRedoable = gi.versioner.isRedoable();
+        updateSelectionInfo();
+      }
+
+      setTimeout(loop, 5);
+    };
+
+    loop();
+
+    const render = async () => {
+      requestAnimationFrame(render);
+
+      if (!doRender) return;
+      if (!Task.idle()) return;
+
+      if (doForce) graph.forces.update(0.1);
+
+      renderer.render(scene, camera);
+    };
+    render();
+
+    // console.log("edgeData", await graph.edgeData.read(0, 1));
+    // console.log("edgeCount", graph.edges.count);
+
+    container.addEventListener("dblclick", async (event) => {
+      if (event.button !== LEFT_MOUSE_BUTTON) return;
+      if (hovering) return;
+
+      const { x, y } = worldCoords(event);
+
+      await gi.transaction(() => {
+        gi.addVertex(x, y);
+      });
+    });
+
+   
 
     function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();
@@ -365,7 +402,7 @@
     camera.updateMatrix();
 
     let first = new Vector2();
-    let selection = false;
+    let selecting = false;
 
     let select = true;
 
@@ -403,7 +440,7 @@
       first = screenCoords(event);
       first.divideScalar(camera.zoom * 100);
 
-      selection = true;
+      selecting = true;
     });
 
     function mouseMove(event: MouseEvent) {
@@ -420,7 +457,7 @@
         return;
       }
 
-      if (!selection) return;
+      if (!selecting) return;
 
       Draw.reset();
 
@@ -455,7 +492,7 @@
         return;
       }
 
-      if (!selection) return;
+      if (!selecting) return;
 
       const second = screenCoords(event);
 
@@ -469,7 +506,7 @@
       updateSelectionInfo();
 
       Draw.reset();
-      selection = false;
+      selecting = false;
     });
 
     container.addEventListener("contextmenu", (event) => {

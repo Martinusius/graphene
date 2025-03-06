@@ -36,7 +36,7 @@ export class Graph {
   private vertexAuxiliary: Auxiliary;
   private edgeAuxiliary: Auxiliary;
 
-  private versioner = new Versioner();
+  public versioner = new Versioner();
 
   constructor(public readonly renderer: GraphRenderer) {
     this.incidency = [];

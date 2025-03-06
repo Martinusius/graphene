@@ -7,6 +7,7 @@ const fragmentShader = `
   uniform vec2 u_resolution;
   uniform vec3 u_cameraPosition;
   uniform vec4 u_camera;
+  uniform float u_devicePixelRatio;
 
   float distanceFromGrid(vec2 coord, float cellSize) {
     return min(abs(mod(coord.x + cellSize / 2.0, cellSize) - cellSize / 2.0), abs(mod(coord.y + cellSize / 2.0, cellSize) - cellSize / 2.0));
@@ -35,7 +36,7 @@ const fragmentShader = `
 
       float gridDistance = distanceFromGrid(coord, cellSize);
 
-      total = max(total, line(gridDistance, scale.y * 0.8) * min(u_zoom * cellSize * 0.05, 1.0));
+      total = max(total, line(gridDistance, scale.y * 0.8) * min(u_zoom * u_devicePixelRatio * cellSize * 0.05, 1.0));
     }
 
     gl_FragColor = vec4(0, 0, 0, total);
@@ -64,7 +65,8 @@ export function initGrid(container: HTMLDivElement, camera: OrthographicCamera) 
         )
       },
       u_cameraPosition: { value: new Vector3(0, 0, 0) },
-      u_camera: { value: new Vector4(0, 0, 0, 0) }
+      u_camera: { value: new Vector4(0, 0, 0, 0) },
+      u_devicePixelRatio: { value: window.devicePixelRatio }
     },
     fragmentShader,
     transparent: false

@@ -439,7 +439,7 @@ export class DirectedGraph {
     const result: DirectedVertex[] = [];
 
     for (let i = 0; i < this.vertexCount; i++) {
-      result.push(new DirectedVertex(this, this.vertexData.getUint32(i * VERTEX_SIZE + VertexProperty.ID)));
+      result.push(this.vertexAt(i));
     }
 
     return result;
@@ -449,10 +449,18 @@ export class DirectedGraph {
     const result: DirectedEdge[] = [];
 
     for (let i = 0; i < this.edgeCount; i++) {
-      result.push(new DirectedEdge(this, this.edgeData.getUint32(i * EDGE_SIZE + EdgeProperty.ID)));
+      result.push(this.edgeAt(i));
     }
 
     return result;
+  }
+
+  vertexAt(index: number) {
+    return new DirectedVertex(this, this.vertexData.getUint32(index * VERTEX_SIZE + VertexProperty.ID));
+  }
+
+  edgeAt(index: number) {
+    return new DirectedEdge(this, this.edgeData.getUint32(index * EDGE_SIZE + EdgeProperty.ID))
   }
 }
 

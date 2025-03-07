@@ -76,7 +76,7 @@ void main() {
 
   vFontCoords = texture(fontAtlasCoords, indexUv(uint(characterToRender) + fontSizeIndex * alphabetSize, fontAtlasCoordsSize));
 
-  vec4 result = m * vec4(vertex.xy + vec2(offset, 0), 2, 1);
+  vec4 result = m * vec4(vertex.xy + vec2(offset, 0), 2.0 + log(float(gl_VertexID / maxDigits + 1) + 0.5), 1);
 
   gl_PointSize = size * scale;
   gl_Position = result;

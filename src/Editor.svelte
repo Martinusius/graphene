@@ -17,21 +17,20 @@
   import { DynamicArray } from "./lib/texture/DynamicArray";
   import { selectEdges } from "./lib/texture/selectEdges.glsl";
   import { Auxiliary } from "./lib/texture/interface/Auxiliary";
-  import { vertexIndex } from "three/webgpu";
   import type { EditorInterface, Operations } from "./EditorInterface";
 
   let { 
     onselect,
     updateSelected = $bindable(),
     editor = $bindable() as EditorInterface,
-    
   } = $props();
+
 
   let container: HTMLDivElement;
 
   onMount(async () => {
     const renderer = new WebGLRenderer({ antialias: true });
-    renderer.setClearColor(0x000000, 1);
+    renderer.setClearColor(0xffffff, 0);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
@@ -68,7 +67,9 @@
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
 
-    scene.add(initGrid(container, camera));
+    const grid = initGrid(container, camera);
+    scene.add(grid);
+
     Draw.init(scene, camera);
 
     const three = new Three(renderer, camera, scene);
@@ -76,17 +77,23 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new DirectedGraph(graph);
+    const gi = new Graph(graph);
 
-    const generator = new DirectedGraphGenerator(gi);
+    const generator = new GraphGenerator(gi);
 
     let lastSelection: any;
 
+    let lastUpdateSelectionInfoTimestamp = 0;
     function updateSelectionInfo() {
+      if(lastUpdateSelectionInfoTimestamp + 100 > performance.now()) return;
+      lastUpdateSelectionInfoTimestamp = performance.now();
+
       graph.selectionInfo().then(async (info) => {
         const vertex = info.vertexIndex !== null ? await graph.vertexData.read(info.vertexIndex) : null;
         const edge = info.edgeIndex !== null ? await graph.edgeData.read(info.edgeIndex) : null;
 
+
+        
         const result = {
           vertexCount: info.vertexCount,
           edgeCount: info.edgeCount,
@@ -164,7 +171,8 @@
     }
 
     // generator.empty(1000);
-    generator.grid(100).then(() => {
+    generator.grid(100)
+    //  .then(() => {
       // gi.transaction(() => {
       //   const semtex = gi.vertexAuxiliary.createProperty();
       //   primes(gi.vertexCount).forEach((prime, index) => {
@@ -173,7 +181,7 @@
       //   graph.text.vertices.aux = semtex.ref;
       //   console.log("set");
       // });
-    });
+    // });
 
     let doRender = true,
       doForce = false;
@@ -236,8 +244,24 @@
       flags: {
         isUndoable: false,
         isRedoable: false,
-      }
-    };
+      },
+      get areForcesEnabled() {
+        return doForce;
+      },
+      get isGridShown() {
+        return grid.parent !== null;
+      },
+      setGridShown(value: boolean) {
+        if (value) {
+          scene.add(grid);
+        } else {
+          scene.remove(grid);
+        }
+      },
+      setForcesEnabled(value: boolean) {
+        doForce = value;
+      },
+    } as EditorInterface;
 
     
 
@@ -273,7 +297,7 @@
         });
       } else if (event.key === "e") {
         if (hoveredType !== "vertex") return;
-        const hid = hoveredId;
+        const hid = hoveredIndex;
 
         gi.transaction(async () => {
           const vertices = gi.vertexData;
@@ -301,8 +325,6 @@
 
           vertices.setUint32(hid * 16 + 8, 3);
         });
-      } else if (event.key === "f") {
-        doForce = !doForce;
       }
     });
 
@@ -337,13 +359,41 @@
 
     container.addEventListener("dblclick", async (event) => {
       if (event.button !== LEFT_MOUSE_BUTTON) return;
-      if (hovering) return;
+      if (hovering) {
+        // zoom at object
+        let position = new Vector2();
+        let size = 0;
 
-      const { x, y } = worldCoords(event);
+        if(hoveredType === 'vertex') {
+          const vertex = gi.vertexAt(hoveredIndex);
+          position.set(vertex.x, vertex.y);
+          size = 8;
+        }
+        else if(hoveredType === 'edge') {
+          const edge = gi.edgeAt(hoveredIndex);
+          const uPos = new Vector2(edge.u.x, edge.u.y);
+          const vPos = new Vector2(edge.v.x, edge.v.y);
+          size = uPos.sub(vPos).length();
+          position.copy(uPos.lerp(vPos, 0.5));
+        }
 
-      await gi.transaction(() => {
-        gi.addVertex(x, y);
-      });
+        controls.reset();
+        controls.target.set(position.x, position.y, 0);
+        camera.position.set(position.x, position.y, 50);
+        // camera.position.x = position.x;
+        // camera.position.y = position.y;
+        // camera.zoom = 1 / size;
+        controls.update();
+      }
+      else {
+        const { x, y } = worldCoords(event);
+
+        await gi.transaction(() => {
+          gi.addVertex(x, y);
+        });
+      }
+
+      
     });
 
    
@@ -361,7 +411,7 @@
 
     let hovering = false,
       hoveredType = "",
-      hoveredId = -1;
+      hoveredIndex = -1;
 
     function mouseMoveHover(event: MouseEvent) {
       if (dragging) return;
@@ -378,20 +428,20 @@
           return;
         }
 
-        const { type, id } = result;
+        const { type, index } = result;
 
         document.body.style.cursor = "pointer";
 
         if (type === "vertex") {
-          graph.hover("vertex", id);
+          graph.hover("vertex", index);
         }
 
         if (type === "edge") {
-          graph.hover("edge", id);
+          graph.hover("edge", index);
         }
 
         hoveredType = type;
-        hoveredId = id;
+        hoveredIndex = index;
         hovering = true;
       });
     }
@@ -416,14 +466,14 @@
       if (event.button !== LEFT_MOUSE_BUTTON) return;
 
       if (hovering && !event.altKey) {
-        const selected = await graph.isSelected(hoveredType as any, hoveredId);
+        const selected = await graph.isSelected(hoveredType as any, hoveredIndex);
         dragging = true;
         dragged = false;
 
         if (!selected) {
           if (!event.shiftKey) graph.deselectAll();
-          graph.select(hoveredType as any, hoveredId);
-        } else if (event.shiftKey) graph.select(hoveredType as any, hoveredId, false);
+          graph.select(hoveredType as any, hoveredIndex);
+        } else if (event.shiftKey) graph.select(hoveredType as any, hoveredIndex, false);
 
         startCoords.copy(worldCoords(event));
         updateSelectionInfo();
@@ -484,7 +534,7 @@
         dragging = false;
 
         if (!dragged) {
-          if (event.altKey) graph.select(hoveredType as any, hoveredId, false);
+          if (event.altKey) graph.select(hoveredType as any, hoveredIndex, false);
         } else {
           graph.undrag();
         }

@@ -28,7 +28,7 @@ void main() {
   vec2 tPosition = vertex.xy;
   vSelection = floatBitsToUint(vertex.z);
 
-  vec4 result = m * vec4(tPosition.xy, 1, 1);
+  vec4 result = m * vec4(tPosition.xy, 2.0 + log(float(gl_VertexID + 1)), 1);
 
   gl_PointSize = size;
 

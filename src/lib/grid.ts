@@ -1,4 +1,4 @@
-import type { OrthographicCamera } from "three";
+import type { OrthographicCamera, Scene } from "three";
 import { Mesh, PlaneGeometry, ShaderMaterial, Vector2, Vector3, Vector4 } from "three";
 
 
@@ -72,8 +72,12 @@ export function initGrid(container: HTMLDivElement, camera: OrthographicCamera) 
     transparent: false
   });
 
+  const settings = { enable: true };
+
   const mesh = new Mesh(planeGeometry, shaderMaterial);
   mesh.onBeforeRender = () => {
+    mesh.visible = settings.enable;
+
     mesh.position.copy(camera.position);
     mesh.material.uniforms.u_zoom.value = camera.zoom;
     mesh.material.uniforms.u_resolution.value.set(

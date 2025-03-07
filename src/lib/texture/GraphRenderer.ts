@@ -28,7 +28,7 @@ function otherType(type: ObjectType): ObjectType {
 
 export type RaycastResult = {
   type: ObjectType;
-  id: number;
+  index: number;
 };
 
 export class GraphRenderer {
@@ -296,16 +296,16 @@ export class GraphRenderer {
           const offsetMin = min.clone().sub(oldMin);
 
           // calculate index
-          const index = (x - offsetMin.x + size.x * (y - offsetMin.y)) * 4;
+          const pixelIndex = (x - offsetMin.x + size.x * (y - offsetMin.y)) * 4;
 
-          if (pixelBuffer[index + 1] < 1) continue;
+          if (pixelBuffer[pixelIndex + 1] < 1) continue;
 
-          const type = typeMap[pixelBuffer[index]];
-          const id = pixelBuffer[index + 1] - 1;
+          const type = typeMap[pixelBuffer[pixelIndex]];
+          const index = pixelBuffer[pixelIndex + 1] - 1;
 
           resolve({
             type,
-            id
+            index
           });
 
 

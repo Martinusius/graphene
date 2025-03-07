@@ -97,7 +97,7 @@ void main() {
   vec2 secondVertex = texture2D(vertexData, indexUv(vertexIndices.y >> 2, vertexDataSize)).xy;
 
   vec2 dir = normalize(firstVertex - secondVertex);
-  vec2 normal = vec2(-dir.y, dir.x);
+  vec2 normal = vec2(dir.y, -dir.x);
 
   firstVertex.xy += normal * float(isDual);
   secondVertex.xy += normal * float(isDual);
@@ -110,7 +110,7 @@ void main() {
 
   float far = abs(dot(abs(normal), vec2(width, height) / 2.0));
 
-  vec4 result = m * vec4(center + vec2(offset, 0) + normal * far * 1.2, 2, 1);
+  vec4 result = m * vec4(center + vec2(offset, 0) + normal * far * 1.2, 1, 1);
 
   gl_PointSize = size * scale;
   gl_Position = result;

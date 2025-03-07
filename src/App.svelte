@@ -1,5 +1,5 @@
 <script lang="ts">
-  import AppSidebar from "$lib/AppSidebar.svelte";
+  import AppSidebar from "./AppSidebar.svelte";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import Editor from "./Editor.svelte";
   import * as Menubar from "$lib/components/ui/menubar/index.js";
@@ -40,9 +40,6 @@
 
   let updateSelected = $state(null);
 
-  let forcesEnabled = $state(false);
-  let gridEnabled = $state(false);
-
   let editor = $state({} as EditorInterface);
 
   onKeybind('X', () => editor.operations.delete());
@@ -54,6 +51,9 @@
 
   onKeybind('Ctrl+Z', () => editor.operations.undo());
   onKeybind('Ctrl+Y', () => editor.operations.redo());
+
+  onKeybind('F', () => editor.setForcesEnabled(!editor.areForcesEnabled));
+  onKeybind('G', () => editor.setGridShown(!editor.isGridShown));
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
@@ -145,12 +145,14 @@
     <Menubar.Menu>
       <Menubar.Trigger>Preferences</Menubar.Trigger>
       <Menubar.Content>
-        <Menubar.CheckboxItem bind:checked={forcesEnabled} class="cursor-pointer">
+        <Menubar.CheckboxItem checked={editor.areForcesEnabled} class="cursor-pointer" 
+          onclick={() => editor.setForcesEnabled(!editor.areForcesEnabled)}>
           <Atom strokeWidth="1" class="mr-2" size="16" />
           Enable Forces
           <Menubar.Shortcut>F</Menubar.Shortcut>
         </Menubar.CheckboxItem>
-        <Menubar.CheckboxItem bind:checked={gridEnabled} class="cursor-pointer">
+        <Menubar.CheckboxItem checked={editor.isGridShown} class="cursor-pointer" 
+          onclick={() => editor.setGridShown(!editor.isGridShown)}>
           <Grid3x3 strokeWidth="1" class="mr-2" size="16" />
           Show Grid
           <Menubar.Shortcut>G</Menubar.Shortcut>

@@ -6,7 +6,6 @@ export type Operations = {
   
   undo: () => void;
   redo: () => void;
-  
 };
 
 export type Flags = {
@@ -17,5 +16,10 @@ export type Flags = {
 export type EditorInterface ={
   operations: Operations;
   flags: Flags;
+
+  areForcesEnabled: boolean;
+  isGridShown: boolean;
+  setGridShown: (enabled: boolean) => void;
+  setForcesEnabled: (enabled: boolean) => void;
 };
 

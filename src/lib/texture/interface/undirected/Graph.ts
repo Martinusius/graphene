@@ -434,6 +434,11 @@ export class Vertex {
   delete() {
     this.graph.deleteVertex(this);
   }
+
+  async download() {
+    const vertex = await this.graph.renderer.vertexData.read(this.index, 1);
+    this.graph.vertexData.setFrom(vertex, 0, this.index * VERTEX_SIZE, VERTEX_SIZE);
+  }
 }
 
 export class Edge {
@@ -463,5 +468,10 @@ export class Edge {
 
   delete() {
     this.graph.deleteEdge(this);
+  }
+
+  async download() {
+    const edge = await this.graph.renderer.edgeData.read(this.index, 1);
+    this.graph.edgeData.setFrom(edge, 0, this.index * EDGE_SIZE, EDGE_SIZE);
   }
 }

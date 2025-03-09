@@ -19,12 +19,7 @@
   import { Auxiliary } from "./lib/texture/interface/Auxiliary";
   import type { EditorInterface, Operations } from "./EditorInterface";
 
-  let { 
-    onselect,
-    updateSelected = $bindable(),
-    editor = $bindable() as EditorInterface,
-  } = $props();
-
+  let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
   let container: HTMLDivElement;
 
@@ -85,15 +80,13 @@
 
     let lastUpdateSelectionInfoTimestamp = 0;
     function updateSelectionInfo() {
-      if(lastUpdateSelectionInfoTimestamp + 100 > performance.now()) return;
+      if (lastUpdateSelectionInfoTimestamp + 100 > performance.now()) return;
       lastUpdateSelectionInfoTimestamp = performance.now();
 
       graph.selectionInfo().then(async (info) => {
         const vertex = info.vertexIndex !== null ? await graph.vertexData.read(info.vertexIndex) : null;
         const edge = info.edgeIndex !== null ? await graph.edgeData.read(info.edgeIndex) : null;
 
-
-        
         const result = {
           vertexCount: info.vertexCount,
           edgeCount: info.edgeCount,
@@ -123,15 +116,6 @@
       }
 
       lastSelection = $state.snapshot(selection);
-
-      // gi.transaction(() => {
-      //   if (data.vertex) {
-      //     const vertex = gi.getVertex(data.vertex.id);
-
-      //     vertex.x = data.vertex.x;
-      //     vertex.y = data.vertex.y;
-      //   }
-      // });
 
       if (diff) graph.drag(diff);
     };
@@ -171,16 +155,16 @@
     }
 
     // generator.empty(1000);
-    generator.grid(100)
+    generator.grid(100);
     //  .then(() => {
-      // gi.transaction(() => {
-      //   const semtex = gi.vertexAuxiliary.createProperty();
-      //   primes(gi.vertexCount).forEach((prime, index) => {
-      //     semtex.set(index, prime);
-      //   });
-      //   graph.text.vertices.aux = semtex.ref;
-      //   console.log("set");
-      // });
+    // gi.transaction(() => {
+    //   const semtex = gi.vertexAuxiliary.createProperty();
+    //   primes(gi.vertexCount).forEach((prime, index) => {
+    //     semtex.set(index, prime);
+    //   });
+    //   graph.text.vertices.aux = semtex.ref;
+    //   console.log("set");
+    // });
     // });
 
     let doRender = true,
@@ -263,8 +247,6 @@
       },
     } as EditorInterface;
 
-    
-
     window.addEventListener("keydown", (event) => {
       if (event.key === "q") {
         const coords = getMousePosition();
@@ -328,8 +310,6 @@
       }
     });
 
-    
-
     const loop = async () => {
       if (await gi.tick()) {
         editor.flags.isUndoable = gi.versioner.isUndoable();
@@ -364,16 +344,21 @@
         let position = new Vector2();
         let size = 0;
 
-        if(hoveredType === 'vertex') {
+        if (hoveredType === "vertex") {
           const vertex = gi.vertexAt(hoveredIndex);
+          await vertex.download();
+
           position.set(vertex.x, vertex.y);
+          console.log(vertex.x, vertex.y);
           size = 8;
-        }
-        else if(hoveredType === 'edge') {
+        } else if (hoveredType === "edge") {
           const edge = gi.edgeAt(hoveredIndex);
+          await Promise.all([edge.u.download(), edge.v.download()]);
+
           const uPos = new Vector2(edge.u.x, edge.u.y);
           const vPos = new Vector2(edge.v.x, edge.v.y);
-          size = uPos.sub(vPos).length();
+
+          // size = uPosCopy.sub(vPosCopy).length();
           position.copy(uPos.lerp(vPos, 0.5));
         }
 
@@ -384,19 +369,14 @@
         // camera.position.y = position.y;
         // camera.zoom = 1 / size;
         controls.update();
-      }
-      else {
+      } else {
         const { x, y } = worldCoords(event);
 
         await gi.transaction(() => {
           gi.addVertex(x, y);
         });
       }
-
-      
     });
-
-   
 
     function screenCoords(event: MouseEvent) {
       const { top, left, width, height } = renderer.domElement.getBoundingClientRect();

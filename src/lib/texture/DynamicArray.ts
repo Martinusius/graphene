@@ -1,3 +1,4 @@
+import type { TypedArray } from "three";
 import { getUint32Fix, setUint32Fix } from "./polyfill.glsl";
 
 const PHI = 1.6180339887;
@@ -82,23 +83,28 @@ export class DynamicArray {
   }
 
   setFrom(
-    array: DynamicArray,
+    array: DynamicArray | TypedArray,
     srcIndex: number,
     destIndex: number,
     length: number
   ) {
+    const sourceArray = array instanceof DynamicArray ? array.array : array;
+
+
+
     this.array.set(
-      array.array.subarray(srcIndex, srcIndex + length),
+      new Uint8Array(sourceArray.buffer).subarray(srcIndex, srcIndex + length),
       destIndex
     );
   }
 
-  pushFrom(array: DynamicArray, srcIndex: number, length: number) {
+  pushFrom(array: DynamicArray | TypedArray, srcIndex: number, length: number) {
     if (this._length + length > this.array.length)
       this.resize(this._length + length);
 
+    const sourceArray = array instanceof DynamicArray ? array.array : array;
     this.array.set(
-      array.array.subarray(srcIndex, srcIndex + length),
+      new Uint8Array(sourceArray.buffer).subarray(srcIndex, srcIndex + length),
       this._length
     );
     this._length += length;

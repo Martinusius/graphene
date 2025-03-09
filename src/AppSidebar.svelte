@@ -2,17 +2,11 @@
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import Input from "./lib/components/ui/input/input.svelte";
   import Label from "./lib/components/ui/label/label.svelte";
-  import Button, { buttonVariants } from "./lib/components/ui/button/button.svelte";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import * as Select from "$lib/components/ui/select/index.js";
+  import Button from "./lib/components/ui/button/button.svelte";
 
-  import Separator from "./lib/components/ui/separator/separator.svelte";
   import VertexSidebar from "./VertexSidebar.svelte";
   import Trash from "lucide-svelte/icons/trash";
-  import Wrench from "lucide-svelte/icons/wrench";
   import EdgeSidebar from "./EdgeSidebar.svelte";
-
-  let open = $state(true);
 
   let { selection, updateSelected } = $props();
 
@@ -26,9 +20,6 @@
       color: "text-green-700",
     },
   };
-
-
-  
 </script>
 
 <Sidebar.Root side="right">
@@ -37,7 +28,7 @@
       {#if selection.vertex}
         <VertexSidebar {selection} {updateSelected} />
       {:else if selection.edge}
-        <EdgeSidebar {selection} {updateSelected} />
+        <EdgeSidebar {selection} />
       {:else}
         <Sidebar.Header class="flex flex-row">
           <div class="text-2xl font-semibold flex-1">Selection</div>

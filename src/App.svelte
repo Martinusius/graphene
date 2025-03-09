@@ -42,18 +42,18 @@
 
   let editor = $state({} as EditorInterface);
 
-  onKeybind('X', () => editor.operations.delete());
-  onKeybind('Delete', () => editor.operations.delete());
+  onKeybind("X", () => editor.operations.delete());
+  onKeybind("Delete", () => editor.operations.delete());
 
-  onKeybind('M', () => editor.operations.merge());
-  onKeybind('K', () => editor.operations.cliqueify());
-  onKeybind('H', () => editor.operations.subgraph());
+  onKeybind("M", () => editor.operations.merge());
+  onKeybind("K", () => editor.operations.cliqueify());
+  onKeybind("H", () => editor.operations.subgraph());
 
-  onKeybind('Ctrl+Z', () => editor.operations.undo());
-  onKeybind('Ctrl+Y', () => editor.operations.redo());
+  onKeybind("Ctrl+Z", () => editor.operations.undo());
+  onKeybind("Ctrl+Y", () => editor.operations.redo());
 
-  onKeybind('F', () => editor.setForcesEnabled(!editor.areForcesEnabled));
-  onKeybind('G', () => editor.setGridShown(!editor.isGridShown));
+  onKeybind("F", () => editor.setForcesEnabled(!editor.areForcesEnabled));
+  onKeybind("G", () => editor.setGridShown(!editor.isGridShown));
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
@@ -86,13 +86,21 @@
     <Menubar.Menu>
       <Menubar.Trigger>Edit</Menubar.Trigger>
       <Menubar.Content>
-        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.undo()} disabled={!editor.flags.isUndoable}>
+        <Menubar.Item
+          class="cursor-pointer"
+          onclick={() => editor.operations.undo()}
+          disabled={!editor.flags.isUndoable}
+        >
           <Undo strokeWidth="1" class="mr-2" size="16" />
           Undo
           <Menubar.Shortcut>Ctrl+Z</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.redo()} disabled={!editor.flags.isRedoable}>
-          <Redo strokeWidth="1" class="mr-2" size="16"/>
+        <Menubar.Item
+          class="cursor-pointer"
+          onclick={() => editor.operations.redo()}
+          disabled={!editor.flags.isRedoable}
+        >
+          <Redo strokeWidth="1" class="mr-2" size="16" />
           Redo
           <Menubar.Shortcut>Ctrl+Y</Menubar.Shortcut>
         </Menubar.Item>
@@ -145,14 +153,20 @@
     <Menubar.Menu>
       <Menubar.Trigger>Preferences</Menubar.Trigger>
       <Menubar.Content>
-        <Menubar.CheckboxItem checked={editor.areForcesEnabled} class="cursor-pointer" 
-          onclick={() => editor.setForcesEnabled(!editor.areForcesEnabled)}>
+        <Menubar.CheckboxItem
+          checked={editor.areForcesEnabled}
+          class="cursor-pointer"
+          onclick={() => editor.setForcesEnabled(!editor.areForcesEnabled)}
+        >
           <Atom strokeWidth="1" class="mr-2" size="16" />
           Enable Forces
           <Menubar.Shortcut>F</Menubar.Shortcut>
         </Menubar.CheckboxItem>
-        <Menubar.CheckboxItem checked={editor.isGridShown} class="cursor-pointer" 
-          onclick={() => editor.setGridShown(!editor.isGridShown)}>
+        <Menubar.CheckboxItem
+          checked={editor.isGridShown}
+          class="cursor-pointer"
+          onclick={() => editor.setGridShown(!editor.isGridShown)}
+        >
           <Grid3x3 strokeWidth="1" class="mr-2" size="16" />
           Show Grid
           <Menubar.Shortcut>G</Menubar.Shortcut>

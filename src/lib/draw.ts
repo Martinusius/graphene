@@ -1,5 +1,4 @@
 import {
-  BufferAttribute,
   BufferGeometry,
   Color,
   LineCurve3,
@@ -11,7 +10,6 @@ import {
   PlaneGeometry,
   Scene,
   Sprite,
-  SpriteMaterial,
   Vector2,
   Vector3,
 } from "three";

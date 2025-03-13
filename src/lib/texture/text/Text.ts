@@ -34,6 +34,12 @@ export class GraphText {
   }
 
   // public auxBuffer: ComputeBuffer;
+
+  public defaultAux: AuxiliaryRef = {
+    buffer: () => this.aux.buffer(),
+    channel: () => this.aux.channel(),
+  };
+  
   public aux: AuxiliaryRef;
 
   constructor(
@@ -45,7 +51,7 @@ export class GraphText {
   ) {
     // this.auxBuffer = edgeData ?? vertexData;
 
-    this.aux = {
+    this.aux = this.defaultAux = {
       buffer: () => edgeData ?? vertexData,
       channel: () => 3,
     };

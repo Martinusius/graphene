@@ -1,3 +1,5 @@
+import type { AuxiliaryProperty, AuxiliaryType } from "$lib/texture/interface/Auxiliary";
+
 export type Operations = {
   delete: () => void;
   merge: () => void;
@@ -13,13 +15,41 @@ export type Flags = {
   isRedoable: boolean;
 };
 
-export type EditorInterface ={
+export type PropertyConfig = {
+  properties: Record<string, AuxiliaryProperty>,
+  // displayProperty: string;
+
+  createProperty(name: string, type: AuxiliaryType): AuxiliaryProperty;
+  deleteProperty(name: string): void;
+  renameProperty(from: string, to: string): void;
+  getProperty(name: string, i: number): number;
+  setProperty(name: string, i: number, value: number): void;
+};
+
+export type EditorInterface = {
   operations: Operations;
   flags: Flags;
 
   areForcesEnabled: boolean;
   isGridShown: boolean;
-  setGridShown: (enabled: boolean) => void;
-  setForcesEnabled: (enabled: boolean) => void;
+
+  vertexProperties: PropertyConfig;
+  vertexDisplayProperty: string;
+  
+  edgeProperties: PropertyConfig;
+  edgeDisplayProperty: string;
+
+  reactive(callback: () => void): void;
+  unreactive(callback: () => void): void;
+
+  transaction(callback: () => void): Promise<void>;
 };
+
+export enum DragState {
+  None,
+  Preparing,
+  Ready,
+  Dragging
+};
+
 

@@ -40,8 +40,10 @@
 
   let updateSelected = $state(null);
 
-  let editor = $state({} as EditorInterface);
+  let editor = $state.raw({} as EditorInterface);
 
+
+  
   onKeybind("X", () => editor.operations.delete());
   onKeybind("Delete", () => editor.operations.delete());
 
@@ -52,8 +54,8 @@
   onKeybind("Ctrl+Z", () => editor.operations.undo());
   onKeybind("Ctrl+Y", () => editor.operations.redo());
 
-  onKeybind("F", () => editor.setForcesEnabled(!editor.areForcesEnabled));
-  onKeybind("G", () => editor.setGridShown(!editor.isGridShown));
+  onKeybind("F", () => editor.areForcesEnabled = !editor.areForcesEnabled);
+  onKeybind("G", () => editor.isGridShown = !editor.isGridShown);
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
@@ -156,7 +158,7 @@
         <Menubar.CheckboxItem
           checked={editor.areForcesEnabled}
           class="cursor-pointer"
-          onclick={() => editor.setForcesEnabled(!editor.areForcesEnabled)}
+          onclick={() => editor.areForcesEnabled = !editor.areForcesEnabled}
         >
           <Atom strokeWidth="1" class="mr-2" size="16" />
           Enable Forces
@@ -165,7 +167,7 @@
         <Menubar.CheckboxItem
           checked={editor.isGridShown}
           class="cursor-pointer"
-          onclick={() => editor.setGridShown(!editor.isGridShown)}
+          onclick={() => editor.isGridShown = !editor.isGridShown}
         >
           <Grid3x3 strokeWidth="1" class="mr-2" size="16" />
           Show Grid
@@ -252,7 +254,7 @@
   <div class="relative flex-1">
     <Editor onselect={(info: any) => (selection = info)} bind:updateSelected bind:editor />
     <Sidebar.Provider>
-      <AppSidebar {selection} {updateSelected} />
+      <AppSidebar {selection} {updateSelected} editor={editor} />
     </Sidebar.Provider>
   </div>
 </div>

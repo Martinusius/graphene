@@ -9,6 +9,17 @@ export class DynamicArray {
 
   private _length = 0;
 
+  static fromArray(array: Uint8Array) {
+    const dynamicArray = new DynamicArray(array.length);
+    dynamicArray.array.set(array);
+    dynamicArray._length = array.length;
+    return dynamicArray;
+  }
+
+  toArray() {
+    return new Uint8Array(this.array.subarray(0, this._length));
+  }
+
   constructor(public readonly bytes: number) {
     this.array = new Uint8Array(bytes);
     this.view = new DataView(this.array.buffer);

@@ -16,8 +16,10 @@
   import { DirectedGraphGenerator } from "./lib/texture/DirectedGraphGenerator";
   import { DynamicArray } from "./lib/texture/DynamicArray";
   import { selectEdges } from "./lib/texture/selectEdges.glsl";
-  import { Auxiliary } from "./lib/texture/interface/Auxiliary";
-  import type { EditorInterface, Operations } from "./EditorInterface";
+  import { Auxiliary, type AuxiliaryType } from "./lib/texture/interface/Auxiliary";
+  import { DragState, type EditorInterface, type Operations } from "./EditorInterface";
+  import internal from "stream";
+  import { toByteArray, fromByteArray } from "base64-js";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
@@ -72,9 +74,9 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new Graph(graph);
+    const gi = new DirectedGraph(graph);
 
-    const generator = new GraphGenerator(gi);
+    const generator = new DirectedGraphGenerator(gi);
 
     let lastSelection: any;
 
@@ -90,9 +92,9 @@
         const result = {
           vertexCount: info.vertexCount,
           edgeCount: info.edgeCount,
-          vertex: vertex ? { x: vertex[0], y: vertex[1], id: floatBitsToUint(vertex[3]) } : null,
+          vertex: vertex ? { x: vertex[0], y: vertex[1], id: floatBitsToUint(vertex[3]), index: info.vertexIndex } : null,
           edge: edge
-            ? { u: floatBitsToUint(edge[0]), v: floatBitsToUint(edge[1]), id: floatBitsToUint(edge[3]) }
+            ? { u: floatBitsToUint(edge[0]), v: floatBitsToUint(edge[1]), id: floatBitsToUint(edge[3]), index: info.edgeIndex }
             : null,
           averageVertexPosition: info.averageVertexPosition,
         };
@@ -126,49 +128,10 @@
     // generator.spacing *= 2;
     // generator.randomness = 20;
 
-    function primes(n: number): number[] {
-      const primes: number[] = [];
-      let candidate = 2; // Start checking from the first prime number
-
-      // Continue until we have collected n prime numbers
-      while (primes.length < n) {
-        let isPrime = true;
-        const sqrtCandidate = Math.sqrt(candidate);
-
-        // Check divisibility only up to the square root of candidate
-        for (let i = 2; i <= sqrtCandidate; i++) {
-          if (candidate % i === 0) {
-            isPrime = false;
-            break;
-          }
-        }
-
-        // If candidate is prime, add it to the list
-        if (isPrime) {
-          primes.push(candidate);
-        }
-
-        candidate++; // Move to the next number
-      }
-
-      return primes;
-    }
-
-    // generator.empty(1000);
-    generator.grid(100);
-    //  .then(() => {
-    // gi.transaction(() => {
-    //   const semtex = gi.vertexAuxiliary.createProperty();
-    //   primes(gi.vertexCount).forEach((prime, index) => {
-    //     semtex.set(index, prime);
-    //   });
-    //   graph.text.vertices.aux = semtex.ref;
-    //   console.log("set");
-    // });
-    // });
-
     let doRender = true,
       doForce = false;
+
+    let reactives: (() => void)[] = [];
 
     editor = {
       operations: {
@@ -212,6 +175,7 @@
           return gi.transaction(
             () => {
               gi.undo();
+              reactives.forEach(callback => callback());
             },
             { undo: true }
           );
@@ -220,6 +184,7 @@
           gi.transaction(
             () => {
               gi.redo();
+              reactives.forEach(callback => callback());
             },
             { redo: true }
           );
@@ -229,23 +194,39 @@
         isUndoable: false,
         isRedoable: false,
       },
-      get areForcesEnabled() {
-        return doForce;
+      reactive(callback: () => void) {
+        reactives.push(callback);
       },
-      get isGridShown() {
-        return grid.parent !== null;
+      unreactive(callback: () => void) {
+        reactives = reactives.filter(other => other !== callback);
       },
-      setGridShown(value: boolean) {
-        if (value) {
-          scene.add(grid);
-        } else {
-          scene.remove(grid);
-        }
+      areForcesEnabled: doForce,
+      isGridShown: grid.parent !== null,
+      vertexProperties: gi.vertexAuxiliary,
+      edgeProperties: gi.edgeAuxiliary,
+      set vertexDisplayProperty(value: string) {
+        gi.vertexDisplayProperty = value === 'None' ? null : value;
       },
-      setForcesEnabled(value: boolean) {
-        doForce = value;
+      get vertexDisplayProperty() {
+        return gi.vertexDisplayProperty === null ? 'None' : gi.vertexDisplayProperty;
       },
+      set edgeDisplayProperty(value: string) {
+        console.log(value);
+        gi.edgeDisplayProperty = value === 'None' ? null : value;
+      },
+      get edgeDisplayProperty() {
+        return gi.edgeDisplayProperty === null ? 'None' : gi.edgeDisplayProperty;
+      },
+      transaction(fn: () => void) {
+        return gi.transaction(fn);
+      }
     } as EditorInterface;
+
+    generator.grid(10).then(() => {
+      editor.transaction(() => {
+        editor.vertexProperties.createProperty('hello', 'uint32');
+      });
+    });
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "q") {
@@ -308,16 +289,136 @@
           vertices.setUint32(hid * 16 + 8, 3);
         });
       }
+      else if(event.key === "c") {
+        gi.transaction(async () => {
+          const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
+
+          const vertexProperties = Object.entries(gi.vertexAuxiliary.properties)
+            .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
+
+          const edgeProperties = Object.entries(gi.edgeAuxiliary.properties)
+            .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
+
+          // const decoder = new TextDecoder('utf-8');
+
+          // const vertexData = [];
+          const vertexData = new DynamicArray(12);
+
+          const vertices = gi.vertices;
+          for(const vertex of vertices) {
+            if(!vertex.isSelected) continue;
+
+            vertexData.pushFloat32(vertex.x - mouseWorld.x);
+            vertexData.pushFloat32(vertex.y - mouseWorld.y);
+            vertexData.pushUint32(vertex.id);
+
+            for(const property of vertexProperties) {
+              vertexData.pushUint32(gi.vertexAuxiliary.getProperty(property, vertex.index));
+            }
+
+            // const base64 = decoder.decode(vertexData.asFloat32Array());
+            // vertexData.push(base64);
+          }
+
+          // const edgeData = [];
+          const edgeData = new DynamicArray(8);
+
+          const edges = gi.edges;
+          for(const edge of edges) {
+            if(!edge.isSelected || !edge.u.isSelected || !edge.v.isSelected) continue;
+
+            edgeData.pushUint32(edge.u.id);
+            edgeData.pushUint32(edge.v.id);
+
+            for(const property of edgeProperties) {
+              edgeData.pushUint32(gi.edgeAuxiliary.getProperty(property, edge.index));
+            }
+
+            // const base64 = btoa(decoder.decode(edgeData.asFloat32Array()));
+            // edgeData.push(base64);
+          }
+
+          const finalJson = {
+            vertexProperties,
+            edgeProperties,
+            vertexData: fromByteArray(vertexData.toArray()),
+            edgeData: fromByteArray(edgeData.toArray()),
+          };
+
+          navigator.clipboard.writeText(JSON.stringify(finalJson));
+        });
+        
+      }
+      else if(event.key === 'v') {
+        gi.transaction(async () => {          
+          const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
+
+          const text = await navigator.clipboard.readText();
+
+          const { vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(text);
+
+          // use browser features instead
+          const vertexDataArray = toByteArray(vertexData);
+          const edgeDataArray = toByteArray(edgeData);
+
+          const vertexSize = 12 + vertexProperties.length * 4;
+          const edgeSize = 8 + edgeProperties.length * 4;
+
+          const vertexIdConversion = new Map<number, number>();
+
+          for(let i = 0; i < vertexDataArray.length; i += vertexSize) {
+            
+            const array = new DynamicArray(vertexSize);
+            array.pushFrom(vertexDataArray, i, vertexSize);
+            
+            const vertex = gi.addVertex(array.getFloat32(0) + mouseWorld.x, array.getFloat32(4) + mouseWorld.y);
+
+            vertexIdConversion.set(array.getUint32(8), vertex.id);
+
+            for(let j = 0; j < vertexProperties.length; j++) {
+              if(gi.vertexAuxiliary.hasProperty(vertexProperties[j])) {
+                gi.vertexAuxiliary.setProperty(vertexProperties[j], vertex.index, array.getUint32(12 + j * 4));
+              }
+            }
+          }
+
+          for(let i = 0; i < edgeData.length; i += edgeSize) {
+            const array = new DynamicArray(edgeSize);
+            array.pushFrom(edgeDataArray, i, edgeSize);
+
+            const u = gi.getVertex(vertexIdConversion.get(array.getUint32(0))!);
+            const v = gi.getVertex(vertexIdConversion.get(array.getUint32(4))!);
+
+            if(u && v) {
+              const edge = gi.addEdge(u, v);
+
+              for(let j = 0; j < edgeProperties.length; j++) {
+                if(gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
+                  gi.edgeAuxiliary.setProperty(edgeProperties[j], edge.index, array.getUint32(8 + j * 4));
+                }
+              }
+            }
+            else {
+              console.error('vertices', u, v);
+            }
+          }
+
+        });
+      }
     });
 
     const loop = async () => {
       if (await gi.tick()) {
         editor.flags.isUndoable = gi.versioner.isUndoable();
         editor.flags.isRedoable = gi.versioner.isRedoable();
-        updateSelectionInfo();
       }
 
-      setTimeout(loop, 5);
+      updateSelectionInfo();
+
+      if(editor.isGridShown !== !!grid.parent) 
+        scene[grid.parent ? 'remove' : 'add'](grid);
+
+      setTimeout(loop, 10);
     };
 
     loop();
@@ -328,14 +429,13 @@
       if (!doRender) return;
       if (!Task.idle()) return;
 
-      if (doForce) graph.forces.update(0.1);
+      if (editor.areForcesEnabled) graph.forces.update(0.1);
 
+      gi.beforeRender();
       renderer.render(scene, camera);
     };
     render();
 
-    // console.log("edgeData", await graph.edgeData.read(0, 1));
-    // console.log("edgeCount", graph.edges.count);
 
     container.addEventListener("dblclick", async (event) => {
       if (event.button !== LEFT_MOUSE_BUTTON) return;
@@ -394,7 +494,7 @@
       hoveredIndex = -1;
 
     function mouseMoveHover(event: MouseEvent) {
-      if (dragging) return;
+      if (dragState !== DragState.None) return;
 
       const { x, y } = screenCoords(event);
 
@@ -436,19 +536,19 @@
 
     let select = true;
 
-    let dragging = false;
-    let dragged = false;
+   
+    let dragState = DragState.None;
 
     const startCoords = new Vector2();
 
-    container.addEventListener("mousedown", async (event) => {
+    async function mouseDown(event: MouseEvent) {
       if (isMousePressed(RIGHT_MOUSE_BUTTON)) return;
       if (event.button !== LEFT_MOUSE_BUTTON) return;
 
       if (hovering && !event.altKey) {
+        dragState = DragState.Preparing;
         const selected = await graph.isSelected(hoveredType as any, hoveredIndex);
-        dragging = true;
-        dragged = false;
+        dragState = DragState.Ready;
 
         if (!selected) {
           if (!event.shiftKey) graph.deselectAll();
@@ -471,14 +571,16 @@
       first.divideScalar(camera.zoom * 100);
 
       selecting = true;
-    });
+    }
+
 
     function mouseMove(event: MouseEvent) {
-      if (dragging) {
+      if (dragState >= DragState.Ready) {
         const diff = worldCoords(event).sub(startCoords);
         startCoords.copy(worldCoords(event));
 
-        dragged = true;
+        dragState = DragState.Dragging;
+        
 
         graph.forces.cooling = 1;
         graph.drag(diff);
@@ -504,20 +606,20 @@
       Draw.selectionRectangle(min, max);
     }
 
-    container.addEventListener("mousemove", mouseMove);
-    container.addEventListener("wheel", mouseMove);
+    
 
-    container.addEventListener("mouseup", (event) => {
+    function mouseUp(event: MouseEvent) {
       if (event.button !== 0) return;
 
-      if (dragging) {
-        dragging = false;
-
-        if (!dragged) {
+      if (dragState !== DragState.None) {
+        
+        if (dragState !== DragState.Dragging) {
           if (event.altKey) graph.select(hoveredType as any, hoveredIndex, false);
         } else {
           graph.undrag();
         }
+
+        dragState = DragState.None;
 
         return;
       }
@@ -537,7 +639,12 @@
 
       Draw.reset();
       selecting = false;
-    });
+    }
+
+    container.addEventListener("mousedown", mouseDown);
+    container.addEventListener("mouseup", mouseUp);
+    container.addEventListener("mousemove", mouseMove);
+    container.addEventListener("wheel", mouseMove);
 
     container.addEventListener("contextmenu", (event) => {
       event.preventDefault();

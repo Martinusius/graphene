@@ -7,8 +7,13 @@
   import VertexSidebar from "./VertexSidebar.svelte";
   import Trash from "lucide-svelte/icons/trash";
   import EdgeSidebar from "./EdgeSidebar.svelte";
+  import type { EditorInterface } from "./EditorInterface";
 
-  let { selection, updateSelected } = $props();
+  let { selection, updateSelected, editor } = $props() as {
+    selection: any;
+    updateSelected: any;
+    editor: EditorInterface;
+  };
 
   const typeStyles = {
     uint32: {
@@ -26,9 +31,9 @@
   <Sidebar.Content class="p-4">
     {#if selection && (selection.vertexCount || selection.edgeCount)}
       {#if selection.vertex}
-        <VertexSidebar {selection} {updateSelected} />
+        <VertexSidebar {selection} {updateSelected} {editor} />
       {:else if selection.edge}
-        <EdgeSidebar {selection} />
+        <EdgeSidebar {selection} {editor} />
       {:else}
         <Sidebar.Header class="flex flex-row">
           <div class="text-2xl font-semibold flex-1">Selection</div>

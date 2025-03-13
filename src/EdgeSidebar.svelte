@@ -11,19 +11,33 @@
   import Plus from "lucide-svelte/icons/plus";
   import Separator from "$lib/components/ui/separator/separator.svelte";
   import { typeStyles } from "./Properties";
+  import { onDestroy, onMount } from "svelte";
 
-  let { selection } = $props();
-
-  let ids = $state(1);
-
-  let edgeProperties = $state([
-    { id: ids++, name: "DFS_012", type: "uint32" },
-    { id: ids++, name: "Weight", type: "float32" },
-  ]);
+  let { selection, editor } = $props();
 
   let rename = $state("");
 
-  let edgeTextProperty = $state("ID");
+  let propertyValues = $state({} as Record<string, number>);
+  let properties = $state({} as Record<string, any>);
+
+  let displayProperty = $state("ID");
+
+  function react() {
+    for(const propertyName of Object.keys(editor.edgeProperties.properties)) {
+      propertyValues[propertyName] = editor.edgeProperties.getProperty(propertyName, selection.edge.index);
+    }
+    properties = editor.edgeProperties.properties;
+    displayProperty = editor.edgeDisplayProperty;
+  }
+
+  onMount(() => {
+    editor.reactive(react);
+    react();
+  });
+
+  onDestroy(() => {
+    editor.unreactive(react);
+  });
 </script>
 
 <Sidebar.Header class="flex flex-row">
@@ -50,11 +64,21 @@
 
   <div class="text-lg font-semibold">Custom Properties</div>
 
-  {#each edgeProperties as property}
+  {#each Object.entries(properties) as [propertyName, property]}
     {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
     <div>
-      <Label>{property.name} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
-      <Input class="mt-2" value="1486" />
+      <Label>{propertyName} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
+      <Input 
+        class="mt-2" type="number" 
+        min={0}
+        value={propertyValues[propertyName]}
+        oninput={(event) => {
+          editor.transaction(() => {
+            propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
+            editor.edgeProperties.setProperty(propertyName, selection.edge.index, Number((event.target as HTMLInputElement).value));
+          });
+        }}
+      />
     </div>
   {/each}
 
@@ -68,17 +92,17 @@
         <Dialog.Title>Edge Properties</Dialog.Title>
       </Dialog.Header>
       <div class="p-2 flex flex-col gap-3">
-        {#each edgeProperties as property}
+        {#each Object.entries(properties) as [propertyName, property]}
           {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
 
           <div class="flex flex-row gap-3">
             <Dialog.Root
               onOpenChange={(open) => {
-                if (open) rename = property.name;
+                if (open) rename = propertyName;
               }}
             >
               <Dialog.Trigger class="flex-1">
-                <Input value={property.name} oninput={(event) => event.preventDefault()} />
+                <Input value={propertyName} oninput={(event) => event.preventDefault()} />
               </Dialog.Trigger>
               <Dialog.Content>
                 <Dialog.Header>
@@ -90,13 +114,10 @@
                   <Dialog.Close
                     class={buttonVariants({ variant: "default" })}
                     onclick={(event) => {
-                      if (edgeProperties.some((other) => other.id !== property.id && other.name === rename)) {
-                        event.preventDefault();
-                        alert("Property name must be unique");
-                        return;
-                      }
-
-                      property.name = rename;
+                      editor.transaction(() => {
+                        editor.edgeProperties.renameProperty(propertyName, rename);
+                        react();
+                      });
                     }}>Save</Dialog.Close
                   >
                 </Dialog.Footer>
@@ -119,7 +140,10 @@
             <Button
               variant="destructive"
               onclick={() => {
-                edgeProperties = edgeProperties.filter((other) => other.id !== property.id);
+                 editor.transaction(() => {
+                  editor.edgeProperties.deleteProperty(propertyName);
+                  react();
+                });
               }}
             >
               <Trash size="16" />
@@ -129,18 +153,21 @@
 
         <Button
           onclick={() => {
-            const takenNames = new Set(edgeProperties.map((property) => property.name));
-
-            const originalName = "Property";
+            const takenNames = new Set(Object.keys(editor.edgeProperties.properties));
+              
+            const originalName = 'Property';
             let name = originalName;
             let index = 2;
 
-            while (takenNames.has(name)) {
+            while(takenNames.has(name)) {
               name = `${originalName}_${index}`;
               index++;
             }
 
-            edgeProperties.push({ id: ids++, name, type: "uint32" });
+            editor.transaction(() => {
+              editor.edgeProperties.createProperty(name, 'uint32');
+              react();
+            });
           }}
         >
           <Plus size="16" />
@@ -148,16 +175,20 @@
         </Button>
 
         <Label class="mt-4">Display property</Label>
-        <Select.Root type="single" bind:value={edgeTextProperty}>
+        <Select.Root type="single" bind:value={displayProperty} onValueChange={async (value) => {
+          editor.transaction(() => {
+            editor.edgeDisplayProperty = value;
+          });
+        }}>
           <Select.Trigger>
-            {edgeTextProperty}
+            {displayProperty}
           </Select.Trigger>
           <Select.Content>
             <Select.Item value="None">None</Select.Item>
             <Select.Item value="ID">ID</Select.Item>
-            {#each edgeProperties as property}
-              <Select.Item value={property.name}>
-                {property.name}
+            {#each Object.keys(editor.edgeProperties.properties) as propertyName}
+              <Select.Item value={propertyName}>
+                {propertyName}
               </Select.Item>
             {/each}
           </Select.Content>

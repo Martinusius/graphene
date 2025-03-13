@@ -33,10 +33,13 @@ export class Graph {
 
   public opCount = 0;
 
-  private vertexAuxiliary: Auxiliary;
-  private edgeAuxiliary: Auxiliary;
+  public vertexAuxiliary: Auxiliary;
+  public edgeAuxiliary: Auxiliary;
 
   public versioner = new Versioner();
+
+  public vertexDisplayProperty: string | null = null;
+  public edgeDisplayProperty: string | null = null;
 
   constructor(public readonly renderer: GraphRenderer) {
     this.incidency = [];
@@ -49,7 +52,9 @@ export class Graph {
       "vertexData",
       "edgeData",
       "whereVertex",
-      "whereEdge"
+      "whereEdge",
+      "vertexDisplayProperty",
+      "edgeDisplayProperty"
     );
 
     this.vertexAuxiliary = new Auxiliary(this.renderer.compute);
@@ -59,7 +64,8 @@ export class Graph {
       this.versioner.track(
         auxiliary,
         "arrays",
-        "whereProperty",
+        "properties",
+        "propertyNames",
         "objectCount",
         "propertyCount"
       );
@@ -305,6 +311,25 @@ export class Graph {
     });
   }
 
+  async beforeRender() {
+    this.renderer.text.vertices.maxDigits = this.vertexDisplayProperty ? 8 : 0;
+    this.renderer.text.edges.maxDigits = this.edgeDisplayProperty ? 8 : 0;
+
+    if(this.vertexDisplayProperty === 'ID' || this.vertexDisplayProperty === null) {
+      this.renderer.text.vertices.aux = this.renderer.text.vertices.defaultAux;
+    }
+    else {
+      this.renderer.text.vertices.aux = this.vertexAuxiliary.ref(this.vertexDisplayProperty);
+    }
+
+    if(this.edgeDisplayProperty === 'ID' || this.edgeDisplayProperty === null) {
+      this.renderer.text.edges.aux = this.renderer.text.edges.defaultAux;
+    }
+    else {
+      this.renderer.text.edges.aux = this.edgeAuxiliary.ref(this.edgeDisplayProperty);
+    }
+  }
+
   async tick() {
     if (!this.transactions.length) return false;
 
@@ -313,12 +338,7 @@ export class Graph {
     await this.download();
     await transaction.callback();
 
-    if (!transaction.undo &&
-      !transaction.redo &&
-      (this.changed ||
-        this.vertexAuxiliary.changed ||
-        this.edgeAuxiliary.changed)
-    ) {
+    if (!transaction.undo && !transaction.redo) {
       this.versioner.commit();
     }
 
@@ -326,9 +346,17 @@ export class Graph {
       this.versioner.clearRedo();
     }
 
+    // await Promise.all([
+    //   this.upload(),
+    //   this.vertexAuxiliary.upload(),
+    //   this.edgeAuxiliary.upload(),
+    // ]);
+
     await this.upload();
     await this.vertexAuxiliary.upload();
     await this.edgeAuxiliary.upload();
+
+    // console.log('uploaded');
 
     transaction.resolve();
 

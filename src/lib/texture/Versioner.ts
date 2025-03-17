@@ -126,6 +126,7 @@ type TrackedObject = {
   last: any;
   undo: any[];
   redo: any[];
+  precommit: any;
 };
 
 export class Versioner {
@@ -147,15 +148,24 @@ export class Versioner {
         last: clone(object[property]),
         undo: [],
         redo: [],
+        precommit: null
       });
     });
   }
 
-  commit() {
-    if(!this.tracked.some((tracked) => hasChanged(tracked.last, tracked.object[tracked.property])))
-      return;
+  precommit() {
     this.tracked.forEach((tracked) => {
-      tracked.undo.push(tracked.last);
+      tracked.precommit = clone(tracked.object[tracked.property]);
+    });
+  }
+
+  commit() {
+    if(!this.tracked.some((tracked) => hasChanged(tracked.precommit, tracked.object[tracked.property])))
+      return;
+
+    this.tracked.forEach((tracked) => {
+      tracked.undo.push(tracked.precommit);
+      tracked.precommit = null;
       tracked.last = clone(tracked.object[tracked.property]);
     });
   }

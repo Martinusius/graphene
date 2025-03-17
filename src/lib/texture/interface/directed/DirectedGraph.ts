@@ -284,7 +284,6 @@ export class DirectedGraph {
     const vertexIndex = v.index;
 
     for (const edge of v.in) this.deleteEdge(edge);
-
     for (const edge of v.out) this.deleteEdge(edge);
 
     this.vertexCount--;
@@ -399,6 +398,11 @@ export class DirectedGraph {
     const transaction = this.transactions.shift()!;
 
     await this.download();
+
+    if (!transaction.undo && !transaction.redo) {
+      this.versioner.precommit();
+    }
+
     await transaction.callback();
 
     if (!transaction.undo && !transaction.redo) {
@@ -533,6 +537,14 @@ export class DirectedVertex {
     return (this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS) & 1) === 1;
   }
 
+  set isSelected(value: boolean) {
+    const flags = this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS);
+    this.graph.vertexData.setUint32(
+      this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS,
+      flags & ~0b11 | Number(value) * 0b11
+    );
+  }
+
   delete() {
     this.graph.deleteVertex(this);
   }
@@ -574,6 +586,14 @@ export class DirectedEdge {
 
   get isSelected() {
     return (this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS) & 1) === 1;
+  }
+
+  set isSelected(value: boolean) {
+    const flags = this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS);
+    this.graph.edgeData.setUint32(
+      this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS,
+      flags & ~0b11 | Number(value) * 0b11
+    );
   }
 
   delete() {

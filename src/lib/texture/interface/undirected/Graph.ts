@@ -336,6 +336,11 @@ export class Graph {
     const transaction = this.transactions.shift()!;
 
     await this.download();
+
+    if (!transaction.undo && !transaction.redo) {
+      this.versioner.precommit();
+    }
+
     await transaction.callback();
 
     if (!transaction.undo && !transaction.redo) {
@@ -452,6 +457,14 @@ export class Vertex {
   get isSelected() {
     return (this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS) & 1) === 1;
   }
+  
+  set isSelected(value: boolean) {
+    const flags = this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS);
+    this.graph.vertexData.setUint32(
+      this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS,
+      flags & ~0b11 | Number(value) * 0b11
+    );
+  }
 
   get edges() {
     return this.graph.incidency[this.index]
@@ -492,6 +505,14 @@ export class Edge {
 
   get isSelected() {
     return (this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS) & 1) === 1;
+  }
+
+  set isSelected(value: boolean) {
+    const flags = this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS);
+    this.graph.edgeData.setUint32(
+      this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS,
+      flags & ~0b11 | Number(value) * 0b11
+    );
   }
 
   delete() {

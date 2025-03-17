@@ -1,13 +1,17 @@
 import type { AuxiliaryProperty, AuxiliaryType } from "$lib/texture/interface/Auxiliary";
 
 export type Operations = {
-  delete: () => void;
-  merge: () => void;
-  cliqueify: () => void;
-  subgraph: () => void;
+  delete(): void;
+  merge(): void;
+  cliqueify(): void;
+  subgraph(): void;
   
-  undo: () => void;
-  redo: () => void;
+  undo(): void;
+  redo(): void;
+
+  copy(): void;
+  paste(): void;
+  cut(): void;
 };
 
 export type Flags = {

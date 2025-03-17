@@ -42,8 +42,6 @@
 
   let editor = $state.raw({} as EditorInterface);
 
-
-  
   onKeybind("X", () => editor.operations.delete());
   onKeybind("Delete", () => editor.operations.delete());
 
@@ -53,6 +51,10 @@
 
   onKeybind("Ctrl+Z", () => editor.operations.undo());
   onKeybind("Ctrl+Y", () => editor.operations.redo());
+
+  onKeybind("Ctrl+C", () => editor.operations.copy());
+  onKeybind("Ctrl+V", () => editor.operations.paste());
+  onKeybind("Ctrl+X", () => editor.operations.cut());
 
   onKeybind("F", () => editor.areForcesEnabled = !editor.areForcesEnabled);
   onKeybind("G", () => editor.isGridShown = !editor.isGridShown);
@@ -219,14 +221,18 @@
       </Menubar.Content>
     </Menubar.Menu>
 
-    <!-- <Menubar.Menu>
+    <!-- 
+    TODO: For the future
+
+    <Menubar.Menu>
       <Menubar.Trigger>Scripts</Menubar.Trigger>
       <Menubar.Content>
         <Menubar.Item>Executable Scripts</Menubar.Item>
         <Menubar.Item>Import Scripts</Menubar.Item>
         <Menubar.Item>Export Scripts</Menubar.Item>
       </Menubar.Content>
-    </Menubar.Menu> -->
+    </Menubar.Menu>
+    -->
 
     <Menubar.Menu>
       <Menubar.Trigger>Algorithms</Menubar.Trigger>

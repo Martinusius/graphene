@@ -59,9 +59,9 @@ export function onKeybind(keybind: string, callback: (event: KeyboardEvent) => v
 
 
   window.addEventListener('keydown', (event) => {
-    const areSpecialKeysPressed = special.every(key => event[key + 'Key' as 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey']);
+    const pressedSpecialKeys = specialKeys.filter(key => event[key + 'Key' as 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey']);
 
-    if (!areSpecialKeysPressed) return;
+    if (pressedSpecialKeys.sort().join(' ') !== special.sort().join(' ')) return;
     if (notSpecial[0] !== event.key.toLowerCase()) return;
 
     callback(event);

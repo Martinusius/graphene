@@ -74,9 +74,9 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new DirectedGraph(graph);
+    const gi = new Graph(graph);
 
-    const generator = new DirectedGraphGenerator(gi);
+    const generator = new GraphGenerator(gi);
 
     let lastSelection: any;
 
@@ -133,9 +133,125 @@
 
     let reactives: (() => void)[] = [];
 
+    function copy(cut = false, all = false) {
+      gi.transaction(async () => {
+        const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
+
+        const vertexProperties = Object.entries(gi.vertexAuxiliary.properties)
+          .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
+
+        const edgeProperties = Object.entries(gi.edgeAuxiliary.properties)
+          .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
+
+        const vertexData = new DynamicArray(12);
+
+        const vertices = gi.vertices;
+        for(const vertex of vertices) {
+          if(!all && !vertex.isSelected) continue;
+
+          vertexData.pushFloat32(vertex.x - mouseWorld.x);
+          vertexData.pushFloat32(vertex.y - mouseWorld.y);
+          vertexData.pushUint32(vertex.id);
+
+          for(const property of vertexProperties) {
+            vertexData.pushUint32(gi.vertexAuxiliary.getProperty(property, vertex.index));
+          }
+        }
+
+        const edgeData = new DynamicArray(8);
+
+        const edges = gi.edges;
+        for(const edge of edges) {
+          if(!all && (!edge.isSelected || !edge.u.isSelected || !edge.v.isSelected)) continue;
+
+          edgeData.pushUint32(edge.u.id);
+          edgeData.pushUint32(edge.v.id);
+
+          for(const property of edgeProperties) {
+            edgeData.pushUint32(gi.edgeAuxiliary.getProperty(property, edge.index));
+          }
+        }
+
+        const finalJson = {
+          vertexProperties,
+          edgeProperties,
+          vertexData: fromByteArray(vertexData.toArray()),
+          edgeData: fromByteArray(edgeData.toArray()),
+        };
+
+        navigator.clipboard.writeText(JSON.stringify(finalJson));
+
+        if(cut) {
+          for(const vertex of vertices) {
+            if(all || vertex.isSelected) vertex.delete();
+          }
+
+          for(const edge of edges) {
+            if(all || edge.isSelected) edge.delete();
+          }
+        }
+      });
+    }
+
+    function paste() {
+      gi.transaction(async () => {
+        try {
+          const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
+
+          const text = await navigator.clipboard.readText();
+
+          const { vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(text);
+
+          const vertexDataArray = toByteArray(vertexData);
+          const edgeDataArray = toByteArray(edgeData);
+
+          const vertexSize = 12 + vertexProperties.length * 4;
+          const edgeSize = 8 + edgeProperties.length * 4;
+
+          const vertexIdConversion = new Map<number, number>();
+
+          for(let i = 0; i < vertexDataArray.length; i += vertexSize) {
+            const array = new DynamicArray(vertexSize);
+            array.pushFrom(vertexDataArray, i, vertexSize);
+            
+            const vertex = gi.addVertex(array.getFloat32(0) + mouseWorld.x, array.getFloat32(4) + mouseWorld.y);
+
+            vertexIdConversion.set(array.getUint32(8), vertex.id);
+
+            for(let j = 0; j < vertexProperties.length; j++) {
+              if(gi.vertexAuxiliary.hasProperty(vertexProperties[j])) {
+                gi.vertexAuxiliary.setProperty(vertexProperties[j], vertex.index, array.getUint32(12 + j * 4));
+              }
+            }
+          }
+
+          for(let i = 0; i < edgeData.length; i += edgeSize) {
+            const array = new DynamicArray(edgeSize);
+            array.pushFrom(edgeDataArray, i, edgeSize);
+
+            const u = gi.getVertex(vertexIdConversion.get(array.getUint32(0))!);
+            const v = gi.getVertex(vertexIdConversion.get(array.getUint32(4))!);
+
+            if(u && v) {
+              const edge = gi.addEdge(u, v);
+
+              for(let j = 0; j < edgeProperties.length; j++) {
+                if(gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
+                  gi.edgeAuxiliary.setProperty(edgeProperties[j], edge.index, array.getUint32(8 + j * 4));
+                }
+              }
+            }
+          }
+        }
+        catch(error) {
+          console.error(error);
+        }
+      });
+    }
+
     editor = {
       operations: {
-        delete: () => {
+        delete() {
           return gi.transaction(async () => {
             const edges = gi.edges;
             for (const edge of edges) {
@@ -148,17 +264,17 @@
             }
           });
         },
-        merge: () => {
+        merge() {
           return gi.transaction(async () => {
             gi.merge(gi.vertices.filter((v) => v.isSelected));
           });
         },
-        cliqueify: () => {
+        cliqueify() {
           return gi.transaction(async () => {
             gi.cliqueify(gi.vertices.filter((v) => v.isSelected));
           });
         },
-        subgraph: () => {
+        subgraph() {
           return gi.transaction(async () => {
             const edges = gi.edges;
             for (const edge of edges) {
@@ -171,7 +287,7 @@
             }
           });
         },
-        undo: () => {
+        undo() {
           return gi.transaction(
             () => {
               gi.undo();
@@ -180,7 +296,7 @@
             { undo: true }
           );
         },
-        redo: () => {
+        redo() {
           gi.transaction(
             () => {
               gi.redo();
@@ -188,6 +304,15 @@
             },
             { redo: true }
           );
+        },
+        copy() {
+          copy(false, false);
+        },
+        cut() {
+          copy(true, false);
+        },
+        paste() {
+          paste();
         },
       },
       flags: {
@@ -237,173 +362,47 @@
         } as any);
 
         gi.transaction(() => {
-          const vertices = gi.vertexData;
+          const newVertex = gi.addVertex(x, y);
 
-          const hoveredVertex = gi.addVertex(x, y);
+          const vertices = gi.vertices;
 
-          for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            const isSelected = vertices.getUint32(i + 8) & 1;
-            const id = vertices.getUint32(i + 12);
-
-            if (isSelected) {
-              const selectedVertex = gi.getVertex(id);
-              if (!selectedVertex || selectedVertex.id === hoveredVertex.id) continue;
-              gi.addEdge(selectedVertex, hoveredVertex);
+          for(const vertex of vertices) {
+            if(vertex.isSelected && vertex.id !== newVertex.id) {
+              try {
+                gi.addEdge(vertex, newVertex);
+              } catch(_) {} // If already exists (we don't really need to log this)
             }
-          }
 
-          for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            vertices.setUint32(i + 8, 0);
+            vertex.isSelected = vertex.id === newVertex.id;
           }
-
-          vertices.setUint32(hoveredVertex.index * 16 + 8, 3);
         });
       } else if (event.key === "e") {
         if (hoveredType !== "vertex") return;
-        const hid = hoveredIndex;
+        const _hoveredIndex = hoveredIndex;
 
         gi.transaction(async () => {
-          const vertices = gi.vertexData;
+          const vertices = gi.vertices;
 
-          const hoveredVertex = gi.getVertex(vertices.getUint32(hid * 16 + 12))!;
+          const hoveredVertex = gi.vertexAt(_hoveredIndex);
+          if(!hoveredVertex) return;
 
-          for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            const isSelected = vertices.getUint32(i + 8) & 1;
-            const id = vertices.getUint32(i + 12);
-
-            if (isSelected) {
-              const selectedVertex = gi.getVertex(id);
-              if (!selectedVertex || selectedVertex.id === hoveredVertex.id) continue;
+          for(const vertex of vertices) {
+            if(vertex.isSelected) {
               try {
-                gi.addEdge(selectedVertex, hoveredVertex);
-              } catch (e) {
-                console.error(e);
-              }
+                gi.addEdge(vertex, hoveredVertex);
+              } catch(_) {} // If already exists (we don't really need to log this)
             }
-          }
 
-          for (let i = 0; i < graph.vertices.count * 16; i += 16) {
-            vertices.setUint32(i + 8, 0);
+            vertex.isSelected = vertex.id === hoveredVertex.id;
           }
-
-          vertices.setUint32(hid * 16 + 8, 3);
         });
       }
       else if(event.key === "c") {
-        gi.transaction(async () => {
-          const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
-
-          const vertexProperties = Object.entries(gi.vertexAuxiliary.properties)
-            .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
-
-          const edgeProperties = Object.entries(gi.edgeAuxiliary.properties)
-            .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
-
-          // const decoder = new TextDecoder('utf-8');
-
-          // const vertexData = [];
-          const vertexData = new DynamicArray(12);
-
-          const vertices = gi.vertices;
-          for(const vertex of vertices) {
-            if(!vertex.isSelected) continue;
-
-            vertexData.pushFloat32(vertex.x - mouseWorld.x);
-            vertexData.pushFloat32(vertex.y - mouseWorld.y);
-            vertexData.pushUint32(vertex.id);
-
-            for(const property of vertexProperties) {
-              vertexData.pushUint32(gi.vertexAuxiliary.getProperty(property, vertex.index));
-            }
-
-            // const base64 = decoder.decode(vertexData.asFloat32Array());
-            // vertexData.push(base64);
-          }
-
-          // const edgeData = [];
-          const edgeData = new DynamicArray(8);
-
-          const edges = gi.edges;
-          for(const edge of edges) {
-            if(!edge.isSelected || !edge.u.isSelected || !edge.v.isSelected) continue;
-
-            edgeData.pushUint32(edge.u.id);
-            edgeData.pushUint32(edge.v.id);
-
-            for(const property of edgeProperties) {
-              edgeData.pushUint32(gi.edgeAuxiliary.getProperty(property, edge.index));
-            }
-
-            // const base64 = btoa(decoder.decode(edgeData.asFloat32Array()));
-            // edgeData.push(base64);
-          }
-
-          const finalJson = {
-            vertexProperties,
-            edgeProperties,
-            vertexData: fromByteArray(vertexData.toArray()),
-            edgeData: fromByteArray(edgeData.toArray()),
-          };
-
-          navigator.clipboard.writeText(JSON.stringify(finalJson));
-        });
+        
         
       }
       else if(event.key === 'v') {
-        gi.transaction(async () => {          
-          const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
-
-          const text = await navigator.clipboard.readText();
-
-          const { vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(text);
-
-          // use browser features instead
-          const vertexDataArray = toByteArray(vertexData);
-          const edgeDataArray = toByteArray(edgeData);
-
-          const vertexSize = 12 + vertexProperties.length * 4;
-          const edgeSize = 8 + edgeProperties.length * 4;
-
-          const vertexIdConversion = new Map<number, number>();
-
-          for(let i = 0; i < vertexDataArray.length; i += vertexSize) {
-            
-            const array = new DynamicArray(vertexSize);
-            array.pushFrom(vertexDataArray, i, vertexSize);
-            
-            const vertex = gi.addVertex(array.getFloat32(0) + mouseWorld.x, array.getFloat32(4) + mouseWorld.y);
-
-            vertexIdConversion.set(array.getUint32(8), vertex.id);
-
-            for(let j = 0; j < vertexProperties.length; j++) {
-              if(gi.vertexAuxiliary.hasProperty(vertexProperties[j])) {
-                gi.vertexAuxiliary.setProperty(vertexProperties[j], vertex.index, array.getUint32(12 + j * 4));
-              }
-            }
-          }
-
-          for(let i = 0; i < edgeData.length; i += edgeSize) {
-            const array = new DynamicArray(edgeSize);
-            array.pushFrom(edgeDataArray, i, edgeSize);
-
-            const u = gi.getVertex(vertexIdConversion.get(array.getUint32(0))!);
-            const v = gi.getVertex(vertexIdConversion.get(array.getUint32(4))!);
-
-            if(u && v) {
-              const edge = gi.addEdge(u, v);
-
-              for(let j = 0; j < edgeProperties.length; j++) {
-                if(gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
-                  gi.edgeAuxiliary.setProperty(edgeProperties[j], edge.index, array.getUint32(8 + j * 4));
-                }
-              }
-            }
-            else {
-              console.error('vertices', u, v);
-            }
-          }
-
-        });
+        
       }
     });
 

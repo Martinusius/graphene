@@ -33,8 +33,16 @@
   import Crop from "lucide-svelte/icons/crop";
   import Circle from "lucide-svelte/icons/circle";
   import Grid3x3 from "lucide-svelte/icons/grid-3x3";
+
+  import PanelLeft from "lucide-svelte/icons/panel-left";
+
   import { onKeybind } from "$lib/input";
   import type { EditorInterface } from "./EditorInterface";
+  import GenerateEmptyPopup from "./GenerateEmptyPopup.svelte";
+  import GenerateGridPopup from "./GenerateGridPopup.svelte";
+  import GenerateCliquePopup from "./GenerateCliquePopup.svelte";
+
+  let openSidebar = $state(true);
 
   let selection = $state(null);
 
@@ -56,15 +64,26 @@
   onKeybind("Ctrl+V", () => editor.operations.paste());
   onKeybind("Ctrl+X", () => editor.operations.cut());
 
-  onKeybind("F", () => editor.areForcesEnabled = !editor.areForcesEnabled);
-  onKeybind("G", () => editor.isGridShown = !editor.isGridShown);
+  let areForcesEnabled = $state(false);
+  let isGridShown = $state(true);
+
+  onKeybind("F", () => areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled);
+  onKeybind("G", () => isGridShown = editor.isGridShown = !isGridShown);
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
   });
+
+  let openGenerateEmpty = $state(false);
+  let openGenerateGrid = $state(false);
+  let openGenerateClique = $state(false);
 </script>
 
 <div class="w-full h-full bg-gray-100 flex flex-col overflow-hidden">
+  <GenerateEmptyPopup bind:open={openGenerateEmpty} editor={editor} />
+  <GenerateCliquePopup bind:open={openGenerateClique} editor={editor} />
+  <GenerateGridPopup bind:open={openGenerateGrid} editor={editor} />
+
   <Menubar.Root class="px-4 -mx-2">
     <Menubar.Menu>
       <Menubar.Trigger>File</Menubar.Trigger>
@@ -109,17 +128,17 @@
           <Menubar.Shortcut>Ctrl+Y</Menubar.Shortcut>
         </Menubar.Item>
         <Menubar.Separator />
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.copy()}>
           <Copy strokeWidth="1" class="mr-2" size="16" />
           Copy
           <Menubar.Shortcut>Ctrl+C</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.paste()}>
           <Clipboard strokeWidth="1" class="mr-2" size="16" />
           Paste
           <Menubar.Shortcut>Ctrl+V</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.operations.cut()}>
           <Scissors strokeWidth="1" class="mr-2" size="16" />
           Cut
           <Menubar.Shortcut>Ctrl+X</Menubar.Shortcut>
@@ -156,24 +175,33 @@
 
     <Menubar.Menu>
       <Menubar.Trigger>Preferences</Menubar.Trigger>
-      <Menubar.Content>
+      <Menubar.Content class="w-64">
         <Menubar.CheckboxItem
-          checked={editor.areForcesEnabled}
+          checked={areForcesEnabled}
           class="cursor-pointer"
-          onclick={() => editor.areForcesEnabled = !editor.areForcesEnabled}
+          onclick={() => areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled}
         >
           <Atom strokeWidth="1" class="mr-2" size="16" />
           Enable Forces
           <Menubar.Shortcut>F</Menubar.Shortcut>
         </Menubar.CheckboxItem>
         <Menubar.CheckboxItem
-          checked={editor.isGridShown}
+          checked={isGridShown}
           class="cursor-pointer"
-          onclick={() => editor.isGridShown = !editor.isGridShown}
+          onclick={() => isGridShown = editor.isGridShown = !isGridShown}
         >
           <Grid3x3 strokeWidth="1" class="mr-2" size="16" />
           Show Grid
           <Menubar.Shortcut>G</Menubar.Shortcut>
+        </Menubar.CheckboxItem>
+        <Menubar.CheckboxItem
+          checked={openSidebar}
+          class="cursor-pointer"
+          onclick={() => openSidebar = !openSidebar}
+        >
+          <PanelLeft strokeWidth="1" class="mr-2" size="16" />
+          Show Sidebar
+          <Menubar.Shortcut>Ctrl + B</Menubar.Shortcut>
         </Menubar.CheckboxItem>
       </Menubar.Content>
     </Menubar.Menu>
@@ -202,21 +230,21 @@
     <Menubar.Menu>
       <Menubar.Trigger>Generate</Menubar.Trigger>
       <Menubar.Content class="w-64">
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openGenerateEmpty = true)}>
           <Circle strokeWidth="1" class="mr-2" size="16" />
           Empty
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openGenerateClique = true)}>
           <Globe strokeWidth="1" class="mr-2" size="16" />
           Clique
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
-          <TreePine strokeWidth="1" class="mr-2" size="16" />
-          Tree
-        </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openGenerateGrid = true)}>
           <Grid3x3 strokeWidth="1" class="mr-2" size="16" />
           Grid
+        </Menubar.Item>
+        <Menubar.Item class="cursor-pointer" disabled>
+          <TreePine strokeWidth="1" class="mr-2" size="16" />
+          Tree
         </Menubar.Item>
       </Menubar.Content>
     </Menubar.Menu>
@@ -259,8 +287,8 @@
 
   <div class="relative flex-1">
     <Editor onselect={(info: any) => (selection = info)} bind:updateSelected bind:editor />
-    <Sidebar.Provider>
-      <AppSidebar {selection} {updateSelected} editor={editor} />
+    <Sidebar.Provider open={openSidebar} onOpenChange={(open) => (openSidebar = open)}>
+      <AppSidebar {selection} {updateSelected} editor={editor}/>
     </Sidebar.Provider>
   </div>
 </div>

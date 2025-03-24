@@ -9,6 +9,7 @@ import {
   VERTEX_SIZE,
   VertexProperty,
 } from "../Constants";
+import type { Edge, Graph, Vertex } from "../Graph";
 
 import type { Transaction, TransactionOptions } from "../Transaction";
 
@@ -16,7 +17,9 @@ function random(r: number) {
   return r * 2 * (Math.random() - 1);
 }
 
-export class Graph {
+export class UndirectedGraph implements Graph {
+  public isDirected = false;
+  
   // for each vertex index: map from neighbor id to edge id
   public incidency: Map<number, number>[];
 
@@ -88,7 +91,7 @@ export class Graph {
     this.versioner.redo();
   }
 
-  merge(vertices: Vertex[]) {
+  merge(vertices: UndirectedVertex[]) {
     if (vertices.length === 0) return;
 
     const ids = new Set(vertices.map((vertex) => vertex.id));
@@ -125,7 +128,7 @@ export class Graph {
     return newVertex;
   }
 
-  cliqueify(vertices: Vertex[]) {
+  cliqueify(vertices: UndirectedVertex[]) {
     for (const vertex of vertices) {
       for (const other of vertices) {
         if (vertex === other || this.getEdgeBetween(vertex, other)) continue;
@@ -135,7 +138,7 @@ export class Graph {
     }
   }
 
-  addEdge(u: Vertex, v: Vertex) {
+  addEdge(u: UndirectedVertex, v: UndirectedVertex) {
     const uIndex = u.index;
     const vIndex = v.index;
 
@@ -159,7 +162,7 @@ export class Graph {
 
     this.edgeCount++;
 
-    return new Edge(this, id);
+    return new UndirectedEdge(this, id);
   }
 
   addVertex(x?: number, y?: number) {
@@ -179,10 +182,10 @@ export class Graph {
 
     this.vertexCount++;
 
-    return new Vertex(this, id);
+    return new UndirectedVertex(this, id);
   }
 
-  deleteEdge(e: Edge) {
+  deleteEdge(e: UndirectedEdge) {
     this.changed = true;
     this.edgeCount--;
 
@@ -220,7 +223,7 @@ export class Graph {
     this.whereEdge.set(swappedId, edgeIndex);
   }
 
-  deleteVertex(v: Vertex) {
+  deleteVertex(v: UndirectedVertex) {
     this.changed = true;
     this.opCount++;
 
@@ -275,17 +278,17 @@ export class Graph {
     this.incidency.pop();
   }
 
-  getVertex(id: number): Vertex | undefined {
+  getVertex(id: number): UndirectedVertex | undefined {
     if (!this.whereVertex.has(id)) return undefined;
-    return new Vertex(this, id);
+    return new UndirectedVertex(this, id);
   }
 
-  getEdge(id: number): Edge | undefined {
+  getEdge(id: number): UndirectedEdge | undefined {
     if (!this.whereEdge.has(id)) return undefined;
-    return new Edge(this, id);
+    return new UndirectedEdge(this, id);
   }
 
-  getEdgeBetween(u: Vertex, v: Vertex): Edge | undefined {
+  getEdgeBetween(u: UndirectedVertex, v: UndirectedVertex): UndirectedEdge | undefined {
     return this.getEdge(this.incidency[u.index].get(v.id) ?? -1);
   }
 
@@ -331,7 +334,7 @@ export class Graph {
   }
 
   async tick() {
-    if (!this.transactions.length) return false;
+    if (!this.transactions.length) return null;
 
     const transaction = this.transactions.shift()!;
 
@@ -363,9 +366,7 @@ export class Graph {
 
     // console.log('uploaded');
 
-    transaction.resolve();
-
-    return true;
+    return () => transaction.resolve();
   }
 
   async upload() {
@@ -401,7 +402,7 @@ export class Graph {
   }
 
   get vertices() {
-    const result: Vertex[] = [];
+    const result: UndirectedVertex[] = [];
 
     for (let i = 0; i < this.vertexCount; i++) {
       result.push(this.vertexAt(i));
@@ -411,7 +412,7 @@ export class Graph {
   }
 
   get edges() {
-    const result: Edge[] = [];
+    const result: UndirectedEdge[] = [];
 
     for (let i = 0; i < this.edgeCount; i++) {
       result.push(this.edgeAt(i));
@@ -421,16 +422,16 @@ export class Graph {
   }
 
   vertexAt(index: number) {
-    return new Vertex(this, this.vertexData.getUint32(index * VERTEX_SIZE + VertexProperty.ID));
+    return new UndirectedVertex(this, this.vertexData.getUint32(index * VERTEX_SIZE + VertexProperty.ID));
   }
 
   edgeAt(index: number) {
-    return new Edge(this, this.edgeData.getUint32(index * EDGE_SIZE + EdgeProperty.ID));
+    return new UndirectedEdge(this, this.edgeData.getUint32(index * EDGE_SIZE + EdgeProperty.ID));
   }
 }
 
-export class Vertex {
-  constructor(public readonly graph: Graph, public readonly id: number) { }
+export class UndirectedVertex implements Vertex {
+  constructor(public readonly graph: UndirectedGraph, public readonly id: number) { }
 
   get index() {
     return this.graph.whereVertex.get(this.id)!;
@@ -466,6 +467,14 @@ export class Vertex {
     );
   }
 
+  setProperty(name: string, value: number): void {
+    this.graph.vertexAuxiliary.setProperty(name, this.index, value);
+  }
+
+  getProperty(name: string): number {
+    return this.graph.vertexAuxiliary.getProperty(name, this.index);
+  }
+
   get edges() {
     return this.graph.incidency[this.index]
       .values()
@@ -482,8 +491,8 @@ export class Vertex {
   }
 }
 
-export class Edge {
-  constructor(public readonly graph: Graph, public id: number) { }
+export class UndirectedEdge implements Edge {
+  constructor(public readonly graph: UndirectedGraph, public id: number) { }
 
   get index() {
     return this.graph.whereEdge.get(this.id)!;
@@ -505,6 +514,14 @@ export class Edge {
 
   get isSelected() {
     return (this.graph.edgeData.getUint32(this.index * EDGE_SIZE + EdgeProperty.SELECTION_FLAGS) & 1) === 1;
+  }
+
+  setProperty(name: string, value: number): void {
+    this.graph.edgeAuxiliary.setProperty(name, this.index, value);
+  }
+
+  getProperty(name: string): number {
+    return this.graph.edgeAuxiliary.getProperty(name, this.index);
   }
 
   set isSelected(value: boolean) {

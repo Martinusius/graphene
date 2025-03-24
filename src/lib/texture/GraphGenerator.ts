@@ -1,7 +1,10 @@
 import { Vector2 } from "three";
-import type { Graph } from "./interface/undirected/Graph";
+import type { UndirectedGraph } from "./interface/undirected/UndirectedGraph";
+import { IndexedSet } from "$lib/IndexedSet";
+import type { DirectedGraph } from "./interface/directed/DirectedGraph";
+import type { Graph } from "./interface/Graph";
 
-const random = (x: number) => (Math.random() - 0.5) * 2 * x;
+const random = (x: number) => (Math.random() - 0.5) * 2 * x + Math.random() * 0.0001;
 export class GraphGenerator {
   constructor(public graph: Graph) { }
 
@@ -61,16 +64,18 @@ export class GraphGenerator {
     await this.graph.transaction(() => {
       const r = this.spacing / 2 / Math.sin(Math.PI / size);
 
+      const vertices =  [];
+
       for (let i = 0; i < size; i++) {
-        this.graph.addVertex(
+        vertices.push(this.graph.addVertex(
           this.position.x + Math.cos((i / size) * Math.PI * 2) * r + random(this.randomness),
           this.position.y + Math.sin((i / size) * Math.PI * 2) * r + random(this.randomness)
-        );
+        ));
       }
 
       for (let i = 0; i < size; i++) {
         for (let j = i + 1; j < size; j++) {
-          this.graph.addEdge(this.graph.getVertex(i + 1)!, this.graph.getVertex(j + 1)!);
+          this.graph.addEdge(vertices[i], vertices[j]);
         }
       }
     });
@@ -122,5 +127,98 @@ export class GraphGenerator {
       }
 
     });
+  }
+
+  async tree(size: number, meanBrachingFactor: number, stdDevBranchingFactor: number, layout: 'horizontal' | 'circular' = 'horizontal') {
+    await this.graph.transaction(() => {
+      if(layout === 'circular') throw Error('Not implemented');
+
+      function randomNormalDistribution(mean: number, stdDev: number) {
+        return mean + stdDev * Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random());
+      }
+
+      const vertices = [this.graph.addVertex(this.position.x, this.position.y)];
+      const children: number[][] = [[]];
+
+      const leaves = new IndexedSet<number>([0]);
+
+      while(vertices.length < size) {
+        const leaf = Math.floor(Math.random() * leaves.size);
+        const parent = vertices[leaves.at(leaf)];
+
+        const desiredBranchingFactor = Math.round(randomNormalDistribution(meanBrachingFactor, stdDevBranchingFactor));
+        const branchingFactor = Math.max(1, Math.min(desiredBranchingFactor, size - vertices.length));
+
+        console.log(branchingFactor > 1);
+
+        for (let i = 0; i < branchingFactor; i++) {
+          const child = this.graph.addVertex(0, 0);
+          this.graph.addEdge(parent, child);
+
+          vertices.push(child);
+          children.push([]);
+
+          leaves.add(vertices.length - 1);
+          children[leaf].push(vertices.length - 1);
+        }
+
+        leaves.delete(leaf);
+      }
+
+      if(layout === 'horizontal') {
+        const nodeWidths = new Array(size).fill(0);
+
+        const that = this;
+
+
+        function calculateNodeWidths(v: number) {
+          let sum = 0;
+
+          for(const child of children[v]) {
+            sum += calculateNodeWidths(child);
+          }
+
+          return nodeWidths[v] = Math.max(1, sum);
+        }
+
+        calculateNodeWidths(0);
+
+        function findHeight(v: number) {
+          let max = 0;
+
+          for(const child of children[v]) {
+            max = Math.max(max, findHeight(child));
+          }
+
+          return max + 1;
+        }
+
+        const height = findHeight(0);
+
+        const width = nodeWidths[0] * this.spacing;
+
+        function positionNodes(v: number, minX: number, maxX: number, depth: number) {
+          const x = (minX + maxX) / 2;
+          const y = -depth * that.spacing;
+  
+          vertices[v].x = x;
+          vertices[v].y = y;
+
+          // console.log('position', v, x, y, nodeWidths[v]);
+  
+          let offset = 0;
+  
+          for(const child of children[v]) {
+            positionNodes(child, minX + offset, minX + offset + nodeWidths[child] * that.spacing, depth + 1);
+            offset += nodeWidths[child] * that.spacing;
+          }
+        }
+
+
+        positionNodes(0, -width / 2, width / 2, 0);
+      }
+
+    });
+
   }
 }

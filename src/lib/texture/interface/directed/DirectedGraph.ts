@@ -6,6 +6,7 @@ import { EDGE_SIZE, VERTEX_SIZE, VertexProperty } from "../Constants";
 import { EdgeProperty } from "../Constants";
 import { Auxiliary } from "../Auxiliary";
 import { Versioner } from "../../Versioner";
+import type { Edge, Graph, Vertex } from "../Graph";
 
 function random(r: number) {
   return r * 2 * (Math.random() - 1);
@@ -36,7 +37,9 @@ function random(r: number) {
 // Note:
 // Changing other selection flags than isSelected is generally not recommended
 
-export class DirectedGraph {
+export class DirectedGraph implements Graph {
+  public isDirected = true;
+
   // Incident outgoing edges of i-th vertex
   // Neighbor vertex Id -> Outgoing edge Id
   public outcidency: Map<number, number>[];
@@ -483,7 +486,7 @@ export class DirectedGraph {
   }
 }
 
-export class DirectedVertex {
+export class DirectedVertex implements Vertex {
   constructor(
     public readonly graph: DirectedGraph,
     public readonly id: number
@@ -521,6 +524,14 @@ export class DirectedVertex {
     );
   }
 
+  setProperty(name: string, value: number): void {
+    this.graph.vertexAuxiliary.setProperty(name, this.index, value);
+  }
+
+  getProperty(name: string): number {
+    return this.graph.vertexAuxiliary.getProperty(name, this.index);
+  }
+
   get out() {
     return this.graph.outcidency[this.index]
       .values()
@@ -555,7 +566,7 @@ export class DirectedVertex {
   }
 }
 
-export class DirectedEdge {
+export class DirectedEdge implements Edge {
   constructor(public readonly graph: DirectedGraph, public id: number) { }
 
   get index() {
@@ -582,6 +593,14 @@ export class DirectedEdge {
       index * VERTEX_SIZE + VertexProperty.ID
     );
     return this.graph.getVertex(id)!;
+  }
+
+  setProperty(name: string, value: number): void {
+    this.graph.edgeAuxiliary.setProperty(name, this.index, value);
+  }
+
+  getProperty(name: string): number {
+    return this.graph.edgeAuxiliary.getProperty(name, this.index);
   }
 
   get isSelected() {

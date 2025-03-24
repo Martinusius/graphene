@@ -9,17 +9,18 @@
   import { GraphRenderer } from "./lib/texture/GraphRenderer";
   import { Three } from "./lib/texture/Three";
   import { Task } from "./lib/texture/Task";
-  import { Graph, Vertex } from "./lib/texture/interface/undirected/Graph";
+  import { UndirectedGraph } from "./lib/texture/interface/undirected/UndirectedGraph";
   import { floatBitsToUint, uintBitsToFloat } from "./lib/texture/reinterpret";
   import { GraphGenerator } from "./lib/texture/GraphGenerator";
   import { DirectedGraph } from "./lib/texture/interface/directed/DirectedGraph";
-  import { DirectedGraphGenerator } from "./lib/texture/DirectedGraphGenerator";
   import { DynamicArray } from "./lib/texture/DynamicArray";
   import { selectEdges } from "./lib/texture/selectEdges.glsl";
   import { Auxiliary, type AuxiliaryType } from "./lib/texture/interface/Auxiliary";
   import { DragState, type EditorInterface, type Operations } from "./EditorInterface";
   import internal from "stream";
   import { toByteArray, fromByteArray } from "base64-js";
+  import { GraphAlgorithms } from "$lib/GraphAlgorithms";
+  import { ArrayQueue } from "$lib/ArrayQueue";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
@@ -74,35 +75,35 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new Graph(graph);
+    const gi = new UndirectedGraph(graph);
 
     const generator = new GraphGenerator(gi);
 
     let lastSelection: any;
 
     let lastUpdateSelectionInfoTimestamp = 0;
-    function updateSelectionInfo() {
+    async function updateSelectionInfo() {
       if (lastUpdateSelectionInfoTimestamp + 100 > performance.now()) return;
       lastUpdateSelectionInfoTimestamp = performance.now();
 
-      graph.selectionInfo().then(async (info) => {
-        const vertex = info.vertexIndex !== null ? await graph.vertexData.read(info.vertexIndex) : null;
-        const edge = info.edgeIndex !== null ? await graph.edgeData.read(info.edgeIndex) : null;
+      const info = await graph.selectionInfo();
+      const vertex = info.vertexIndex !== null ? await graph.vertexData.read(info.vertexIndex) : null;
+      const edge = info.edgeIndex !== null ? await graph.edgeData.read(info.edgeIndex) : null;
 
-        const result = {
-          vertexCount: info.vertexCount,
-          edgeCount: info.edgeCount,
-          vertex: vertex ? { x: vertex[0], y: vertex[1], id: floatBitsToUint(vertex[3]), index: info.vertexIndex } : null,
-          edge: edge
-            ? { u: floatBitsToUint(edge[0]), v: floatBitsToUint(edge[1]), id: floatBitsToUint(edge[3]), index: info.edgeIndex }
-            : null,
-          averageVertexPosition: info.averageVertexPosition,
-        };
+      const result = {
+        vertexCount: info.vertexCount,
+        edgeCount: info.edgeCount,
+        vertex: vertex ? { x: vertex[0], y: vertex[1], id: floatBitsToUint(vertex[3]), index: info.vertexIndex } : null,
+        edge: edge
+          ? { u: floatBitsToUint(edge[0]), v: floatBitsToUint(edge[1]), id: floatBitsToUint(edge[3]), index: info.edgeIndex }
+          : null,
+        averageVertexPosition: info.averageVertexPosition,
+      };
 
-        lastSelection = structuredClone(result);
+      lastSelection = structuredClone(result);
 
-        onselect(result);
-      });
+      onselect(result);
+      reactives.forEach(callback => callback());
     }
 
     updateSelected = function (selection: any) {
@@ -182,12 +183,12 @@
         navigator.clipboard.writeText(JSON.stringify(finalJson));
 
         if(cut) {
-          for(const vertex of vertices) {
-            if(all || vertex.isSelected) vertex.delete();
-          }
-
           for(const edge of edges) {
             if(all || edge.isSelected) edge.delete();
+          }
+
+          for(const vertex of vertices) {
+            if(all || vertex.isSelected) vertex.delete();
           }
         }
       });
@@ -291,19 +292,23 @@
           return gi.transaction(
             () => {
               gi.undo();
-              reactives.forEach(callback => callback());
+              
             },
             { undo: true }
-          );
+          ).then(() => {
+            reactives.forEach(callback => callback())
+          });
         },
         redo() {
           gi.transaction(
             () => {
               gi.redo();
-              reactives.forEach(callback => callback());
+              
             },
             { redo: true }
-          );
+          ).then(() => {
+            reactives.forEach(callback => callback())
+          })
         },
         copy() {
           copy(false, false);
@@ -344,13 +349,20 @@
       },
       transaction(fn: () => void) {
         return gi.transaction(fn);
-      }
+      },
+      generator
     } as EditorInterface;
 
-    generator.grid(10).then(() => {
+    generator.grid(2).then(() => {
+      generator.grid(3);
+
       editor.transaction(() => {
         editor.vertexProperties.createProperty('hello', 'uint32');
       });
+
+      const algos = new GraphAlgorithms(gi);
+
+      algos.bfs(gi.vertices[0], 'hello');
     });
 
     window.addEventListener("keydown", (event) => {
@@ -397,22 +409,18 @@
           }
         });
       }
-      else if(event.key === "c") {
-        
-        
-      }
-      else if(event.key === 'v') {
-        
-      }
     });
 
     const loop = async () => {
-      if (await gi.tick()) {
+      const resolveTask = await gi.tick();
+
+      if (resolveTask) {
         editor.flags.isUndoable = gi.versioner.isUndoable();
         editor.flags.isRedoable = gi.versioner.isRedoable();
-      }
 
-      updateSelectionInfo();
+        await updateSelectionInfo();
+        resolveTask();
+      }
 
       if(editor.isGridShown !== !!grid.parent) 
         scene[grid.parent ? 'remove' : 'add'](grid);
@@ -448,7 +456,6 @@
           await vertex.download();
 
           position.set(vertex.x, vertex.y);
-          console.log(vertex.x, vertex.y);
           size = 8;
         } else if (hoveredType === "edge") {
           const edge = gi.edgeAt(hoveredIndex);

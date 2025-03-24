@@ -9,10 +9,11 @@
   import EdgeSidebar from "./EdgeSidebar.svelte";
   import type { EditorInterface } from "./EditorInterface";
 
-  let { selection, updateSelected, editor } = $props() as {
+  let { selection, updateSelected, editor, open = $bindable() } = $props() as {
     selection: any;
     updateSelected: any;
     editor: EditorInterface;
+    open: boolean;
   };
 
   const typeStyles = {
@@ -75,6 +76,9 @@
         </Sidebar.Footer>
       {/if}
     {:else}
+    <Sidebar.Header class="flex flex-row justify-end">
+      <Sidebar.Trigger />
+    </Sidebar.Header>
       <div class="flex flex-col items-center justify-center h-full">
         <div class="text-2xl font-semibold">No Selection</div>
         <div class="text-gray-500">Select a vertex or an edge to view details</div>

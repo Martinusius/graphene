@@ -19,3 +19,8 @@ export function uintBitsToFloat(uintNumber: number) {
   uintBuffer[0] = setUint32Fix(uintNumber);
   return floatBuffer[0];
 }
+
+export function uint(value: number) {
+  uintBuffer[0] = value;
+  return uintBuffer[0];
+}

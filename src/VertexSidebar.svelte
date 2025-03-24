@@ -38,6 +38,7 @@
     for(const propertyName of Object.keys(editor.vertexProperties.properties)) {
       propertyValues[propertyName] = editor.vertexProperties.getProperty(propertyName, selection.vertex.index);
     }
+
     properties = editor.vertexProperties.properties;
     displayProperty = editor.vertexDisplayProperty;
   }

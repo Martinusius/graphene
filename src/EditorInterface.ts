@@ -1,3 +1,5 @@
+import type { DirectedGraphGenerator } from "$lib/texture/DirectedGraphGenerator";
+import type { GraphGenerator } from "$lib/texture/GraphGenerator";
 import type { AuxiliaryProperty, AuxiliaryType } from "$lib/texture/interface/Auxiliary";
 
 export type Operations = {
@@ -47,6 +49,8 @@ export type EditorInterface = {
   unreactive(callback: () => void): void;
 
   transaction(callback: () => void): Promise<void>;
+
+  generator: GraphGenerator | DirectedGraphGenerator;
 };
 
 export enum DragState {

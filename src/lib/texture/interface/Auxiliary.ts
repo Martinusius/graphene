@@ -95,8 +95,6 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    // console.log(array.length);
-
     if(property.type === 'uint32') array.setUint32(i * 16 + channel * 4, value);
     else if(property.type === 'float32') array.setFloat32(i * 16 + channel * 4, value);
     else throw new Error('Invalid property type');
@@ -107,8 +105,6 @@ export class Auxiliary {
 
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
-
-    // console.log(property.index);
 
     if(property.type === 'uint32') return array.getUint32(i * 16 + channel * 4);
     else if(property.type === 'float32') return array.getFloat32(i * 16 + channel * 4);

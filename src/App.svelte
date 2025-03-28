@@ -41,6 +41,8 @@
   import GenerateEmptyPopup from "./GenerateEmptyPopup.svelte";
   import GenerateGridPopup from "./GenerateGridPopup.svelte";
   import GenerateCliquePopup from "./GenerateCliquePopup.svelte";
+  import AlgorithmDfs from "./AlgorithmDfs.svelte";
+  import AlgorithmBfs from "./AlgorithmBfs.svelte";
 
   let openSidebar = $state(true);
 
@@ -77,12 +79,17 @@
   let openGenerateEmpty = $state(false);
   let openGenerateGrid = $state(false);
   let openGenerateClique = $state(false);
+
+  let openAlgorithmDfs = $state(false);
 </script>
 
 <div class="w-full h-full bg-gray-100 flex flex-col overflow-hidden">
   <GenerateEmptyPopup bind:open={openGenerateEmpty} editor={editor} />
   <GenerateCliquePopup bind:open={openGenerateClique} editor={editor} />
   <GenerateGridPopup bind:open={openGenerateGrid} editor={editor} />
+
+  <AlgorithmDfs bind:open={openAlgorithmDfs} editor={editor} />
+  <AlgorithmBfs bind:open={openAlgorithmDfs} editor={editor} />
 
   <Menubar.Root class="px-4 -mx-2">
     <Menubar.Menu>
@@ -265,11 +272,11 @@
     <Menubar.Menu>
       <Menubar.Trigger>Algorithms</Menubar.Trigger>
       <Menubar.Content>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openAlgorithmDfs = true)}>
           <ChevronsDown strokeWidth="1" class="mr-2" size="16" />
           DFS
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openAlgorithmDfs = true)}>
           <Expand strokeWidth="1" class="mr-2" size="16" />
           BFS
         </Menubar.Item>

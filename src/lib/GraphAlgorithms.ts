@@ -9,11 +9,13 @@ export class GraphAlgorithms {
     
   }
 
-  dfs(root: Vertex, depthProperty: string) {
+  dfs(root: Vertex, depthProperty?: string) {
     return this.graph.transaction(() => {
-      this.graph.vertices.forEach((vertex) => {
-        vertex.setProperty(depthProperty, uint(-1));
-      });
+      if(depthProperty) {
+        this.graph.vertices.forEach((vertex) => {
+          vertex.setProperty(depthProperty, uint(-1));
+        });
+      }
   
       const visited = new Set<number>();
       const stack = [root];
@@ -24,7 +26,7 @@ export class GraphAlgorithms {
         if (visited.has(vertex.id)) continue;
   
         visited.add(vertex.id);
-        vertex.setProperty(depthProperty, depth++);
+        if(depthProperty) vertex.setProperty(depthProperty, depth++);
   
         let edges: Edge[] = [];
         let to: (edge: Edge) => Vertex;
@@ -46,12 +48,14 @@ export class GraphAlgorithms {
     });
   }
 
-  bfs(root: Vertex, depthProperty: string) {
+  bfs(root: Vertex, depthProperty?: string) {
     return this.graph.transaction(() => {
-      this.graph.vertices.forEach((vertex) => {
-        vertex.setProperty(depthProperty, uint(-1));
-      });
-  
+      if(depthProperty) {
+        this.graph.vertices.forEach((vertex) => {
+          vertex.setProperty(depthProperty, uint(-1));
+        });
+      }
+      
       const visited = new Set<number>();
       const queue = new ArrayQueue([[root, 0] as [Vertex, number]]);
   
@@ -60,7 +64,7 @@ export class GraphAlgorithms {
         if (visited.has(vertex.id)) continue;
   
         visited.add(vertex.id);
-        vertex.setProperty(depthProperty, depth);
+        if(depthProperty) vertex.setProperty(depthProperty, depth);
   
         let edges: Edge[] = [];
         let to: (edge: Edge) => Vertex;

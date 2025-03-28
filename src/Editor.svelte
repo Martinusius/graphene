@@ -250,6 +250,9 @@
       });
     }
 
+    const algorithms = new GraphAlgorithms(gi);
+
+
     editor = {
       operations: {
         delete() {
@@ -350,7 +353,9 @@
       transaction(fn: () => void) {
         return gi.transaction(fn);
       },
-      generator
+      get generator() { return generator; },
+      get algorithms() { return algorithms; },
+      get graph() { return gi; },
     } as EditorInterface;
 
     generator.grid(2).then(() => {
@@ -360,9 +365,8 @@
         editor.vertexProperties.createProperty('hello', 'uint32');
       });
 
-      const algos = new GraphAlgorithms(gi);
 
-      algos.bfs(gi.vertices[0], 'hello');
+      algorithms.bfs(gi.vertices[0], 'hello');
     });
 
     window.addEventListener("keydown", (event) => {

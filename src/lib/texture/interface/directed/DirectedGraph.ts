@@ -174,6 +174,9 @@ export class DirectedGraph implements Graph {
   }
 
   addEdge(u: DirectedVertex, v: DirectedVertex) {
+    if (u.id === v.id)
+      throw new Error("Cannot add self-loop");
+
     const uIndex = u.index;
     const vIndex = v.index;
 
@@ -380,14 +383,14 @@ export class DirectedGraph implements Graph {
     this.renderer.text.vertices.maxDigits = this.vertexDisplayProperty ? 8 : 0;
     this.renderer.text.edges.maxDigits = this.edgeDisplayProperty ? 8 : 0;
 
-    if(this.vertexDisplayProperty === 'ID' || this.vertexDisplayProperty === null) {
+    if (this.vertexDisplayProperty === 'ID' || this.vertexDisplayProperty === null) {
       this.renderer.text.vertices.aux = this.renderer.text.vertices.defaultAux;
     }
     else {
       this.renderer.text.vertices.aux = this.vertexAuxiliary.ref(this.vertexDisplayProperty);
     }
 
-    if(this.edgeDisplayProperty === 'ID' || this.edgeDisplayProperty === null) {
+    if (this.edgeDisplayProperty === 'ID' || this.edgeDisplayProperty === null) {
       this.renderer.text.edges.aux = this.renderer.text.edges.defaultAux;
     }
     else {

@@ -1,7 +1,6 @@
 import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 import { DynamicArray } from "../DynamicArray";
-import { Ids } from "../Ids";
 
 export type AuxiliaryType = 'uint32' | 'float32';
 
@@ -11,12 +10,15 @@ export type AuxiliaryProperty = {
   index: number;
 };
 
+function log<T>(t: T, ...args: any[]) {
+  console.log(t, args);
+  return t;
+}
+
 export class Auxiliary {
-  // whereProperty = new Ids<number>();
   propertyNames: string[] = [];
   properties: Record<string, AuxiliaryProperty> = {};
 
-  // properties: Record<string, AuxiliaryProperty> = {};
 
   arrays: DynamicArray[] = [];
   buffers: ComputeBuffer[] = [];
@@ -26,38 +28,27 @@ export class Auxiliary {
 
   public changed = false;
 
-  constructor(private compute: Compute) {}
+  constructor(private compute: Compute) { }
 
   pushObject() {
     this.changed = true;
     this.objectCount++;
 
     this.arrays.forEach(array => {
-      for(let i = 0; i < 4; i++)
+      for (let i = 0; i < 4; i++)
         array.pushUint32(0);
     })
-
-    // for (let i = 0; i < this.propertyCount; i++) {
-    //   const array = this.arrays[Math.floor(i / 4)];
-    //   array.pushUint32(0);
-    // }
   }
 
   popObject() {
     this.changed = true;
     this.objectCount--;
 
-    // for (let i = this.propertyCount - 1; i >= 0; i--) {
-    //   const array = this.arrays[Math.floor(i / 4)];
-    //   array.popUint32();
-    // }
     this.arrays.forEach(array => {
-      for(let i = 0; i < 4; i++)
+      for (let i = 0; i < 4; i++)
         array.popUint32();
     })
   }
-
-
 
   swapObjects(i: number, j: number) {
     this.changed = true;
@@ -95,8 +86,8 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if(property.type === 'uint32') array.setUint32(i * 16 + channel * 4, value);
-    else if(property.type === 'float32') array.setFloat32(i * 16 + channel * 4, value);
+    if (property.type === 'uint32') array.setUint32(i * 16 + channel * 4, value);
+    else if (property.type === 'float32') array.setFloat32(i * 16 + channel * 4, value);
     else throw new Error('Invalid property type');
   }
 
@@ -106,13 +97,13 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if(property.type === 'uint32') return array.getUint32(i * 16 + channel * 4);
-    else if(property.type === 'float32') return array.getFloat32(i * 16 + channel * 4);
+    if (property.type === 'uint32') return array.getUint32(i * 16 + channel * 4);
+    else if (property.type === 'float32') return array.getFloat32(i * 16 + channel * 4);
     else throw new Error('Invalid property type');
   }
 
   createProperty(name: string, type: AuxiliaryType) {
-    if(this.properties[name]) throw new Error('Property already exists');
+    if (this.properties[name]) throw new Error('Property already exists');
 
     this.changed = true;
     this.propertyCount++;
@@ -145,7 +136,7 @@ export class Auxiliary {
     this.properties[to] = this.properties[from];
     this.properties[to].name = to;
 
-    if(from !== to) delete this.properties[from];
+    if (from !== to) delete this.properties[from];
     this.propertyNames[this.properties[to].index!] = to;
   }
 

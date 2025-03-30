@@ -147,7 +147,6 @@ export class ComputeBuffer {
     if (length <= 0) throw new Error("length must be greater than 0");
     const end = start + length;
 
-    // console.log(end, this.capacity);
 
 
     if (end > this.capacity) throw new Error("end is greater than the buffer capacity");

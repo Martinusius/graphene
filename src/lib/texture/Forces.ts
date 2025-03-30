@@ -63,9 +63,7 @@ export class Forces {
   }
 
   private async resizeBuffersIfNeeded() {
-    // console.log('check');
     if (this.vertices.count > this.velocities.size) {
-      // console.log('resize', Math.ceil(this.vertices.count / 4));
       await Promise.all([
         this.hashTable.resizeErase(Math.ceil(this.vertices.count / 4)),
         this.offsets.resizeErase(Math.ceil(this.vertices.count / 4)),
@@ -76,7 +74,6 @@ export class Forces {
       this.buckets2 = new Float32Array(this.offsets.size * 4);
       this.vertexArray = new Float32Array(this.offsets.size * 4);
 
-      // console.log('hashtable', this.hashTable.size);
     }
   }
 
@@ -115,11 +112,7 @@ export class Forces {
 
     this.buckets.fill(0);
 
-    if (this.vertices.count > data.length) {
-      console.log("miss");
-
-      return;
-    }
+    if (this.vertices.count > data.length) return;
 
     // count how many vertices are in each bucket
     for (let i = 0; i < this.vertices.count; i++)

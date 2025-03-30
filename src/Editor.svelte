@@ -95,7 +95,12 @@
         edgeCount: info.edgeCount,
         vertex: vertex ? { x: vertex[0], y: vertex[1], id: floatBitsToUint(vertex[3]), index: info.vertexIndex } : null,
         edge: edge
-          ? { u: floatBitsToUint(edge[0]), v: floatBitsToUint(edge[1]), id: floatBitsToUint(edge[3]), index: info.edgeIndex }
+          ? {
+              u: floatBitsToUint(edge[0]),
+              v: floatBitsToUint(edge[1]),
+              id: floatBitsToUint(edge[3]),
+              index: info.edgeIndex,
+            }
           : null,
         averageVertexPosition: info.averageVertexPosition,
       };
@@ -103,7 +108,7 @@
       lastSelection = structuredClone(result);
 
       onselect(result);
-      reactives.forEach(callback => callback());
+      reactives.forEach((callback) => callback());
     }
 
     updateSelected = function (selection: any) {
@@ -139,22 +144,24 @@
         const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
 
         const vertexProperties = Object.entries(gi.vertexAuxiliary.properties)
-          .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
+          .sort((a, b) => a[1].index - b[1].index)
+          .map(([name]) => name);
 
         const edgeProperties = Object.entries(gi.edgeAuxiliary.properties)
-          .sort((a, b) => a[1].index - b[1].index).map(([name]) => name);
+          .sort((a, b) => a[1].index - b[1].index)
+          .map(([name]) => name);
 
         const vertexData = new DynamicArray(12);
 
         const vertices = gi.vertices;
-        for(const vertex of vertices) {
-          if(!all && !vertex.isSelected) continue;
+        for (const vertex of vertices) {
+          if (!all && !vertex.isSelected) continue;
 
           vertexData.pushFloat32(vertex.x - mouseWorld.x);
           vertexData.pushFloat32(vertex.y - mouseWorld.y);
           vertexData.pushUint32(vertex.id);
 
-          for(const property of vertexProperties) {
+          for (const property of vertexProperties) {
             vertexData.pushUint32(gi.vertexAuxiliary.getProperty(property, vertex.index));
           }
         }
@@ -162,13 +169,13 @@
         const edgeData = new DynamicArray(8);
 
         const edges = gi.edges;
-        for(const edge of edges) {
-          if(!all && (!edge.isSelected || !edge.u.isSelected || !edge.v.isSelected)) continue;
+        for (const edge of edges) {
+          if (!all && (!edge.isSelected || !edge.u.isSelected || !edge.v.isSelected)) continue;
 
           edgeData.pushUint32(edge.u.id);
           edgeData.pushUint32(edge.v.id);
 
-          for(const property of edgeProperties) {
+          for (const property of edgeProperties) {
             edgeData.pushUint32(gi.edgeAuxiliary.getProperty(property, edge.index));
           }
         }
@@ -182,13 +189,13 @@
 
         navigator.clipboard.writeText(JSON.stringify(finalJson));
 
-        if(cut) {
-          for(const edge of edges) {
-            if(all || edge.isSelected) edge.delete();
+        if (cut) {
+          for (const edge of edges) {
+            if (all || edge.isSelected) edge.delete();
           }
 
-          for(const vertex of vertices) {
-            if(all || vertex.isSelected) vertex.delete();
+          for (const vertex of vertices) {
+            if (all || vertex.isSelected) vertex.delete();
           }
         }
       });
@@ -211,47 +218,45 @@
 
           const vertexIdConversion = new Map<number, number>();
 
-          for(let i = 0; i < vertexDataArray.length; i += vertexSize) {
+          for (let i = 0; i < vertexDataArray.length; i += vertexSize) {
             const array = new DynamicArray(vertexSize);
             array.pushFrom(vertexDataArray, i, vertexSize);
-            
+
             const vertex = gi.addVertex(array.getFloat32(0) + mouseWorld.x, array.getFloat32(4) + mouseWorld.y);
 
             vertexIdConversion.set(array.getUint32(8), vertex.id);
 
-            for(let j = 0; j < vertexProperties.length; j++) {
-              if(gi.vertexAuxiliary.hasProperty(vertexProperties[j])) {
+            for (let j = 0; j < vertexProperties.length; j++) {
+              if (gi.vertexAuxiliary.hasProperty(vertexProperties[j])) {
                 gi.vertexAuxiliary.setProperty(vertexProperties[j], vertex.index, array.getUint32(12 + j * 4));
               }
             }
           }
 
-          for(let i = 0; i < edgeData.length; i += edgeSize) {
+          for (let i = 0; i < edgeData.length; i += edgeSize) {
             const array = new DynamicArray(edgeSize);
             array.pushFrom(edgeDataArray, i, edgeSize);
 
             const u = gi.getVertex(vertexIdConversion.get(array.getUint32(0))!);
             const v = gi.getVertex(vertexIdConversion.get(array.getUint32(4))!);
 
-            if(u && v) {
+            if (u && v) {
               const edge = gi.addEdge(u, v);
 
-              for(let j = 0; j < edgeProperties.length; j++) {
-                if(gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
+              for (let j = 0; j < edgeProperties.length; j++) {
+                if (gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
                   gi.edgeAuxiliary.setProperty(edgeProperties[j], edge.index, array.getUint32(8 + j * 4));
                 }
               }
             }
           }
-        }
-        catch(error) {
+        } catch (error) {
           console.error(error);
         }
       });
     }
 
     const algorithms = new GraphAlgorithms(gi);
-
 
     editor = {
       operations: {
@@ -292,26 +297,26 @@
           });
         },
         undo() {
-          return gi.transaction(
-            () => {
-              gi.undo();
-              
-            },
-            { undo: true }
-          ).then(() => {
-            reactives.forEach(callback => callback())
-          });
+          return gi
+            .transaction(
+              () => {
+                gi.undo();
+              },
+              { undo: true }
+            )
+            .then(() => {
+              reactives.forEach((callback) => callback());
+            });
         },
         redo() {
           gi.transaction(
             () => {
               gi.redo();
-              
             },
             { redo: true }
           ).then(() => {
-            reactives.forEach(callback => callback())
-          })
+            reactives.forEach((callback) => callback());
+          });
         },
         copy() {
           copy(false, false);
@@ -331,43 +336,53 @@
         reactives.push(callback);
       },
       unreactive(callback: () => void) {
-        reactives = reactives.filter(other => other !== callback);
+        reactives = reactives.filter((other) => other !== callback);
       },
       areForcesEnabled: doForce,
       isGridShown: grid.parent !== null,
       vertexProperties: gi.vertexAuxiliary,
       edgeProperties: gi.edgeAuxiliary,
       set vertexDisplayProperty(value: string) {
-        gi.vertexDisplayProperty = value === 'None' ? null : value;
+        gi.vertexDisplayProperty = value === "None" ? null : value;
       },
       get vertexDisplayProperty() {
-        return gi.vertexDisplayProperty === null ? 'None' : gi.vertexDisplayProperty;
+        return gi.vertexDisplayProperty === null ? "None" : gi.vertexDisplayProperty;
       },
       set edgeDisplayProperty(value: string) {
         console.log(value);
-        gi.edgeDisplayProperty = value === 'None' ? null : value;
+        gi.edgeDisplayProperty = value === "None" ? null : value;
       },
       get edgeDisplayProperty() {
-        return gi.edgeDisplayProperty === null ? 'None' : gi.edgeDisplayProperty;
+        return gi.edgeDisplayProperty === null ? "None" : gi.edgeDisplayProperty;
       },
       transaction(fn: () => void) {
         return gi.transaction(fn);
       },
-      get generator() { return generator; },
-      get algorithms() { return algorithms; },
-      get graph() { return gi; },
+      get generator() {
+        return generator;
+      },
+      get algorithms() {
+        return algorithms;
+      },
+      get graph() {
+        return gi;
+      },
     } as EditorInterface;
 
     generator.grid(2).then(() => {
       generator.grid(3);
 
       editor.transaction(() => {
-        editor.vertexProperties.createProperty('hello', 'uint32');
+        editor.vertexProperties.createProperty("hello", "float32");
+        for (const vertex of gi.vertices) {
+          editor.vertexProperties.setProperty("hello", vertex.index, 11.324);
+        }
       });
 
-
-      algorithms.bfs(gi.vertices[0], 'hello');
+      algorithms.bfs(gi.vertices[0], "hello");
     });
+
+    generator.clique(5);
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "q") {
@@ -382,11 +397,11 @@
 
           const vertices = gi.vertices;
 
-          for(const vertex of vertices) {
-            if(vertex.isSelected && vertex.id !== newVertex.id) {
+          for (const vertex of vertices) {
+            if (vertex.isSelected && vertex.id !== newVertex.id) {
               try {
                 gi.addEdge(vertex, newVertex);
-              } catch(_) {} // If already exists (we don't really need to log this)
+              } catch (_) {} // If already exists (we don't really need to log this)
             }
 
             vertex.isSelected = vertex.id === newVertex.id;
@@ -394,19 +409,19 @@
         });
       } else if (event.key === "e") {
         if (hoveredType !== "vertex") return;
-        const _hoveredIndex = hoveredIndex;
+        const hoveredId = gi.vertexAt(hoveredIndex)?.id;
 
         gi.transaction(async () => {
           const vertices = gi.vertices;
 
-          const hoveredVertex = gi.vertexAt(_hoveredIndex);
-          if(!hoveredVertex) return;
+          const hoveredVertex = gi.getVertex(hoveredId);
+          if (!hoveredVertex) return;
 
-          for(const vertex of vertices) {
-            if(vertex.isSelected) {
+          for (const vertex of vertices) {
+            if (vertex.isSelected) {
               try {
                 gi.addEdge(vertex, hoveredVertex);
-              } catch(_) {} // If already exists (we don't really need to log this)
+              } catch (_) {} // If already exists (we don't really need to log this)
             }
 
             vertex.isSelected = vertex.id === hoveredVertex.id;
@@ -426,8 +441,7 @@
         resolveTask();
       }
 
-      if(editor.isGridShown !== !!grid.parent) 
-        scene[grid.parent ? 'remove' : 'add'](grid);
+      if (editor.isGridShown !== !!grid.parent) scene[grid.parent ? "remove" : "add"](grid);
 
       setTimeout(loop, 10);
     };
@@ -446,7 +460,6 @@
       renderer.render(scene, camera);
     };
     render();
-
 
     container.addEventListener("dblclick", async (event) => {
       if (event.button !== LEFT_MOUSE_BUTTON) return;
@@ -546,7 +559,6 @@
 
     let select = true;
 
-   
     let dragState = DragState.None;
 
     const startCoords = new Vector2();
@@ -583,14 +595,12 @@
       selecting = true;
     }
 
-
     function mouseMove(event: MouseEvent) {
       if (dragState >= DragState.Ready) {
         const diff = worldCoords(event).sub(startCoords);
         startCoords.copy(worldCoords(event));
 
         dragState = DragState.Dragging;
-        
 
         graph.forces.cooling = 1;
         graph.drag(diff);
@@ -616,13 +626,10 @@
       Draw.selectionRectangle(min, max);
     }
 
-    
-
     function mouseUp(event: MouseEvent) {
       if (event.button !== 0) return;
 
       if (dragState !== DragState.None) {
-        
         if (dragState !== DragState.Dragging) {
           if (event.altKey) graph.select(hoveredType as any, hoveredIndex, false);
         } else {

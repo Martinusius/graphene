@@ -4,7 +4,7 @@
   import Label from "$lib/components/ui/label/label.svelte";
   import Button, { buttonVariants } from "$lib/components/ui/button/button.svelte";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import * as Select from "$lib/components/ui/select/index.js"; 
+  import * as Select from "$lib/components/ui/select/index.js";
 
   import Trash from "lucide-svelte/icons/trash";
   import Wrench from "lucide-svelte/icons/wrench";
@@ -20,22 +20,17 @@
     editor: EditorInterface;
   };
 
-  let rename = $state('');
+  let rename = $state("");
 
   let propertyValues = $state({} as Record<string, number>);
   let properties = $state({} as Record<string, any>);
 
-  // $effect(() => {
-  //   for(const [propertyName, property] of Object.entries(editor.vertexProperties.properties)) {
-  //     propertyValues[propertyName] = property.get(selection.vertex.index);
-  //   }
-  //   properties = editor.vertexProperties.properties;
-  // });
-
-  let displayProperty = $state('ID');
+  let displayProperty = $state("ID");
 
   function react() {
-    for(const propertyName of Object.keys(editor.vertexProperties.properties)) {
+    if (!selection.vertex) return;
+
+    for (const propertyName of Object.keys(editor.vertexProperties.properties)) {
       propertyValues[propertyName] = editor.vertexProperties.getProperty(propertyName, selection.vertex.index);
     }
 
@@ -50,7 +45,7 @@
 
   onDestroy(() => {
     editor.unreactive(react);
-  }); 
+  });
 
   // let vertexTextProperty = $state("ID");
 </script>
@@ -62,12 +57,22 @@
 <div class="p-2 flex flex-col gap-3">
   <div>
     <Label>Position X</Label>
-    <Input type="number" bind:value={selection.vertex.x} onchange={() => updateSelected(selection)} oninput={() => updateSelected(selection)} />
+    <Input
+      type="number"
+      bind:value={selection.vertex.x}
+      onchange={() => updateSelected(selection)}
+      oninput={() => updateSelected(selection)}
+    />
   </div>
 
   <div>
     <Label>Position Y</Label>
-    <Input type="number" bind:value={selection.vertex.y} onchange={() => updateSelected(selection)} oninput={() => updateSelected(selection)} />
+    <Input
+      type="number"
+      bind:value={selection.vertex.y}
+      onchange={() => updateSelected(selection)}
+      oninput={() => updateSelected(selection)}
+    />
   </div>
 
   <div>
@@ -83,14 +88,19 @@
     {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
     <div>
       <Label>{propertyName} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
-      <Input 
-        class="mt-2" type="number" 
+      <Input
+        class="mt-2"
+        type="number"
         min={0}
         value={propertyValues[propertyName]}
         oninput={(event) => {
           editor.transaction(() => {
             propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
-            editor.vertexProperties.setProperty(propertyName, selection.vertex.index, Number((event.target as HTMLInputElement).value));
+            editor.vertexProperties.setProperty(
+              propertyName,
+              selection.vertex.index,
+              Number((event.target as HTMLInputElement).value)
+            );
           });
         }}
       />
@@ -98,120 +108,123 @@
   {/each}
 
   <Dialog.Root>
-    <Dialog.Trigger class={['mt-4', buttonVariants({ variant: "outline" })]}>
-      <Wrench size="16" /> 
+    <Dialog.Trigger class={["mt-4", buttonVariants({ variant: "outline" })]}>
+      <Wrench size="16" />
       Configure Properties
     </Dialog.Trigger>
     <Dialog.Content>
       <Dialog.Header>
         <Dialog.Title>Vertex Properties</Dialog.Title>
       </Dialog.Header>
-        <div class="p-2 flex flex-col gap-3">
-          {#each Object.entries(properties) as [propertyName, property]}
-            {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
+      <div class="p-2 flex flex-col gap-3">
+        {#each Object.entries(properties) as [propertyName, property]}
+          {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
 
-            <div class="flex flex-row gap-3">
-              <Dialog.Root onOpenChange={(open) => {
-                if(open) rename = propertyName;
-              }}>
-                <Dialog.Trigger class="flex-1">
-                  <Input value={propertyName} oninput={(event) => event.preventDefault()}/>
-                </Dialog.Trigger>
-                <Dialog.Content>
-                  <Dialog.Header>
-                    <Dialog.Title>Rename Property</Dialog.Title>
-                  </Dialog.Header>
-                  <Input bind:value={rename} />
-                  <Dialog.Footer>
-                    <Dialog.Close class={buttonVariants({ variant: "outline" })}>Cancel</Dialog.Close>
-                    <Dialog.Close  class={buttonVariants({ variant: "default" })}
-                      onclick={() => {                      
-                        editor.transaction(() => {
-                          editor.vertexProperties.renameProperty(propertyName, rename);
-                          react();
-                        });
-                      }}
-                    >
-                      Save
-                    </Dialog.Close>
-                  </Dialog.Footer>
-                </Dialog.Content>
-              </Dialog.Root>
-             
-              <Select.Root type="single" bind:value={property.type}>
-                <Select.Trigger class="w-[140px]">
-                  <span class={typeStyle.color}>{typeStyle.label}</span>
-                </Select.Trigger>
-                <Select.Content>
-                  {#each Object.keys(typeStyles) as type}
-                    {@const typeStyle = typeStyles[type as keyof typeof typeStyles]}
-                    <Select.Item value={type}>
-                      <span class={typeStyle.color}>{typeStyle.label}</span>
-                    </Select.Item>
-                  {/each}
-                </Select.Content>
-              </Select.Root>
-              <Button variant="destructive" 
-                onclick={() => {
-                  editor.transaction(() => {
-                    editor.vertexProperties.deleteProperty(propertyName);
-                    react();
-                  });
-                }}
-              >
-                <Trash size="16" />
-              </Button>
-            </div>
-          {/each}
+          <div class="flex flex-row gap-3">
+            <Dialog.Root
+              onOpenChange={(open) => {
+                if (open) rename = propertyName;
+              }}
+            >
+              <Dialog.Trigger class="flex-1">
+                <Input value={propertyName} oninput={(event) => event.preventDefault()} />
+              </Dialog.Trigger>
+              <Dialog.Content>
+                <Dialog.Header>
+                  <Dialog.Title>Rename Property</Dialog.Title>
+                </Dialog.Header>
+                <Input bind:value={rename} />
+                <Dialog.Footer>
+                  <Dialog.Close class={buttonVariants({ variant: "outline" })}>Cancel</Dialog.Close>
+                  <Dialog.Close
+                    class={buttonVariants({ variant: "default" })}
+                    onclick={() => {
+                      editor.transaction(() => {
+                        editor.vertexProperties.renameProperty(propertyName, rename);
+                        react();
+                      });
+                    }}
+                  >
+                    Save
+                  </Dialog.Close>
+                </Dialog.Footer>
+              </Dialog.Content>
+            </Dialog.Root>
 
-          <Button 
-            onclick={() => {
-              const takenNames = new Set(Object.keys(editor.vertexProperties.properties));
-              
-              const originalName = 'Property';
-              let name = originalName;
-              let index = 2;
+            <Select.Root type="single" bind:value={property.type}>
+              <Select.Trigger class="w-[140px]">
+                <span class={typeStyle.color}>{typeStyle.label}</span>
+              </Select.Trigger>
+              <Select.Content>
+                {#each Object.keys(typeStyles) as type}
+                  {@const typeStyle = typeStyles[type as keyof typeof typeStyles]}
+                  <Select.Item value={type}>
+                    <span class={typeStyle.color}>{typeStyle.label}</span>
+                  </Select.Item>
+                {/each}
+              </Select.Content>
+            </Select.Root>
+            <Button
+              variant="destructive"
+              onclick={() => {
+                editor.transaction(() => {
+                  editor.vertexProperties.deleteProperty(propertyName);
+                  react();
+                });
+              }}
+            >
+              <Trash size="16" />
+            </Button>
+          </div>
+        {/each}
 
-              while(takenNames.has(name)) {
-                name = `${originalName}_${index}`;
-                index++;
-              }
+        <Button
+          onclick={() => {
+            const takenNames = new Set(Object.keys(editor.vertexProperties.properties));
 
-              editor.transaction(() => {
-                editor.vertexProperties.createProperty(name, 'uint32');
-                react();
-              });
-            }}
-          >
-            <Plus size="16" />
-            New property
-          </Button>
+            const originalName = "Property";
+            let name = originalName;
+            let index = 2;
 
-          <Label class="mt-4">Display property</Label>
-          <Select.Root type="single" bind:value={displayProperty} onValueChange={async (value) => {
+            while (takenNames.has(name)) {
+              name = `${originalName}_${index}`;
+              index++;
+            }
+
+            editor.transaction(() => {
+              editor.vertexProperties.createProperty(name, "uint32");
+              react();
+            });
+          }}
+        >
+          <Plus size="16" />
+          New property
+        </Button>
+
+        <Label class="mt-4">Display property</Label>
+        <Select.Root
+          type="single"
+          bind:value={displayProperty}
+          onValueChange={async (value) => {
             editor.transaction(() => {
               editor.vertexDisplayProperty = value;
             });
-          }}>
-            <Select.Trigger>
-              {displayProperty}
-            </Select.Trigger>
-            <Select.Content>
-              <Select.Item value="None">
-                None
+          }}
+        >
+          <Select.Trigger>
+            {displayProperty}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="None">None</Select.Item>
+            <Select.Item value="ID">ID</Select.Item>
+            {#each Object.keys(editor.vertexProperties.properties) as propertyName}
+              <Select.Item value={propertyName}>
+                {propertyName}
               </Select.Item>
-              <Select.Item value="ID">
-                ID
-              </Select.Item>
-              {#each Object.keys(editor.vertexProperties.properties) as propertyName}
-                <Select.Item value={propertyName}>
-                  {propertyName}
-                </Select.Item>
-              {/each}
-            </Select.Content>
-          </Select.Root>
-
-        </div>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      </div>
     </Dialog.Content>
   </Dialog.Root>
 </div>

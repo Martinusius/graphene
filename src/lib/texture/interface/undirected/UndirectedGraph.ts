@@ -19,7 +19,7 @@ function random(r: number) {
 
 export class UndirectedGraph implements Graph {
   public isDirected = false;
-  
+
   // for each vertex index: map from neighbor id to edge id
   public incidency: Map<number, number>[];
 
@@ -139,6 +139,9 @@ export class UndirectedGraph implements Graph {
   }
 
   addEdge(u: UndirectedVertex, v: UndirectedVertex) {
+    if (u.id === v.id)
+      throw new Error("Cannot add self-loop");
+
     const uIndex = u.index;
     const vIndex = v.index;
 
@@ -318,14 +321,14 @@ export class UndirectedGraph implements Graph {
     this.renderer.text.vertices.maxDigits = this.vertexDisplayProperty ? 8 : 0;
     this.renderer.text.edges.maxDigits = this.edgeDisplayProperty ? 8 : 0;
 
-    if(this.vertexDisplayProperty === 'ID' || this.vertexDisplayProperty === null) {
+    if (this.vertexDisplayProperty === 'ID' || this.vertexDisplayProperty === null) {
       this.renderer.text.vertices.aux = this.renderer.text.vertices.defaultAux;
     }
     else {
       this.renderer.text.vertices.aux = this.vertexAuxiliary.ref(this.vertexDisplayProperty);
     }
 
-    if(this.edgeDisplayProperty === 'ID' || this.edgeDisplayProperty === null) {
+    if (this.edgeDisplayProperty === 'ID' || this.edgeDisplayProperty === null) {
       this.renderer.text.edges.aux = this.renderer.text.edges.defaultAux;
     }
     else {
@@ -364,7 +367,6 @@ export class UndirectedGraph implements Graph {
     await this.vertexAuxiliary.upload();
     await this.edgeAuxiliary.upload();
 
-    // console.log('uploaded');
 
     return () => transaction.resolve();
   }
@@ -458,7 +460,7 @@ export class UndirectedVertex implements Vertex {
   get isSelected() {
     return (this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS) & 1) === 1;
   }
-  
+
   set isSelected(value: boolean) {
     const flags = this.graph.vertexData.getUint32(this.index * VERTEX_SIZE + VertexProperty.SELECTION_FLAGS);
     this.graph.vertexData.setUint32(

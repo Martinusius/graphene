@@ -1,5 +1,5 @@
 import type { TypedArray } from "three";
-import { getUint32Fix, setUint32Fix } from "./polyfill.glsl";
+import { getInt32Fix, getUint32Fix, setInt32Fix, setUint32Fix } from "./polyfill.glsl";
 
 const PHI = 1.6180339887;
 
@@ -58,6 +58,10 @@ export class DynamicArray {
     return getUint32Fix(this.view.getUint32(index, true));
   }
 
+  getInt32(index: number) {
+    return getInt32Fix(this.view.getInt32(index, true));
+  }
+
   getFloat32(index: number) {
     return this.view.getFloat32(index, true);
   }
@@ -68,6 +72,10 @@ export class DynamicArray {
 
   setUint32(index: number, value: number) {
     this.view.setUint32(index, setUint32Fix(value), true);
+  }
+
+  setInt32(index: number, value: number) {
+    this.view.setInt32(index, setInt32Fix(value), true);
   }
 
   setFloat32(index: number, value: number) {

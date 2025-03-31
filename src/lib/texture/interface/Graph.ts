@@ -47,5 +47,8 @@ export interface Graph {
   edgeAt(index: number): Edge;
 
   isDirected: boolean;
+
+  get vertexCount(): number;
+  get edgeCount(): number;
 };
 

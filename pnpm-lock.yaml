@@ -11,6 +11,9 @@ importers:
       '@lume/three-meshline':
         specifier: ^4.0.5
         version: 4.0.5(three@0.170.0)
+      '@tyriar/fibonacci-heap':
+        specifier: ^2.0.9
+        version: 2.0.9
       base64-js:
         specifier: ^1.5.1
         version: 1.5.1
@@ -413,6 +416,9 @@ packages:
 
   '@types/webxr@0.5.20':
     resolution: {integrity: sha512-JGpU6qiIJQKUuVSKx1GtQnHJGxRjtfGIhzO2ilq43VZZS//f1h1Sgexbdk+Lq+7569a6EYhOWrUpIruR/1Enmg==}
+
+  '@tyriar/fibonacci-heap@2.0.9':
+    resolution: {integrity: sha512-bYuSNomfn4hu2tPiDN+JZtnzCpSpbJ/PNeulmocDy3xN2X5OkJL65zo6rPZp65cPPhLF9vfT/dgE+RtFRCSxOA==}
 
   '@webgpu/types@0.1.51':
     resolution: {integrity: sha512-ktR3u64NPjwIViNCck+z9QeyN0iPkQCUOQ07ZCV1RzlkfP+olLTeEZ95O1QHS+v4w9vJeY9xj/uJuSphsHy5rQ==}
@@ -1297,6 +1303,8 @@ snapshots:
   '@types/uuid@10.0.0': {}
 
   '@types/webxr@0.5.20': {}
+
+  '@tyriar/fibonacci-heap@2.0.9': {}
 
   '@webgpu/types@0.1.51': {}
 

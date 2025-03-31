@@ -12,15 +12,14 @@
   import { UndirectedGraph } from "./lib/texture/interface/undirected/UndirectedGraph";
   import { floatBitsToUint, uintBitsToFloat } from "./lib/texture/reinterpret";
   import { GraphGenerator } from "./lib/texture/GraphGenerator";
-  import { DirectedGraph } from "./lib/texture/interface/directed/DirectedGraph";
   import { DynamicArray } from "./lib/texture/DynamicArray";
-  import { selectEdges } from "./lib/texture/selectEdges.glsl";
   import { Auxiliary, type AuxiliaryType } from "./lib/texture/interface/Auxiliary";
   import { DragState, type EditorInterface, type Operations } from "./EditorInterface";
   import internal from "stream";
   import { toByteArray, fromByteArray } from "base64-js";
   import { GraphAlgorithms } from "$lib/GraphAlgorithms";
   import { ArrayQueue } from "$lib/ArrayQueue";
+  import { INTEGER_NEGATIVE_INIFNITY, INTEGER_NULL, INTEGER_POSITIVE_INIFNITY } from "./Properties";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
@@ -369,17 +368,24 @@
       },
     } as EditorInterface;
 
-    generator.grid(2).then(() => {
+    generator.grid(4).then(() => {
       generator.grid(3);
 
       editor.transaction(() => {
-        editor.vertexProperties.createProperty("hello", "float32");
+        editor.vertexProperties.createProperty("Distance", "integer");
+        editor.vertexProperties.createProperty("Previous", "vertex");
+
         for (const vertex of gi.vertices) {
-          editor.vertexProperties.setProperty("hello", vertex.index, 11.324);
+          vertex.setProperty("Distance", INTEGER_NULL);
+        }
+
+        editor.edgeProperties.createProperty("EdgeLength", "integer");
+        for(const edge of gi.edges) {
+          edge.setProperty("EdgeLength", Math.floor(Math.random() * 10));
         }
       });
 
-      algorithms.bfs(gi.vertices[0], "hello");
+      algorithms.dijkstra(gi.vertices[0], "EdgeLength", "Distance", "Previous");
     });
 
     generator.clique(5);

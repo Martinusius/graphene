@@ -23,9 +23,12 @@
   let displayProperty = $state("ID");
 
   function react() {
+    if(!selection.edge) return;
+
     for(const propertyName of Object.keys(editor.edgeProperties.properties)) {
       propertyValues[propertyName] = editor.edgeProperties.getProperty(propertyName, selection.edge.index);
     }
+
     properties = editor.edgeProperties.properties;
     displayProperty = editor.edgeDisplayProperty;
   }
@@ -70,8 +73,9 @@
       <Label>{propertyName} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
       <Input 
         class="mt-2" type="number" 
-        min={0}
-        value={propertyValues[propertyName]}
+        placeholder={typeStyle.special[propertyValues[propertyName]]}
+        value={typeStyle.special[propertyValues[propertyName]] ? '' : propertyValues[propertyName]}
+        
         oninput={(event) => {
           editor.transaction(() => {
             propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
@@ -165,7 +169,7 @@
             }
 
             editor.transaction(() => {
-              editor.edgeProperties.createProperty(name, 'uint32');
+              editor.edgeProperties.createProperty(name, 'integer');
               react();
             });
           }}

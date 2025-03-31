@@ -2,7 +2,7 @@ import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 import { DynamicArray } from "../DynamicArray";
 
-export type AuxiliaryType = 'uint32' | 'float32';
+export type AuxiliaryType = 'integer' | 'vertex' | 'edge';
 
 export type AuxiliaryProperty = {
   name: string;
@@ -86,8 +86,10 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if (property.type === 'uint32') array.setUint32(i * 16 + channel * 4, value);
-    else if (property.type === 'float32') array.setFloat32(i * 16 + channel * 4, value);
+    if (['integer', 'vertex', 'edge'].includes(property.type)) 
+      array.setUint32(i * 16 + channel * 4, value);
+    else if(property.type === 'integer')
+      array.setInt32(i * 16 + channel * 4, value);
     else throw new Error('Invalid property type');
   }
 
@@ -97,8 +99,10 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if (property.type === 'uint32') return array.getUint32(i * 16 + channel * 4);
-    else if (property.type === 'float32') return array.getFloat32(i * 16 + channel * 4);
+    if (['vertex', 'edge'].includes(property.type)) 
+      return array.getUint32(i * 16 + channel * 4);
+    else if(property.type === 'integer')
+      return array.getInt32(i * 16 + channel * 4)
     else throw new Error('Invalid property type');
   }
 

@@ -20,6 +20,10 @@
   import { GraphAlgorithms } from "$lib/GraphAlgorithms";
   import { ArrayQueue } from "$lib/ArrayQueue";
   import { INTEGER_NEGATIVE_INIFNITY, INTEGER_NULL, INTEGER_POSITIVE_INIFNITY } from "./Properties";
+  import { GraphExporter } from "$lib/texture/GraphExporter";
+  import { GraphImporter } from "$lib/texture/GraphImporter";
+  import { DirectedGraph } from "$lib/texture/interface/directed/DirectedGraph";
+  import { SelectionOperation } from "$lib/texture/SelectionOperation";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
@@ -74,7 +78,7 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new UndirectedGraph(graph);
+    const gi = new DirectedGraph(graph);
 
     const generator = new GraphGenerator(gi);
 
@@ -256,6 +260,10 @@
     }
 
     const algorithms = new GraphAlgorithms(gi);
+    const exporter = new GraphExporter(gi);
+    const importer = new GraphImporter(gi);
+
+
 
     editor = {
       operations: {
@@ -327,6 +335,9 @@
           paste();
         },
       },
+      selectionOperation(operation: SelectionOperation) {
+        graph.selectionOperation(operation);
+      },
       flags: {
         isUndoable: false,
         isRedoable: false,
@@ -362,6 +373,12 @@
       },
       get algorithms() {
         return algorithms;
+      },
+      get exporter() {
+        return exporter;
+      },
+      get importer() {
+        return importer;
       },
       get graph() {
         return gi;

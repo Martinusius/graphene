@@ -1,7 +1,10 @@
 import type { GraphAlgorithms } from "$lib/GraphAlgorithms";
+import type { GraphExporter } from "$lib/texture/GraphExporter";
 import type { GraphGenerator } from "$lib/texture/GraphGenerator";
+import type { GraphImporter } from "$lib/texture/GraphImporter";
 import type { AuxiliaryProperty, AuxiliaryType } from "$lib/texture/interface/Auxiliary";
 import type { Graph } from "$lib/texture/interface/Graph";
+import type { SelectionOperation } from "$lib/texture/SelectionOperation";
 
 export type Operations = {
   delete(): void;
@@ -51,8 +54,14 @@ export type EditorInterface = {
 
   transaction(callback: () => void): Promise<void>;
 
+  selectionOperation(operation: SelectionOperation): void;
+
   generator: GraphGenerator;
   algorithms: GraphAlgorithms;
+
+  exporter: GraphExporter;
+  importer: GraphImporter;
+
   graph: Graph;
 };
 

@@ -19,6 +19,8 @@ import type { ComputeProgram } from "./compute/ComputeProgram";
 import { Font } from "./text/Font";
 import { Text } from "./text/Text";
 import { selectInfo } from "./selectInfo.glsl";
+import { selectionOperation } from "./selectionOperation.glsl";
+import type { SelectionOperation } from "./SelectionOperation";
 
 export type ObjectType = "vertex" | "edge";
 
@@ -48,6 +50,8 @@ export class GraphRenderer {
   private flagProgram: ComputeProgram;
 
   private dragProgram: ComputeProgram;
+
+  private selectionOperationProgram: ComputeProgram;
 
   // private countOnScreenProgram: ComputeProgram;
   // private screenCountBuffer: ComputeTexture;
@@ -103,6 +107,8 @@ export class GraphRenderer {
 
     this.dragProgram = this.compute.createProgram(drag);
 
+    this.selectionOperationProgram = this.compute.createProgram(selectionOperation);
+
     // this.countOnScreenProgram = this.compute.createProgram(countOnScreen, true);
     // this.screenCountBuffer = this.compute.createTextureBuffer(1);
 
@@ -126,7 +132,17 @@ export class GraphRenderer {
     this.text = new Text(this.three, this.font, this.vertices, this.edges, this.vertexData, this.edgeData);
   }
 
-
+  selectionOperation(operation: SelectionOperation) {
+    this.selectionOperationProgram.setUniform('operation', operation);
+    
+    this.selectionOperationProgram.setUniform('data', this.vertexData);
+    this.selectionOperationProgram.setUniform('isVertex', true);
+    this.selectionOperationProgram.execute(this.vertexData);
+    
+    this.selectionOperationProgram.setUniform('data', this.edgeData);
+    this.selectionOperationProgram.setUniform('isVertex', false);
+    this.selectionOperationProgram.execute(this.edgeData);
+  }
 
 
   selection(min: Vector2, max: Vector2, select = true, preview = true) {

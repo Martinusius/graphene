@@ -43,6 +43,8 @@
   import GenerateCliquePopup from "./GenerateCliquePopup.svelte";
   import AlgorithmDfs from "./AlgorithmDfs.svelte";
   import AlgorithmBfs from "./AlgorithmBfs.svelte";
+  import { onMount } from "svelte";
+  import { SelectionOperation } from "$lib/texture/SelectionOperation";
 
   let openSidebar = $state(true);
 
@@ -51,6 +53,10 @@
   let updateSelected = $state(null);
 
   let editor = $state.raw({} as EditorInterface);
+
+  onMount(() => {
+    (window as any).importer = editor.importer;
+  });
 
   onKeybind("X", () => editor.operations.delete());
   onKeybind("Delete", () => editor.operations.delete());
@@ -65,6 +71,11 @@
   onKeybind("Ctrl+C", () => editor.operations.copy());
   onKeybind("Ctrl+V", () => editor.operations.paste());
   onKeybind("Ctrl+X", () => editor.operations.cut());
+
+  onKeybind("Ctrl+A", () => editor.selectionOperation(SelectionOperation.SELECT_ALL));
+  onKeybind("Ctrl+I", () => editor.selectionOperation(SelectionOperation.INVERT_SELECTION));
+  onKeybind("Ctrl+Shift+V", () => editor.selectionOperation(SelectionOperation.ONLY_VERTICES));
+  onKeybind("Ctrl+Shift+E", () => editor.selectionOperation(SelectionOperation.ONLY_EDGES));
 
   let areForcesEnabled = $state(false);
   let isGridShown = $state(true);
@@ -81,6 +92,19 @@
   let openGenerateClique = $state(false);
 
   let openAlgorithmDfs = $state(false);
+
+  function download(filename: string, text: string) {
+    const element = document.createElement("a");
+    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
+    element.setAttribute("download", filename);
+
+    element.style.display = "none";
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+  }
 </script>
 
 <div class="w-full h-full bg-gray-100 flex flex-col overflow-hidden">
@@ -100,16 +124,37 @@
           New
           <Menubar.Shortcut>Ctrl+N</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer" disabled>
-          <FolderOpen strokeWidth="1" class="mr-2" size="16" />
-          Open
-          <Menubar.Shortcut>Ctrl+O</Menubar.Shortcut>
-        </Menubar.Item>
-        <Menubar.Item class="cursor-pointer" disabled>
+        <!-- <Menubar.Item class="cursor-pointer" disabled>
+        
+        </Menubar.Item> -->
+
+        <Menubar.Sub>
+          <Menubar.SubTrigger class="cursor-pointer">
+            <FolderOpen strokeWidth="1" class="mr-2" size="16" />
+            Import
+          </Menubar.SubTrigger>
+          <Menubar.SubContent>
+            <Menubar.Item class="cursor-pointer">Edge List (.txt)</Menubar.Item>
+            <Menubar.Item class="cursor-pointer">Weighted Edge List (.txt)</Menubar.Item>
+            <Menubar.Item class="cursor-pointer">Graphene (.ene)</Menubar.Item>
+          </Menubar.SubContent>
+        </Menubar.Sub>
+
+        <Menubar.Sub>
+          <Menubar.SubTrigger class="cursor-pointer">
+            <Download strokeWidth="1" class="mr-2" size="16" />
+            Export
+          </Menubar.SubTrigger>
+          <Menubar.SubContent>
+            <Menubar.Item class="cursor-pointer" onclick={() => download('graph.txt', editor.exporter.edgeList())}>Edge List (.txt)</Menubar.Item>
+            <Menubar.Item class="cursor-pointer">Weighted Edge List (.txt)</Menubar.Item>
+            <Menubar.Item class="cursor-pointer">Graphene (.ene)</Menubar.Item>
+          </Menubar.SubContent>
+        </Menubar.Sub>
+        <!-- <Menubar.Item class="cursor-pointer" disabled>
           <Download strokeWidth="1" class="mr-2" size="16" />
-          Download
-          <Menubar.Shortcut>Ctrl+S</Menubar.Shortcut>
-        </Menubar.Item>
+          Export
+        </Menubar.Item> -->
       </Menubar.Content>
     </Menubar.Menu>
 
@@ -156,23 +201,27 @@
     <Menubar.Menu>
       <Menubar.Trigger>Selection</Menubar.Trigger>
       <Menubar.Content class="w-64">
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" 
+          onclick={() => editor.selectionOperation(SelectionOperation.SELECT_ALL)}>
           <SquareMousePointer strokeWidth="1" class="mr-2" size="16" />
           Select All
           <Menubar.Shortcut>Ctrl+A</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" 
+          onclick={() => editor.selectionOperation(SelectionOperation.INVERT_SELECTION)}>
           <UnfoldVertical strokeWidth="1" class="mr-2" size="16" />
           Invert Selection
           <Menubar.Shortcut>Ctrl+I</Menubar.Shortcut>
         </Menubar.Item>
         <Menubar.Separator />
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer"
+          onclick={() => editor.selectionOperation(SelectionOperation.ONLY_VERTICES)}>
           <CircleSmall strokeWidth="1" class="mr-2" size="16" />
           Only Vertices
           <Menubar.Shortcut>Ctrl+Shift+V</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer"
+          onclick={() => editor.selectionOperation(SelectionOperation.ONLY_EDGES)}>
           <Spline strokeWidth="1" class="mr-2" size="16" />
           Only Edges
           <Menubar.Shortcut>Ctrl+Shift+E</Menubar.Shortcut>

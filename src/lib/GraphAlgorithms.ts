@@ -15,7 +15,7 @@ export class GraphAlgorithms {
     return this.graph.transaction(() => {
       if (depthProperty) {
         this.graph.vertices.forEach((vertex) => {
-          vertex.setProperty(depthProperty, uint(-1));
+          vertex.setProperty(depthProperty, INTEGER_POSITIVE_INIFNITY);
         });
       }
 
@@ -54,7 +54,7 @@ export class GraphAlgorithms {
     return this.graph.transaction(() => {
       if (depthProperty) {
         this.graph.vertices.forEach((vertex) => {
-          vertex.setProperty(depthProperty, uint(-1));
+          vertex.setProperty(depthProperty, INTEGER_POSITIVE_INIFNITY);
         });
       }
 

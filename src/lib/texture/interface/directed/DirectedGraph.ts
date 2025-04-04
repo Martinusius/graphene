@@ -399,7 +399,7 @@ export class DirectedGraph implements Graph {
   }
 
   async tick() {
-    if (!this.transactions.length) return false;
+    if (!this.transactions.length) return null;
 
     const transaction = this.transactions.shift()!;
 
@@ -423,9 +423,7 @@ export class DirectedGraph implements Graph {
     await this.vertexAuxiliary.upload();
     await this.edgeAuxiliary.upload();
 
-    transaction.resolve();
-
-    return true;
+    return () => transaction.resolve();
   }
 
   async upload() {

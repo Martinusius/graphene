@@ -6,24 +6,17 @@ uniform bool set;
 uniform bool unsetOther;
 uniform int channel;
 
-// out vec4 color;
 
 void main() {
   vec4 data = ReadBuffer(flagData, instanceId); //texture(flagData, gl_FragCoord.xy / vec2(outputSize));
   uint value = floatBitsToUint(data.z);
-
-  int fragId = instanceId; //int(gl_FragCoord.x) + int(gl_FragCoord.y) * outputSize.x;
   
-  if(fragId == id) {
+  if(instanceId == id) {
     value = value & ~(1u << channel) | uint(set) << channel;
   }
   else if(unsetOther) {
     value = value & ~(1u << channel);
   }
-
-  // value[channel] = uint(mix(mix(value[channel], 0.0, unsetOther), float(set), float(fragId == id)));
-
-  // color = vec4(data.xy, uintBitsToFloat(value), 0);  
 
   WriteOutput(instanceId, vec4(data.xy, uintBitsToFloat(value), data.w));
 }`;

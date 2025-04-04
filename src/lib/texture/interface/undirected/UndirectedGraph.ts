@@ -357,11 +357,6 @@ export class UndirectedGraph implements Graph {
       this.versioner.clearRedo();
     }
 
-    // await Promise.all([
-    //   this.upload(),
-    //   this.vertexAuxiliary.upload(),
-    //   this.edgeAuxiliary.upload(),
-    // ]);
 
     await this.upload();
     await this.vertexAuxiliary.upload();

@@ -63,6 +63,8 @@ export type EditorInterface = {
   importer: GraphImporter;
 
   graph: Graph;
+
+  createNew(type: 'undirected' | 'directed'): void;
 };
 
 export enum DragState {

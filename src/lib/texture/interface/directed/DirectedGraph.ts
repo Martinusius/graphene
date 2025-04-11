@@ -458,6 +458,16 @@ export class DirectedGraph implements Graph {
     this.changed = false;
   }
 
+  dispose() {
+    this.vertexAuxiliary.dispose();
+    this.edgeAuxiliary.dispose();
+    this.renderer.vertexData.write(new Float32Array(this.renderer.vertexData.size * 4));
+    this.renderer.edgeData.write(new Float32Array(this.renderer.vertexData.size * 4));
+
+    this.renderer.vertices.count = 0;
+    this.renderer.edges.count = 0;
+  }
+
   get vertices() {
     const result: DirectedVertex[] = [];
 

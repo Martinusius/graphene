@@ -19,7 +19,6 @@ export class Auxiliary {
   propertyNames: string[] = [];
   properties: Record<string, AuxiliaryProperty> = {};
 
-
   arrays: DynamicArray[] = [];
   buffers: ComputeBuffer[] = [];
 
@@ -229,6 +228,10 @@ export class Auxiliary {
       buffer: () => this.buffers[Math.floor(property.index! / 4)],
       channel: () => property.index! % 4,
     };
+  }
+
+  dispose() {
+    this.buffers.forEach(buffer => buffer.dispose());
   }
 }
 

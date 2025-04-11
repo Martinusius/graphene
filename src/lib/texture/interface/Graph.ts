@@ -50,5 +50,7 @@ export interface Graph {
 
   get vertexCount(): number;
   get edgeCount(): number;
+
+  dispose();
 };
 

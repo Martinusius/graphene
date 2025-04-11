@@ -45,6 +45,7 @@
   import AlgorithmBfs from "./AlgorithmBfs.svelte";
   import { onMount } from "svelte";
   import { SelectionOperation } from "$lib/texture/SelectionOperation";
+  import NewGraphPopup from "./NewGraphPopup.svelte";
 
   let openSidebar = $state(true);
 
@@ -87,6 +88,8 @@
     console.log("pressed Ctrl+Shift+X");
   });
 
+  let openNewGraph = $state(false);
+
   let openGenerateEmpty = $state(false);
   let openGenerateGrid = $state(false);
   let openGenerateClique = $state(false);
@@ -108,6 +111,8 @@
 </script>
 
 <div class="w-full h-full bg-gray-100 flex flex-col overflow-hidden">
+  <NewGraphPopup bind:open={openNewGraph} editor={editor} />
+  
   <GenerateEmptyPopup bind:open={openGenerateEmpty} editor={editor} />
   <GenerateCliquePopup bind:open={openGenerateClique} editor={editor} />
   <GenerateGridPopup bind:open={openGenerateGrid} editor={editor} />
@@ -119,7 +124,7 @@
     <Menubar.Menu>
       <Menubar.Trigger>File</Menubar.Trigger>
       <Menubar.Content>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openNewGraph = true)}>
           <File strokeWidth="1" class="mr-2" size="16" />
           New
           <Menubar.Shortcut>Ctrl+N</Menubar.Shortcut>

@@ -24,6 +24,7 @@
   import { GraphImporter } from "$lib/texture/GraphImporter";
   import { DirectedGraph } from "$lib/texture/interface/directed/DirectedGraph";
   import { SelectionOperation } from "$lib/texture/SelectionOperation";
+  import type { Graph } from "$lib/texture/interface/Graph";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
@@ -78,7 +79,7 @@
     const graph = new GraphRenderer(three, 1024, 1024);
     graph.vertices.count = 0;
 
-    const gi = new DirectedGraph(graph);
+    let gi: UndirectedGraph | DirectedGraph = new DirectedGraph(graph);
 
     const generator = new GraphGenerator(gi);
 
@@ -244,7 +245,7 @@
             const v = gi.getVertex(vertexIdConversion.get(array.getUint32(4))!);
 
             if (u && v) {
-              const edge = gi.addEdge(u, v);
+              const edge = gi.addEdge(u as any, v as any);
 
               for (let j = 0; j < edgeProperties.length; j++) {
                 if (gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
@@ -282,12 +283,12 @@
         },
         merge() {
           return gi.transaction(async () => {
-            gi.merge(gi.vertices.filter((v) => v.isSelected));
+            gi.merge(gi.vertices.filter((v) => v.isSelected) as any);
           });
         },
         cliqueify() {
           return gi.transaction(async () => {
-            gi.cliqueify(gi.vertices.filter((v) => v.isSelected));
+            gi.cliqueify(gi.vertices.filter((v) => v.isSelected) as any);
           });
         },
         subgraph() {
@@ -383,6 +384,15 @@
       get graph() {
         return gi;
       },
+      async createNew(type) {
+        gi.dispose();
+
+        if(type === 'undirected') gi = new UndirectedGraph(graph);
+        else if(type === 'directed') gi = new DirectedGraph(graph);
+
+        editor.vertexProperties = gi.vertexAuxiliary;
+        editor.edgeProperties = gi.edgeAuxiliary;
+      }
     } as EditorInterface;
 
     generator.grid(4).then(() => {
@@ -423,7 +433,7 @@
           for (const vertex of vertices) {
             if (vertex.isSelected && vertex.id !== newVertex.id) {
               try {
-                gi.addEdge(vertex, newVertex);
+                gi.addEdge(vertex as any, newVertex as any);
               } catch (_) {} // If already exists (we don't really need to log this)
             }
 
@@ -443,7 +453,7 @@
           for (const vertex of vertices) {
             if (vertex.isSelected) {
               try {
-                gi.addEdge(vertex, hoveredVertex);
+                gi.addEdge(vertex as any, hoveredVertex as any);
               } catch (_) {} // If already exists (we don't really need to log this)
             }
 

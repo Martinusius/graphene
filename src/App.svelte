@@ -46,6 +46,7 @@
   import { onMount } from "svelte";
   import { SelectionOperation } from "$lib/texture/SelectionOperation";
   import NewGraphPopup from "./NewGraphPopup.svelte";
+  import { fileUpload } from "$lib/upload";
 
   let openSidebar = $state(true);
 
@@ -81,8 +82,8 @@
   let areForcesEnabled = $state(false);
   let isGridShown = $state(true);
 
-  onKeybind("F", () => areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled);
-  onKeybind("G", () => isGridShown = editor.isGridShown = !isGridShown);
+  onKeybind("F", () => (areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled));
+  onKeybind("G", () => (isGridShown = editor.isGridShown = !isGridShown));
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
@@ -95,6 +96,7 @@
   let openGenerateClique = $state(false);
 
   let openAlgorithmDfs = $state(false);
+  let openAlgorithmBfs = $state(false);
 
   function download(filename: string, text: string) {
     const element = document.createElement("a");
@@ -111,14 +113,14 @@
 </script>
 
 <div class="w-full h-full bg-gray-100 flex flex-col overflow-hidden">
-  <NewGraphPopup bind:open={openNewGraph} editor={editor} />
-  
-  <GenerateEmptyPopup bind:open={openGenerateEmpty} editor={editor} />
-  <GenerateCliquePopup bind:open={openGenerateClique} editor={editor} />
-  <GenerateGridPopup bind:open={openGenerateGrid} editor={editor} />
+  <NewGraphPopup bind:open={openNewGraph} {editor} />
 
-  <AlgorithmDfs bind:open={openAlgorithmDfs} editor={editor} />
-  <AlgorithmBfs bind:open={openAlgorithmDfs} editor={editor} />
+  <GenerateEmptyPopup bind:open={openGenerateEmpty} {editor} />
+  <GenerateCliquePopup bind:open={openGenerateClique} {editor} />
+  <GenerateGridPopup bind:open={openGenerateGrid} {editor} />
+
+  <AlgorithmDfs bind:open={openAlgorithmDfs} {editor} />
+  <AlgorithmBfs bind:open={openAlgorithmBfs} {editor} />
 
   <Menubar.Root class="px-4 -mx-2">
     <Menubar.Menu>
@@ -139,9 +141,24 @@
             Import
           </Menubar.SubTrigger>
           <Menubar.SubContent>
-            <Menubar.Item class="cursor-pointer">Edge List (.txt)</Menubar.Item>
-            <Menubar.Item class="cursor-pointer">Weighted Edge List (.txt)</Menubar.Item>
-            <Menubar.Item class="cursor-pointer">Graphene (.ene)</Menubar.Item>
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => {
+                await editor.importer.edgeList(await fileUpload("text/plain"));
+              }}>Edge List (.txt)</Menubar.Item
+            >
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => {
+                await editor.importer.weightedEdgeList(await fileUpload("text/plain"));
+              }}>Weighted Edge List (.txt)</Menubar.Item
+            >
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => {
+                await editor.importer.graphene(await fileUpload(".ene"));
+              }}>Graphene (.ene)</Menubar.Item
+            >
           </Menubar.SubContent>
         </Menubar.Sub>
 
@@ -151,15 +168,23 @@
             Export
           </Menubar.SubTrigger>
           <Menubar.SubContent>
-            <Menubar.Item class="cursor-pointer" onclick={() => download('graph.txt', editor.exporter.edgeList())}>Edge List (.txt)</Menubar.Item>
-            <Menubar.Item class="cursor-pointer">Weighted Edge List (.txt)</Menubar.Item>
-            <Menubar.Item class="cursor-pointer">Graphene (.ene)</Menubar.Item>
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => download("graph.txt", await editor.exporter.edgeList())}
+              >Edge List (.txt)</Menubar.Item
+            >
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => download("graph.txt", await editor.exporter.weightedEdgeList("Weight"))}
+              >Weighted Edge List (.txt)</Menubar.Item
+            >
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => download("graph.ene", await editor.exporter.graphene(true))}
+              >Graphene (.ene)</Menubar.Item
+            >
           </Menubar.SubContent>
         </Menubar.Sub>
-        <!-- <Menubar.Item class="cursor-pointer" disabled>
-          <Download strokeWidth="1" class="mr-2" size="16" />
-          Export
-        </Menubar.Item> -->
       </Menubar.Content>
     </Menubar.Menu>
 
@@ -206,27 +231,29 @@
     <Menubar.Menu>
       <Menubar.Trigger>Selection</Menubar.Trigger>
       <Menubar.Content class="w-64">
-        <Menubar.Item class="cursor-pointer" 
-          onclick={() => editor.selectionOperation(SelectionOperation.SELECT_ALL)}>
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.selectionOperation(SelectionOperation.SELECT_ALL)}>
           <SquareMousePointer strokeWidth="1" class="mr-2" size="16" />
           Select All
           <Menubar.Shortcut>Ctrl+A</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer" 
-          onclick={() => editor.selectionOperation(SelectionOperation.INVERT_SELECTION)}>
+        <Menubar.Item
+          class="cursor-pointer"
+          onclick={() => editor.selectionOperation(SelectionOperation.INVERT_SELECTION)}
+        >
           <UnfoldVertical strokeWidth="1" class="mr-2" size="16" />
           Invert Selection
           <Menubar.Shortcut>Ctrl+I</Menubar.Shortcut>
         </Menubar.Item>
         <Menubar.Separator />
-        <Menubar.Item class="cursor-pointer"
-          onclick={() => editor.selectionOperation(SelectionOperation.ONLY_VERTICES)}>
+        <Menubar.Item
+          class="cursor-pointer"
+          onclick={() => editor.selectionOperation(SelectionOperation.ONLY_VERTICES)}
+        >
           <CircleSmall strokeWidth="1" class="mr-2" size="16" />
           Only Vertices
           <Menubar.Shortcut>Ctrl+Shift+V</Menubar.Shortcut>
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer"
-          onclick={() => editor.selectionOperation(SelectionOperation.ONLY_EDGES)}>
+        <Menubar.Item class="cursor-pointer" onclick={() => editor.selectionOperation(SelectionOperation.ONLY_EDGES)}>
           <Spline strokeWidth="1" class="mr-2" size="16" />
           Only Edges
           <Menubar.Shortcut>Ctrl+Shift+E</Menubar.Shortcut>
@@ -240,7 +267,7 @@
         <Menubar.CheckboxItem
           checked={areForcesEnabled}
           class="cursor-pointer"
-          onclick={() => areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled}
+          onclick={() => (areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled)}
         >
           <Atom strokeWidth="1" class="mr-2" size="16" />
           Enable Forces
@@ -249,17 +276,13 @@
         <Menubar.CheckboxItem
           checked={isGridShown}
           class="cursor-pointer"
-          onclick={() => isGridShown = editor.isGridShown = !isGridShown}
+          onclick={() => (isGridShown = editor.isGridShown = !isGridShown)}
         >
           <Grid3x3 strokeWidth="1" class="mr-2" size="16" />
           Show Grid
           <Menubar.Shortcut>G</Menubar.Shortcut>
         </Menubar.CheckboxItem>
-        <Menubar.CheckboxItem
-          checked={openSidebar}
-          class="cursor-pointer"
-          onclick={() => openSidebar = !openSidebar}
-        >
+        <Menubar.CheckboxItem checked={openSidebar} class="cursor-pointer" onclick={() => (openSidebar = !openSidebar)}>
           <PanelLeft strokeWidth="1" class="mr-2" size="16" />
           Show Sidebar
           <Menubar.Shortcut>Ctrl + B</Menubar.Shortcut>
@@ -330,7 +353,7 @@
           <ChevronsDown strokeWidth="1" class="mr-2" size="16" />
           DFS
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer" onclick={() => (openAlgorithmDfs = true)}>
+        <Menubar.Item class="cursor-pointer" onclick={() => (openAlgorithmBfs = true)}>
           <Expand strokeWidth="1" class="mr-2" size="16" />
           BFS
         </Menubar.Item>
@@ -349,7 +372,7 @@
   <div class="relative flex-1">
     <Editor onselect={(info: any) => (selection = info)} bind:updateSelected bind:editor />
     <Sidebar.Provider open={openSidebar} onOpenChange={(open) => (openSidebar = open)}>
-      <AppSidebar {selection} {updateSelected} editor={editor}/>
+      <AppSidebar {selection} {updateSelected} {editor} />
     </Sidebar.Provider>
   </div>
 </div>

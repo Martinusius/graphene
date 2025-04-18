@@ -73,10 +73,6 @@ export class Auxiliary {
     this.swapObjects(i, this.objectCount - 1);
   }
 
-  hasProperty(name: string) {
-    return !!this.properties[name];
-  }
-
   setProperty(name: string, i: number, value: number) {
     this.changed = true;
 
@@ -85,9 +81,9 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if (['integer', 'vertex', 'edge'].includes(property.type)) 
+    if (['integer', 'vertex', 'edge'].includes(property.type))
       array.setUint32(i * 16 + channel * 4, value);
-    else if(property.type === 'integer')
+    else if (property.type === 'integer')
       array.setInt32(i * 16 + channel * 4, value);
     else throw new Error('Invalid property type');
   }
@@ -98,9 +94,9 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if (['vertex', 'edge'].includes(property.type)) 
+    if (['vertex', 'edge'].includes(property.type))
       return array.getUint32(i * 16 + channel * 4);
-    else if(property.type === 'integer')
+    else if (property.type === 'integer')
       return array.getInt32(i * 16 + channel * 4)
     else throw new Error('Invalid property type');
   }

@@ -4,27 +4,23 @@
   import { Scene, OrthographicCamera, WebGLRenderer, Vector2, Vector3 } from "three";
   import { OrbitControls } from "./lib/OrbitControls";
   import { initGrid } from "./lib/grid";
-  import { getMousePosition, isKeyPressed, isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
+  import { getMousePosition, isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/Draw";
   import { GraphRenderer } from "./lib/texture/GraphRenderer";
   import { Three } from "./lib/texture/Three";
   import { Task } from "./lib/texture/Task";
   import { UndirectedGraph } from "./lib/texture/interface/undirected/UndirectedGraph";
-  import { floatBitsToUint, uintBitsToFloat } from "./lib/texture/reinterpret";
+  import { floatBitsToUint } from "./lib/texture/reinterpret";
   import { GraphGenerator } from "./lib/texture/GraphGenerator";
   import { DynamicArray } from "./lib/texture/DynamicArray";
-  import { Auxiliary, type AuxiliaryType } from "./lib/texture/interface/Auxiliary";
-  import { DragState, type EditorInterface, type Operations } from "./EditorInterface";
-  import internal from "stream";
+  import { DragState, type EditorInterface } from "./EditorInterface";
   import { toByteArray, fromByteArray } from "base64-js";
   import { GraphAlgorithms } from "$lib/GraphAlgorithms";
-  import { ArrayQueue } from "$lib/ArrayQueue";
-  import { INTEGER_NEGATIVE_INIFNITY, INTEGER_NULL, INTEGER_POSITIVE_INIFNITY } from "./Properties";
+  import { INTEGER_NULL } from "./Properties";
   import { GraphExporter } from "$lib/texture/GraphExporter";
   import { GraphImporter } from "$lib/texture/GraphImporter";
   import { DirectedGraph } from "$lib/texture/interface/directed/DirectedGraph";
   import { SelectionOperation } from "$lib/texture/SelectionOperation";
-  import type { Graph } from "$lib/texture/interface/Graph";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 
@@ -132,139 +128,32 @@
       if (diff) graph.drag(diff);
     };
 
-    // graph.text.vertices.maxDigits = 0;
-    // graph.text.edges.maxDigits = 0;
-
-    // generator.spacing *= 2;
-    // generator.randomness = 20;
-
     let doRender = true,
       doForce = false;
 
     let reactives: (() => void)[] = [];
 
-    function copy(cut = false, all = false) {
-      gi.transaction(async () => {
-        const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
-
-        const vertexProperties = Object.entries(gi.vertexAuxiliary.properties)
-          .sort((a, b) => a[1].index - b[1].index)
-          .map(([name]) => name);
-
-        const edgeProperties = Object.entries(gi.edgeAuxiliary.properties)
-          .sort((a, b) => a[1].index - b[1].index)
-          .map(([name]) => name);
-
-        const vertexData = new DynamicArray(12);
-
-        const vertices = gi.vertices;
-        for (const vertex of vertices) {
-          if (!all && !vertex.isSelected) continue;
-
-          vertexData.pushFloat32(vertex.x - mouseWorld.x);
-          vertexData.pushFloat32(vertex.y - mouseWorld.y);
-          vertexData.pushUint32(vertex.id);
-
-          for (const property of vertexProperties) {
-            vertexData.pushUint32(gi.vertexAuxiliary.getProperty(property, vertex.index));
-          }
-        }
-
-        const edgeData = new DynamicArray(8);
-
-        const edges = gi.edges;
-        for (const edge of edges) {
-          if (!all && (!edge.isSelected || !edge.u.isSelected || !edge.v.isSelected)) continue;
-
-          edgeData.pushUint32(edge.u.id);
-          edgeData.pushUint32(edge.v.id);
-
-          for (const property of edgeProperties) {
-            edgeData.pushUint32(gi.edgeAuxiliary.getProperty(property, edge.index));
-          }
-        }
-
-        const finalJson = {
-          vertexProperties,
-          edgeProperties,
-          vertexData: fromByteArray(vertexData.toArray()),
-          edgeData: fromByteArray(edgeData.toArray()),
-        };
-
-        navigator.clipboard.writeText(JSON.stringify(finalJson));
-
-        if (cut) {
-          for (const edge of edges) {
-            if (all || edge.isSelected) edge.delete();
-          }
-
-          for (const vertex of vertices) {
-            if (all || vertex.isSelected) vertex.delete();
-          }
-        }
-      });
-    }
-
-    function paste() {
-      gi.transaction(async () => {
-        try {
-          const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
-
-          const text = await navigator.clipboard.readText();
-
-          const { vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(text);
-
-          const vertexDataArray = toByteArray(vertexData);
-          const edgeDataArray = toByteArray(edgeData);
-
-          const vertexSize = 12 + vertexProperties.length * 4;
-          const edgeSize = 8 + edgeProperties.length * 4;
-
-          const vertexIdConversion = new Map<number, number>();
-
-          for (let i = 0; i < vertexDataArray.length; i += vertexSize) {
-            const array = new DynamicArray(vertexSize);
-            array.pushFrom(vertexDataArray, i, vertexSize);
-
-            const vertex = gi.addVertex(array.getFloat32(0) + mouseWorld.x, array.getFloat32(4) + mouseWorld.y);
-
-            vertexIdConversion.set(array.getUint32(8), vertex.id);
-
-            for (let j = 0; j < vertexProperties.length; j++) {
-              if (gi.vertexAuxiliary.hasProperty(vertexProperties[j])) {
-                gi.vertexAuxiliary.setProperty(vertexProperties[j], vertex.index, array.getUint32(12 + j * 4));
-              }
-            }
-          }
-
-          for (let i = 0; i < edgeData.length; i += edgeSize) {
-            const array = new DynamicArray(edgeSize);
-            array.pushFrom(edgeDataArray, i, edgeSize);
-
-            const u = gi.getVertex(vertexIdConversion.get(array.getUint32(0))!);
-            const v = gi.getVertex(vertexIdConversion.get(array.getUint32(4))!);
-
-            if (u && v) {
-              const edge = gi.addEdge(u as any, v as any);
-
-              for (let j = 0; j < edgeProperties.length; j++) {
-                if (gi.edgeAuxiliary.hasProperty(edgeProperties[j])) {
-                  gi.edgeAuxiliary.setProperty(edgeProperties[j], edge.index, array.getUint32(8 + j * 4));
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      });
-    }
-
     const algorithms = new GraphAlgorithms(gi);
     const exporter = new GraphExporter(gi);
     const importer = new GraphImporter(gi);
 
+    async function copy(cut = false) {
+      const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
 
+      const graphene = await exporter.graphene(false, cut, mouseWorld);
+
+      await navigator.clipboard.writeText(graphene);
+    }
+
+    async function paste() {
+      const text = await navigator.clipboard.readText();
+
+      if (!text) return;
+
+      const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
+
+      await importer.graphene(text, mouseWorld);
+    }
 
     editor = {
       operations: {
@@ -327,10 +216,10 @@
           });
         },
         copy() {
-          copy(false, false);
+          copy(false);
         },
         cut() {
-          copy(true, false);
+          copy(true);
         },
         paste() {
           paste();
@@ -387,12 +276,12 @@
       async createNew(type) {
         gi.dispose();
 
-        if(type === 'undirected') gi = new UndirectedGraph(graph);
-        else if(type === 'directed') gi = new DirectedGraph(graph);
+        if (type === "undirected") gi = new UndirectedGraph(graph);
+        else if (type === "directed") gi = new DirectedGraph(graph);
 
         editor.vertexProperties = gi.vertexAuxiliary;
         editor.edgeProperties = gi.edgeAuxiliary;
-      }
+      },
     } as EditorInterface;
 
     generator.grid(4).then(() => {
@@ -407,7 +296,7 @@
         }
 
         editor.edgeProperties.createProperty("EdgeLength", "integer");
-        for(const edge of gi.edges) {
+        for (const edge of gi.edges) {
           edge.setProperty("EdgeLength", Math.floor(Math.random() * 10));
         }
       });
@@ -470,9 +359,10 @@
         editor.flags.isUndoable = gi.versioner.isUndoable();
         editor.flags.isRedoable = gi.versioner.isRedoable();
 
-        await updateSelectionInfo();
         resolveTask();
       }
+
+      await updateSelectionInfo();
 
       if (editor.isGridShown !== !!grid.parent) scene[grid.parent ? "remove" : "add"](grid);
 
@@ -497,7 +387,6 @@
     container.addEventListener("dblclick", async (event) => {
       if (event.button !== LEFT_MOUSE_BUTTON) return;
       if (hovering) {
-        // zoom at object
         let position = new Vector2();
         let size = 0;
 
@@ -514,16 +403,12 @@
           const uPos = new Vector2(edge.u.x, edge.u.y);
           const vPos = new Vector2(edge.v.x, edge.v.y);
 
-          // size = uPosCopy.sub(vPosCopy).length();
           position.copy(uPos.lerp(vPos, 0.5));
         }
 
         controls.reset();
         controls.target.set(position.x, position.y, 0);
         camera.position.set(position.x, position.y, 50);
-        // camera.position.x = position.x;
-        // camera.position.y = position.y;
-        // camera.zoom = 1 / size;
         controls.update();
       } else {
         const { x, y } = worldCoords(event);

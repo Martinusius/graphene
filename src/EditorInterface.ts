@@ -11,7 +11,7 @@ export type Operations = {
   merge(): void;
   cliqueify(): void;
   subgraph(): void;
-  
+
   undo(): void;
   redo(): void;
 
@@ -27,7 +27,6 @@ export type Flags = {
 
 export type PropertyConfig = {
   properties: Record<string, AuxiliaryProperty>,
-  // displayProperty: string;
 
   createProperty(name: string, type: AuxiliaryType): AuxiliaryProperty;
   deleteProperty(name: string): void;
@@ -45,7 +44,7 @@ export type EditorInterface = {
 
   vertexProperties: PropertyConfig;
   vertexDisplayProperty: string;
-  
+
   edgeProperties: PropertyConfig;
   edgeDisplayProperty: string;
 

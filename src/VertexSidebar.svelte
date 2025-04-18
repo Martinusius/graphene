@@ -46,8 +46,6 @@
   onDestroy(() => {
     editor.unreactive(react);
   });
-
-  // let vertexTextProperty = $state("ID");
 </script>
 
 <Sidebar.Header class="flex flex-row">
@@ -92,7 +90,7 @@
         class="mt-2"
         type="number"
         placeholder={typeStyle.special[propertyValues[propertyName]]}
-        value={typeStyle.special[propertyValues[propertyName]] ? '' : propertyValues[propertyName]}
+        value={typeStyle.special[propertyValues[propertyName]] ? "" : propertyValues[propertyName]}
         oninput={(event) => {
           editor.transaction(() => {
             propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
@@ -151,9 +149,7 @@
               </Dialog.Content>
             </Dialog.Root>
 
-            <Select.Root type="single" bind:value={property.type} onValueChange={(value) => {
-              
-            }}>
+            <Select.Root type="single" bind:value={property.type} onValueChange={(value) => {}}>
               <Select.Trigger class="w-[140px]">
                 <span class={typeStyle.color}>{typeStyle.label}</span>
               </Select.Trigger>

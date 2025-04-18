@@ -1,8 +1,6 @@
 import { Vector2 } from "three";
-import type { UndirectedGraph } from "./interface/undirected/UndirectedGraph";
 import { IndexedSet } from "$lib/IndexedSet";
-import type { DirectedGraph } from "./interface/directed/DirectedGraph";
-import type { Graph } from "./interface/Graph";
+import type { Graph, Vertex } from "./interface/Graph";
 
 const random = (x: number) => (Math.random() - 0.5) * 2 * x + Math.random() * 0.0001;
 export class GraphGenerator {
@@ -11,6 +9,11 @@ export class GraphGenerator {
   public position = new Vector2();
   public spacing = 20;
   public randomness = 0;
+
+  private addEdgeBidirectional(u: Vertex, v: Vertex) {
+    this.graph.addEdge(u, v);
+    if (this.graph.isDirected) this.graph.addEdge(v, u);
+  }
 
   async grid(width: number, height: number = width, edges: 'none' | 'horizontal' | 'vertical' | 'straight' | 'straight-and-diagonal' = 'straight') {
     await this.graph.transaction(() => {
@@ -53,7 +56,7 @@ export class GraphGenerator {
 
             if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
 
-            this.graph.addEdge(me!, vertex!);
+            this.addEdgeBidirectional(me, vertex);
           }
         }
       }
@@ -64,7 +67,7 @@ export class GraphGenerator {
     await this.graph.transaction(() => {
       const r = this.spacing / 2 / Math.sin(Math.PI / size);
 
-      const vertices =  [];
+      const vertices = [];
 
       for (let i = 0; i < size; i++) {
         vertices.push(this.graph.addVertex(
@@ -75,7 +78,7 @@ export class GraphGenerator {
 
       for (let i = 0; i < size; i++) {
         for (let j = i + 1; j < size; j++) {
-          this.graph.addEdge(vertices[i], vertices[j]);
+          this.addEdgeBidirectional(vertices[i], vertices[j]);
         }
       }
     });
@@ -94,7 +97,7 @@ export class GraphGenerator {
         );
 
         if (lastVertex)
-          this.graph.addEdge(lastVertex, current);
+          this.addEdgeBidirectional(lastVertex, current);
 
         if (!firstVertex)
           firstVertex = current;
@@ -103,7 +106,7 @@ export class GraphGenerator {
 
       }
 
-      this.graph.addEdge(firstVertex!, lastVertex!);
+      this.addEdgeBidirectional(firstVertex!, lastVertex!);
     });
 
   }
@@ -131,7 +134,7 @@ export class GraphGenerator {
 
   async tree(size: number, meanBrachingFactor: number, stdDevBranchingFactor: number, layout: 'horizontal' | 'circular' = 'horizontal') {
     await this.graph.transaction(() => {
-      if(layout === 'circular') throw Error('Not implemented');
+      if (layout === 'circular') throw Error('Not implemented');
 
       function randomNormalDistribution(mean: number, stdDev: number) {
         return mean + stdDev * Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random());
@@ -142,7 +145,7 @@ export class GraphGenerator {
 
       const leaves = new IndexedSet<number>([0]);
 
-      while(vertices.length < size) {
+      while (vertices.length < size) {
         const leaf = Math.floor(Math.random() * leaves.size);
         const parent = vertices[leaves.at(leaf)];
 
@@ -153,7 +156,7 @@ export class GraphGenerator {
 
         for (let i = 0; i < branchingFactor; i++) {
           const child = this.graph.addVertex(0, 0);
-          this.graph.addEdge(parent, child);
+          this.addEdgeBidirectional(parent, child);
 
           vertices.push(child);
           children.push([]);
@@ -165,7 +168,7 @@ export class GraphGenerator {
         leaves.delete(leaf);
       }
 
-      if(layout === 'horizontal') {
+      if (layout === 'horizontal') {
         const nodeWidths = new Array(size).fill(0);
 
         const that = this;
@@ -174,7 +177,7 @@ export class GraphGenerator {
         function calculateNodeWidths(v: number) {
           let sum = 0;
 
-          for(const child of children[v]) {
+          for (const child of children[v]) {
             sum += calculateNodeWidths(child);
           }
 
@@ -186,7 +189,7 @@ export class GraphGenerator {
         function findHeight(v: number) {
           let max = 0;
 
-          for(const child of children[v]) {
+          for (const child of children[v]) {
             max = Math.max(max, findHeight(child));
           }
 
@@ -200,15 +203,15 @@ export class GraphGenerator {
         function positionNodes(v: number, minX: number, maxX: number, depth: number) {
           const x = (minX + maxX) / 2;
           const y = -depth * that.spacing;
-  
+
           vertices[v].x = x;
           vertices[v].y = y;
 
           // console.log('position', v, x, y, nodeWidths[v]);
-  
+
           let offset = 0;
-  
-          for(const child of children[v]) {
+
+          for (const child of children[v]) {
             positionNodes(child, minX + offset, minX + offset + nodeWidths[child] * that.spacing, depth + 1);
             offset += nodeWidths[child] * that.spacing;
           }

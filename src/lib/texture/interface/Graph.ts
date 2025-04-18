@@ -1,3 +1,4 @@
+import type { Auxiliary } from "./Auxiliary";
 import type { TransactionOptions } from "./Transaction";
 
 export interface GraphObject {
@@ -51,6 +52,9 @@ export interface Graph {
   get vertexCount(): number;
   get edgeCount(): number;
 
-  dispose();
+  dispose(): void;
+
+  vertexAuxiliary: Auxiliary;
+  edgeAuxiliary: Auxiliary;
 };
 

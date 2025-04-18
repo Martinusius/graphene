@@ -9,12 +9,25 @@
   import EdgeSidebar from "./EdgeSidebar.svelte";
   import type { EditorInterface } from "./EditorInterface";
 
-  let { selection, updateSelected, editor, open = $bindable() } = $props() as {
+  let {
+    selection,
+    updateSelected,
+    editor,
+    open = $bindable(),
+  } = $props() as {
     selection: any;
     updateSelected: any;
     editor: EditorInterface;
     open: boolean;
   };
+
+  let position = $state({ x: 0, y: 0 });
+
+  $effect(() => {
+    if (selection) {
+      position = { ...selection.averageVertexPosition };
+    }
+  });
 </script>
 
 <Sidebar.Root side="right">
@@ -44,8 +57,12 @@
             <Label>Average X</Label>
             <Input
               type="number"
-              bind:value={selection.averageVertexPosition.x}
-              oninput={() => updateSelected(selection)}
+              bind:value={position.x}
+              oninput={() =>
+                updateSelected({
+                  ...selection,
+                  averageVertexPosition: { ...position },
+                })}
             />
           </div>
 
@@ -53,8 +70,12 @@
             <Label>Average Y</Label>
             <Input
               type="number"
-              bind:value={selection.averageVertexPosition.y}
-              oninput={() => updateSelected(selection)}
+              bind:value={position.y}
+              oninput={() =>
+                updateSelected({
+                  ...selection,
+                  averageVertexPosition: { ...position },
+                })}
             />
           </div>
         </div>
@@ -65,9 +86,9 @@
         </Sidebar.Footer>
       {/if}
     {:else}
-    <Sidebar.Header class="flex flex-row justify-end">
-      <Sidebar.Trigger />
-    </Sidebar.Header>
+      <Sidebar.Header class="flex flex-row justify-end">
+        <Sidebar.Trigger />
+      </Sidebar.Header>
       <div class="flex flex-col items-center justify-center h-full">
         <div class="text-2xl font-semibold">No Selection</div>
         <div class="text-gray-500">Select a vertex or an edge to view details</div>

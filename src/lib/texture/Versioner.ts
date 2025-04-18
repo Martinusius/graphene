@@ -16,7 +16,7 @@ function clone(object: any): any {
 
   if (Array.isArray(object)) return object.map(clone);
 
-  if(object && typeof object === 'object')
+  if (object && typeof object === 'object')
     return structuredClone(object);
 
   return object;
@@ -110,7 +110,7 @@ function hasChanged(from: any, to: any): boolean {
       if (!to.hasOwnProperty(key)) return true;
       if (hasChanged(from[key], to[key])) return true;
     }
-    
+
     return false;
   }
 
@@ -130,6 +130,8 @@ type TrackedObject = {
 };
 
 export class Versioner {
+  public maxUndo: number = 16;
+
   private tracked: TrackedObject[] = [];
 
   isUndoable() {
@@ -160,13 +162,17 @@ export class Versioner {
   }
 
   commit() {
-    if(!this.tracked.some((tracked) => hasChanged(tracked.precommit, tracked.object[tracked.property])))
+    if (!this.tracked.some((tracked) => hasChanged(tracked.precommit, tracked.object[tracked.property])))
       return;
 
     this.tracked.forEach((tracked) => {
       tracked.undo.push(tracked.precommit);
       tracked.precommit = null;
       tracked.last = clone(tracked.object[tracked.property]);
+
+      if (tracked.undo.length > this.maxUndo) {
+        tracked.undo.shift();
+      }
     });
   }
 

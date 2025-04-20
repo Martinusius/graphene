@@ -36,6 +36,9 @@ export function getUint32Fix(value: number) {
 
 export function setUint32Fix(value: number) {
   if (!enabled) return value;
+  if (value < 0) value = 4227858432 + value;
+  if (value >= 4227858432) value = value - 4227858432;
+
   return value + (1 << bit);
 }
 

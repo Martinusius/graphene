@@ -47,6 +47,7 @@
   import { SelectionOperation } from "$lib/texture/SelectionOperation";
   import NewGraphPopup from "./NewGraphPopup.svelte";
   import { fileUpload } from "$lib/upload";
+  import AlgorithmDijkstra from "./AlgorithmDijkstra.svelte";
 
   let openSidebar = $state(true);
 
@@ -97,6 +98,7 @@
 
   let openAlgorithmDfs = $state(false);
   let openAlgorithmBfs = $state(false);
+  let openAlgorithmDijkstra = $state(false);
 
   function download(filename: string, text: string) {
     const element = document.createElement("a");
@@ -121,6 +123,7 @@
 
   <AlgorithmDfs bind:open={openAlgorithmDfs} {editor} />
   <AlgorithmBfs bind:open={openAlgorithmBfs} {editor} />
+  <AlgorithmDijkstra bind:open={openAlgorithmDijkstra} {editor} />
 
   <Menubar.Root class="px-4 -mx-2">
     <Menubar.Menu>
@@ -333,19 +336,6 @@
       </Menubar.Content>
     </Menubar.Menu>
 
-    <!-- 
-    TODO: For the future
-
-    <Menubar.Menu>
-      <Menubar.Trigger>Scripts</Menubar.Trigger>
-      <Menubar.Content>
-        <Menubar.Item>Executable Scripts</Menubar.Item>
-        <Menubar.Item>Import Scripts</Menubar.Item>
-        <Menubar.Item>Export Scripts</Menubar.Item>
-      </Menubar.Content>
-    </Menubar.Menu>
-    -->
-
     <Menubar.Menu>
       <Menubar.Trigger>Algorithms</Menubar.Trigger>
       <Menubar.Content>
@@ -357,14 +347,23 @@
           <Expand strokeWidth="1" class="mr-2" size="16" />
           BFS
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" onclick={() => (openAlgorithmDijkstra = true)}>
           <Route strokeWidth="1" class="mr-2" size="16" />
           Dijkstra
         </Menubar.Item>
-        <Menubar.Item class="cursor-pointer">
+        <Menubar.Item class="cursor-pointer" title="Coming soon" disabled>
           <TreePine strokeWidth="1" class="mr-2" size="16" />
           Kruskal
         </Menubar.Item>
+      </Menubar.Content>
+    </Menubar.Menu>
+
+    <Menubar.Menu>
+      <Menubar.Trigger class="opacity-50 pointer-events-none">Scripts</Menubar.Trigger>
+      <Menubar.Content>
+        <Menubar.Item>Executable Scripts</Menubar.Item>
+        <Menubar.Item>Import Scripts</Menubar.Item>
+        <Menubar.Item>Export Scripts</Menubar.Item>
       </Menubar.Content>
     </Menubar.Menu>
   </Menubar.Root>

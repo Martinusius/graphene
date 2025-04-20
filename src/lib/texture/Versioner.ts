@@ -130,7 +130,7 @@ type TrackedObject = {
 };
 
 export class Versioner {
-  public maxUndo: number = 16;
+  public maxUndo: number = 32;
 
   private tracked: TrackedObject[] = [];
 

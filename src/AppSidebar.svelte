@@ -80,7 +80,7 @@
           </div>
         </div>
         <Sidebar.Footer>
-          <Button class="flex w-full" variant="destructive">
+          <Button class="flex w-full" variant="destructive" onclick={() => editor.operations.delete()}>
             <Trash size="16" /> Delete
           </Button>
         </Sidebar.Footer>

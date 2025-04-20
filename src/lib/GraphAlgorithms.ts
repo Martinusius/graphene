@@ -3,7 +3,6 @@ import { ArrayQueue } from "./ArrayQueue";
 import type { DirectedEdge, DirectedVertex } from "./texture/interface/directed/DirectedGraph";
 import type { Edge, Graph, Vertex } from "./texture/interface/Graph";
 import type { UndirectedVertex } from "./texture/interface/undirected/UndirectedGraph";
-import { uint } from "./texture/reinterpret";
 import { INTEGER_POSITIVE_INIFNITY, VERTEX_NULL } from "../Properties";
 
 export class GraphAlgorithms {
@@ -88,17 +87,17 @@ export class GraphAlgorithms {
     });
   }
 
-  dijkstra(root: Vertex, inDistanceProperty: string, outDistanceProperty?: string, outLastVertexProperty?: string) {
+  dijkstra(root: Vertex, edgeDistanceProperty: string, pathDistanceProperty?: string, previousVertexProperty?: string) {
     return this.graph.transaction(() => {
-      if (outDistanceProperty) {
+      if (pathDistanceProperty) {
         this.graph.vertices.forEach((vertex) => {
-          vertex.setProperty(outDistanceProperty, INTEGER_POSITIVE_INIFNITY);
+          vertex.setProperty(pathDistanceProperty, INTEGER_POSITIVE_INIFNITY);
         });
       }
 
-      if (outLastVertexProperty) {
+      if (previousVertexProperty) {
         this.graph.vertices.forEach((vertex) => {
-          vertex.setProperty(outLastVertexProperty, VERTEX_NULL);
+          vertex.setProperty(previousVertexProperty, VERTEX_NULL);
         });
       }
 
@@ -106,14 +105,14 @@ export class GraphAlgorithms {
       const nodes = new Array<INode<number, Vertex> | null>(this.graph.vertexCount).fill(null);
 
       nodes[root.index] = heap.insert(0, root);
-      if(outDistanceProperty) root.setProperty(outDistanceProperty, 0);
+      if (pathDistanceProperty) root.setProperty(pathDistanceProperty, 0);
 
       while (!heap.isEmpty()) {
         const closest = heap.extractMinimum();
         const { key: distance, value: vertex } = closest!;
 
-        if(!vertex) continue;
-        
+        if (!vertex) continue;
+
         let edges: Edge[] = [];
         let to: (edge: Edge) => Vertex;
 
@@ -130,17 +129,17 @@ export class GraphAlgorithms {
           const neighbor = to(edge);
           const neighborNode = nodes[neighbor.index];
 
-          const totalDistance = distance + edge.getProperty(inDistanceProperty);
+          const totalDistance = distance + edge.getProperty(edgeDistanceProperty);
 
-          if(!neighborNode) {
+          if (!neighborNode) {
             nodes[neighbor.index] = heap.insert(totalDistance, neighbor);
-            if(outDistanceProperty) neighbor.setProperty(outDistanceProperty, totalDistance);
-            if(outLastVertexProperty) neighbor.setProperty(outLastVertexProperty, vertex.id);
+            if (pathDistanceProperty) neighbor.setProperty(pathDistanceProperty, totalDistance);
+            if (previousVertexProperty) neighbor.setProperty(previousVertexProperty, vertex.id);
           }
-          else if(totalDistance < neighborNode.key) {
+          else if (totalDistance < neighborNode.key) {
             heap.decreaseKey(neighborNode, totalDistance);
-            if(outDistanceProperty) neighbor.setProperty(outDistanceProperty, totalDistance);
-            if(outLastVertexProperty) neighbor.setProperty(outLastVertexProperty, vertex.id);
+            if (pathDistanceProperty) neighbor.setProperty(pathDistanceProperty, totalDistance);
+            if (previousVertexProperty) neighbor.setProperty(previousVertexProperty, vertex.id);
           }
         }
       }

@@ -133,9 +133,9 @@
 
     let reactives: (() => void)[] = [];
 
-    const algorithms = new GraphAlgorithms(gi);
-    const exporter = new GraphExporter(gi);
-    const importer = new GraphImporter(gi);
+    let algorithms = new GraphAlgorithms(gi);
+    let exporter = new GraphExporter(gi);
+    let importer = new GraphImporter(gi);
 
     async function copy(cut = false) {
       const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
@@ -281,6 +281,10 @@
 
         editor.vertexProperties = gi.vertexAuxiliary;
         editor.edgeProperties = gi.edgeAuxiliary;
+
+        exporter = new GraphExporter(gi);
+        importer = new GraphImporter(gi);
+        algorithms = new GraphAlgorithms(gi);
       },
     } as EditorInterface;
 
@@ -292,7 +296,7 @@
         editor.vertexProperties.createProperty("Previous", "vertex");
 
         for (const vertex of gi.vertices) {
-          vertex.setProperty("Distance", INTEGER_NULL);
+          // vertex.setProperty("Distance", INTEGER_NULL);
         }
 
         editor.edgeProperties.createProperty("EdgeLength", "integer");
@@ -301,7 +305,7 @@
         }
       });
 
-      algorithms.dijkstra(gi.vertices[0], "EdgeLength", "Distance", "Previous");
+      // algorithms.dijkstra(gi.vertices[0], "EdgeLength", "Distance", "Previous");
     });
 
     generator.clique(5);

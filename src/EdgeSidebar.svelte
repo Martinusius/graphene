@@ -10,7 +10,7 @@
   import Wrench from "lucide-svelte/icons/wrench";
   import Plus from "lucide-svelte/icons/plus";
   import Separator from "$lib/components/ui/separator/separator.svelte";
-  import { typeStyles } from "./Properties";
+  import { propertyTypes } from "./Properties";
   import { onDestroy, onMount } from "svelte";
 
   let { selection, editor } = $props();
@@ -23,9 +23,9 @@
   let displayProperty = $state("ID");
 
   function react() {
-    if(!selection.edge) return;
+    if (!selection.edge) return;
 
-    for(const propertyName of Object.keys(editor.edgeProperties.properties)) {
+    for (const propertyName of Object.keys(editor.edgeProperties.properties)) {
       propertyValues[propertyName] = editor.edgeProperties.getProperty(propertyName, selection.edge.index);
     }
 
@@ -68,18 +68,24 @@
   <div class="text-lg font-semibold">Custom Properties</div>
 
   {#each Object.entries(properties) as [propertyName, property]}
-    {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
+    {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes] as any}
     <div>
       <Label>{propertyName} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
-      <Input 
-        class="mt-2" type="number" 
+      <Input
+        class="mt-2"
+        type="number"
         placeholder={typeStyle.special[propertyValues[propertyName]]}
-        value={typeStyle.special[propertyValues[propertyName]] ? '' : propertyValues[propertyName]}
-        
+        value={typeStyle.special[propertyValues[propertyName]] ? "" : propertyValues[propertyName]}
         oninput={(event) => {
           editor.transaction(() => {
             propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
-            editor.edgeProperties.setProperty(propertyName, selection.edge.index, Number((event.target as HTMLInputElement).value));
+            editor.edgeProperties.setProperty(
+              propertyName,
+              selection.edge.index,
+              Number((event.target as HTMLInputElement).value)
+            );
+
+            propertyValues[propertyName] = editor.edgeProperties.getProperty(propertyName, selection.edge.index);
           });
         }}
       />
@@ -97,7 +103,7 @@
       </Dialog.Header>
       <div class="p-2 flex flex-col gap-3">
         {#each Object.entries(properties) as [propertyName, property]}
-          {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
+          {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes]}
 
           <div class="flex flex-row gap-3">
             <Dialog.Root
@@ -117,7 +123,7 @@
                   <Dialog.Close class={buttonVariants({ variant: "outline" })}>Cancel</Dialog.Close>
                   <Dialog.Close
                     class={buttonVariants({ variant: "default" })}
-                    onclick={(event) => {
+                    onclick={() => {
                       editor.transaction(() => {
                         editor.edgeProperties.renameProperty(propertyName, rename);
                         react();
@@ -128,13 +134,22 @@
               </Dialog.Content>
             </Dialog.Root>
 
-            <Select.Root type="single" bind:value={property.type}>
+            <Select.Root
+              type="single"
+              bind:value={property.type}
+              onValueChange={async (value) => {
+                editor.transaction(() => {
+                  editor.edgeProperties.setPropertyType(propertyName, value);
+                  react();
+                });
+              }}
+            >
               <Select.Trigger class="w-[140px]">
                 <span class={typeStyle.color}>{typeStyle.label}</span>
               </Select.Trigger>
               <Select.Content>
-                {#each Object.keys(typeStyles) as type}
-                  {@const typeStyle = typeStyles[type as keyof typeof typeStyles]}
+                {#each Object.keys(propertyTypes) as type}
+                  {@const typeStyle = propertyTypes[type as keyof typeof propertyTypes]}
                   <Select.Item value={type}>
                     <span class={typeStyle.color}>{typeStyle.label}</span>
                   </Select.Item>
@@ -144,7 +159,7 @@
             <Button
               variant="destructive"
               onclick={() => {
-                 editor.transaction(() => {
+                editor.transaction(() => {
                   editor.edgeProperties.deleteProperty(propertyName);
                   react();
                 });
@@ -158,18 +173,18 @@
         <Button
           onclick={() => {
             const takenNames = new Set(Object.keys(editor.edgeProperties.properties));
-              
-            const originalName = 'Property';
+
+            const originalName = "Property";
             let name = originalName;
             let index = 2;
 
-            while(takenNames.has(name)) {
+            while (takenNames.has(name)) {
               name = `${originalName}_${index}`;
               index++;
             }
 
             editor.transaction(() => {
-              editor.edgeProperties.createProperty(name, 'integer');
+              editor.edgeProperties.createProperty(name, "integer");
               react();
             });
           }}
@@ -179,11 +194,15 @@
         </Button>
 
         <Label class="mt-4">Display property</Label>
-        <Select.Root type="single" bind:value={displayProperty} onValueChange={async (value) => {
-          editor.transaction(() => {
-            editor.edgeDisplayProperty = value;
-          });
-        }}>
+        <Select.Root
+          type="single"
+          bind:value={displayProperty}
+          onValueChange={async (value) => {
+            editor.transaction(() => {
+              editor.edgeDisplayProperty = value;
+            });
+          }}
+        >
           <Select.Trigger>
             {displayProperty}
           </Select.Trigger>
@@ -202,7 +221,7 @@
   </Dialog.Root>
 </div>
 <Sidebar.Footer>
-  <Button class="flex w-full" variant="destructive">
+  <Button class="flex w-full" variant="destructive" onclick={() => editor.operations.delete()}>
     <Trash size="16" /> Delete
   </Button>
 </Sidebar.Footer>

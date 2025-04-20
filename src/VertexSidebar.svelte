@@ -10,7 +10,7 @@
   import Wrench from "lucide-svelte/icons/wrench";
   import Plus from "lucide-svelte/icons/plus";
   import Separator from "$lib/components/ui/separator/separator.svelte";
-  import { typeStyles } from "./Properties";
+  import { propertyTypes } from "./Properties";
   import type { EditorInterface } from "./EditorInterface";
   import { onDestroy, onMount } from "svelte";
 
@@ -83,7 +83,7 @@
   <div class="text-lg font-semibold">Custom Properties</div>
 
   {#each Object.entries(properties) as [propertyName, property]}
-    {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
+    {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes] as any}
     <div>
       <Label>{propertyName} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
       <Input
@@ -93,12 +93,13 @@
         value={typeStyle.special[propertyValues[propertyName]] ? "" : propertyValues[propertyName]}
         oninput={(event) => {
           editor.transaction(() => {
-            propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
             editor.vertexProperties.setProperty(
               propertyName,
               selection.vertex.index,
               Number((event.target as HTMLInputElement).value)
             );
+
+            propertyValues[propertyName] = editor.vertexProperties.getProperty(propertyName, selection.vertex.index);
           });
         }}
       />
@@ -116,7 +117,7 @@
       </Dialog.Header>
       <div class="p-2 flex flex-col gap-3">
         {#each Object.entries(properties) as [propertyName, property]}
-          {@const typeStyle = typeStyles[property.type as keyof typeof typeStyles]}
+          {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes]}
 
           <div class="flex flex-row gap-3">
             <Dialog.Root
@@ -149,13 +150,22 @@
               </Dialog.Content>
             </Dialog.Root>
 
-            <Select.Root type="single" bind:value={property.type} onValueChange={(value) => {}}>
+            <Select.Root
+              type="single"
+              bind:value={property.type}
+              onValueChange={(value) => {
+                editor.transaction(() => {
+                  editor.vertexProperties.setPropertyType(propertyName, value as keyof typeof propertyTypes);
+                  react();
+                });
+              }}
+            >
               <Select.Trigger class="w-[140px]">
                 <span class={typeStyle.color}>{typeStyle.label}</span>
               </Select.Trigger>
               <Select.Content>
-                {#each Object.keys(typeStyles) as type}
-                  {@const typeStyle = typeStyles[type as keyof typeof typeStyles]}
+                {#each Object.keys(propertyTypes) as type}
+                  {@const typeStyle = propertyTypes[type as keyof typeof propertyTypes]}
                   <Select.Item value={type}>
                     <span class={typeStyle.color}>{typeStyle.label}</span>
                   </Select.Item>
@@ -227,7 +237,7 @@
   </Dialog.Root>
 </div>
 <Sidebar.Footer>
-  <Button class="flex w-full" variant="destructive">
+  <Button class="flex w-full" variant="destructive" onclick={() => editor.operations.delete()}>
     <Trash size="16" /> Delete
   </Button>
 </Sidebar.Footer>

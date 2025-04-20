@@ -33,6 +33,7 @@ export type PropertyConfig = {
   renameProperty(from: string, to: string): void;
   getProperty(name: string, i: number): number;
   setProperty(name: string, i: number, value: number): void;
+  setPropertyType(name: string, type: AuxiliaryType): void;
 };
 
 export type EditorInterface = {

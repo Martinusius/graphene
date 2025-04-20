@@ -1,6 +1,9 @@
+import type { format } from "path/posix";
+import { propertyTypes } from "../../../Properties";
 import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 import { DynamicArray } from "../DynamicArray";
+import { intBitsToFloat, intBitsToUint } from "../reinterpret";
 
 export type AuxiliaryType = 'integer' | 'vertex' | 'edge';
 
@@ -73,6 +76,17 @@ export class Auxiliary {
     this.swapObjects(i, this.objectCount - 1);
   }
 
+  setPropertyType(name: string, type: AuxiliaryType) {
+    if (!this.properties[name]) throw new Error('Property does not exist');
+    if (this.properties[name].type === type) return;
+
+    for (let i = 0; i < this.objectCount; i++) {
+      this.setProperty(name, i, propertyTypes[type].null);
+    }
+
+    this.properties[name].type = type;
+  }
+
   setProperty(name: string, i: number, value: number) {
     this.changed = true;
 
@@ -81,7 +95,7 @@ export class Auxiliary {
     const array = this.arrays[Math.floor(property.index! / 4)];
     const channel = property.index! % 4;
 
-    if (['integer', 'vertex', 'edge'].includes(property.type))
+    if (['vertex', 'edge'].includes(property.type))
       array.setUint32(i * 16 + channel * 4, value);
     else if (property.type === 'integer')
       array.setInt32(i * 16 + channel * 4, value);
@@ -115,15 +129,12 @@ export class Auxiliary {
       this.buffers.push(this.compute.createBuffer(this.objectCount));
     }
 
-    const array = this.arrays[Math.floor((this.propertyCount - 1) / 4)];
-    const channel = (this.propertyCount - 1) % 4;
-
-    for (let i = 0; i < this.objectCount; i++) {
-      array.setUint32(i * 16 + channel * 4, 0);
-    }
-
     const property = this.properties[name] = { name, type, index: this.propertyCount - 1 };
     this.propertyNames.push(name);
+
+    for (let i = 0; i < this.objectCount; i++) {
+      this.setProperty(name, i, propertyTypes[type].null);
+    }
 
     return property;
   }

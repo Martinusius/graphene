@@ -38,7 +38,18 @@ export function intBitsToFloat(uintNumber: number) {
 }
 
 
-export function uint(value: number) {
-  uintBuffer[0] = value;
+export function intBitsToUint(uintNumber: number) {
+  if (typeof uintNumber !== "number")
+    throw new Error(`A int number is expected, got ${uintNumber}`);
+
+  intBuffer[0] = setInt32Fix(uintNumber);
   return uintBuffer[0];
+}
+
+export function uintBitsToInt(uintNumber: number) {
+  if (typeof uintNumber !== "number")
+    throw new Error(`A uint number is expected, got ${uintNumber}`);
+
+  uintBuffer[0] = uintNumber;
+  return getInt32Fix(intBuffer[0]);
 }

@@ -3,12 +3,11 @@ import { ArrayQueue } from "./ArrayQueue";
 import type { DirectedEdge, DirectedVertex } from "./texture/interface/directed/DirectedGraph";
 import type { Edge, Graph, Vertex } from "./texture/interface/Graph";
 import type { UndirectedVertex } from "./texture/interface/undirected/UndirectedGraph";
-import { INTEGER_POSITIVE_INIFNITY, VERTEX_NULL } from "../Properties";
+import { INTEGER_POSITIVE_INIFNITY, NULL, VERTEX_NULL } from "../Properties";
+import { alertError } from "./error";
 
 export class GraphAlgorithms {
-  constructor(public graph: Graph) {
-
-  }
+  constructor(public graph: Graph) {}
 
   dfs(root: Vertex, depthProperty?: string) {
     return this.graph.transaction(() => {
@@ -129,7 +128,11 @@ export class GraphAlgorithms {
           const neighbor = to(edge);
           const neighborNode = nodes[neighbor.index];
 
-          const totalDistance = distance + edge.getProperty(edgeDistanceProperty);
+          const edgeDistance = edge.getProperty(edgeDistanceProperty);
+          if(edgeDistance === NULL) alertError("Edge distance is NULL");
+          if(edgeDistance < 0) alertError("Edge distance is negative")
+
+          const totalDistance = distance + edgeDistance;
 
           if (!neighborNode) {
             nodes[neighbor.index] = heap.insert(totalDistance, neighbor);

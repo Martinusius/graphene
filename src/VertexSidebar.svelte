@@ -13,6 +13,7 @@
   import { propertyTypes } from "./Properties";
   import type { EditorInterface } from "./EditorInterface";
   import { onDestroy, onMount } from "svelte";
+  import { getUint32Fix, setUint32Fix } from "$lib/texture/polyfill.glsl";
 
   let { selection, updateSelected, editor } = $props() as {
     selection: any;
@@ -46,6 +47,7 @@
   onDestroy(() => {
     editor.unreactive(react);
   });
+
 </script>
 
 <Sidebar.Header class="flex flex-row">
@@ -84,6 +86,22 @@
 
   {#each Object.entries(properties) as [propertyName, property]}
     {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes] as any}
+
+    {@const onSave = (event: any) => {
+      const value = Number((event.target as HTMLInputElement).value);
+      // console.log(value, setUint32Fix(value), propertyValues[propertyName]);
+      const fixedValue = getUint32Fix(setUint32Fix(value));
+      if(value != fixedValue) propertyValues[propertyName] = fixedValue;
+      editor.transaction(() => {
+        editor.vertexProperties.setProperty(
+          propertyName,
+          selection.vertex.index,
+          value
+        );
+
+        propertyValues[propertyName] = editor.vertexProperties.getProperty(propertyName, selection.vertex.index);
+      });
+    }}
     <div>
       <Label>{propertyName} (<span class={typeStyle.color}>{typeStyle.label}</span>)</Label>
       <Input
@@ -91,17 +109,8 @@
         type="number"
         placeholder={typeStyle.special[propertyValues[propertyName]]}
         value={typeStyle.special[propertyValues[propertyName]] ? "" : propertyValues[propertyName]}
-        oninput={(event) => {
-          editor.transaction(() => {
-            editor.vertexProperties.setProperty(
-              propertyName,
-              selection.vertex.index,
-              Number((event.target as HTMLInputElement).value)
-            );
-
-            propertyValues[propertyName] = editor.vertexProperties.getProperty(propertyName, selection.vertex.index);
-          });
-        }}
+        onblur={onSave}
+        onkeydown={(event) => event.key === 'Enter' && onSave(event)}
       />
     </div>
   {/each}

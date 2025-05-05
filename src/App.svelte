@@ -61,24 +61,29 @@
     (window as any).importer = editor.importer;
   });
 
-  onKeybind("X", () => editor.operations.delete());
-  onKeybind("Delete", () => editor.operations.delete());
+  function isFocused() {
+    return document.activeElement === document.body; 
+  }
 
-  onKeybind("M", () => editor.operations.merge());
-  onKeybind("K", () => editor.operations.cliqueify());
-  onKeybind("H", () => editor.operations.subgraph());
 
-  onKeybind("Ctrl+Z", () => editor.operations.undo());
-  onKeybind("Ctrl+Y", () => editor.operations.redo());
+  onKeybind("X", () => isFocused() && editor.operations.delete());
+  onKeybind("Delete", () => isFocused() && editor.operations.delete());
 
-  onKeybind("Ctrl+C", () => editor.operations.copy());
-  onKeybind("Ctrl+V", () => editor.operations.paste());
-  onKeybind("Ctrl+X", () => editor.operations.cut());
+  onKeybind("M", () => isFocused() && editor.operations.merge());
+  onKeybind("K", () => isFocused() && editor.operations.cliqueify());
+  onKeybind("H", () => isFocused() && editor.operations.subgraph());
 
-  onKeybind("Ctrl+A", () => editor.selectionOperation(SelectionOperation.SELECT_ALL));
-  onKeybind("Ctrl+I", () => editor.selectionOperation(SelectionOperation.INVERT_SELECTION));
-  onKeybind("Ctrl+Shift+V", () => editor.selectionOperation(SelectionOperation.ONLY_VERTICES));
-  onKeybind("Ctrl+Shift+E", () => editor.selectionOperation(SelectionOperation.ONLY_EDGES));
+  onKeybind("Ctrl+Z", () => isFocused() && editor.operations.undo());
+  onKeybind("Ctrl+Y", () => isFocused() && editor.operations.redo());
+
+  onKeybind("Ctrl+C", () => isFocused() && editor.operations.copy());
+  onKeybind("Ctrl+V", () => isFocused() && editor.operations.paste());
+  onKeybind("Ctrl+X", () => isFocused() && editor.operations.cut());
+
+  onKeybind("Ctrl+A", () => isFocused() && editor.selectionOperation(SelectionOperation.SELECT_ALL));
+  onKeybind("Ctrl+I", () => isFocused() && editor.selectionOperation(SelectionOperation.INVERT_SELECTION));
+  onKeybind("Ctrl+Shift+V", () => isFocused() && editor.selectionOperation(SelectionOperation.ONLY_VERTICES));
+  onKeybind("Ctrl+Shift+E", () => isFocused() && editor.selectionOperation(SelectionOperation.ONLY_EDGES));
 
   let areForcesEnabled = $state(false);
   let isGridShown = $state(true);

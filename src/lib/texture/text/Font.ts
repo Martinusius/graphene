@@ -1,16 +1,33 @@
-import { CanvasTexture, LinearFilter, NearestFilter } from "three";
+import { CanvasTexture, LinearFilter, NearestFilter, Vector3 } from "three";
 import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
+import { uintBitsToFloat } from "../reinterpret";
 
 export type Letter = { x: number, y: number, width: number, height: number };
 
 export class Font {
-  public static alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.?";
+  public static alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.?+-";
+  public static letterIndices: Record<string, number> = Object.fromEntries(Font.alphabet.split("").map((letter, i) => [letter, i]));
+
+  public static glslChar(character: string) {
+    return this.letterIndices[character];
+  }
+
+  public static glslString(string: string) {
+    string = string.split("").reverse().join("");
+    
+    const array = new Array(Math.ceil(string.length / 4));
+    for (let i = 0; i < string.length; i++) {
+      const char = Font.letterIndices[string[i]];
+      array[Math.floor(i / 4)] |= char << (8 * (i % 4));
+    }
+
+    return `vec3(${uintBitsToFloat(array[0] ?? 0)}, ${uintBitsToFloat(array[1] ?? 0)}, ${string.length})`;
+  }
 
   public atlas: CanvasTexture;
   public maxFont: Record<string, Letter> = {};
 
-  public letterIndices: Record<string, number> = {};
   public atlasCoords: ComputeBuffer;
 
   public ready: Promise<void>;
@@ -32,9 +49,9 @@ export class Font {
 
     let x = offset, y = offset;
 
-    Font.alphabet.split("").forEach((letter, i) => {
-      this.letterIndices[letter] = i;
-    });
+    // Font.alphabet.split("").forEach((letter, i) => {
+    //   this.letterIndices[letter] = i;
+    // });
 
 
     const fontSizes = [8, 10, 13, 16, 21, 27, 34, 43, 55, 70, 89, 113, 144];

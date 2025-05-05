@@ -3,13 +3,18 @@
 const enabled = true;
 const bit = 26;
 
+const offset = 2**bit;
+
+const intLimit = 2**31 - offset;
+const intMin = -(2**31) + offset;
+
 const polyfill = `
   uint floatBitsToUint_fixed(float value) {
-    return floatBitsToUint(value) - (1u << ${bit});
+    return uint(floatBitsToInt(value) - (1 << ${bit}));
   }
 
   float uintBitsToFloat_fixed(uint value) {
-    return uintBitsToFloat(value + (1u << ${bit}));
+    return intBitsToFloat(int(value + (1u << ${bit})));
   }
 
   int floatBitsToInt_fixed(float value) {
@@ -24,30 +29,30 @@ const polyfill = `
 export function fixFloatUintBug(value: string) {
   if (!enabled) return value;
 
-  value = value.replace(/floatBitsToUint/g, "floatBitsToUint_fixed");
-  value = value.replace(/uintBitsToFloat/g, "uintBitsToFloat_fixed");
+  value = value.replace(/\bfloatBitsToUint\b/g, "floatBitsToUint_fixed");
+  value = value.replace(/\bfloatBitsToInt\b/g, "floatBitsToInt_fixed");
+  value = value.replace(/\buintBitsToFloat\b/g, "uintBitsToFloat_fixed");
+  value = value.replace(/\bintBitsToFloat\b/g, "intBitsToFloat_fixed");
+
   return polyfill + value;
 }
 
 export function getUint32Fix(value: number) {
-  if (!enabled) return value;
-  return value - (1 << bit);
+  return getInt32Fix(value);
 }
 
 export function setUint32Fix(value: number) {
-  if (!enabled) return value;
-  if (value < 0) value = 4227858432 + value;
-  if (value >= 4227858432) value = value - 4227858432;
-
-  return value + (1 << bit);
+  return setInt32Fix(value);
 }
 
 export function getInt32Fix(value: number) {
   if (!enabled) return value;
-  return value - (1 << bit);
+  return value - offset;
 }
 
 export function setInt32Fix(value: number) {
   if (!enabled) return value;
-  return value + (1 << bit);
+  if (value < intMin) value = intLimit + (value - intMin);
+  if (value >= intLimit) value = intMin + (value - intLimit);
+  return value + offset;
 }

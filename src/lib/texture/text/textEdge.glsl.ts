@@ -1,4 +1,6 @@
+import { NULL } from "../../../Properties";
 import { shader } from "../shader";
+import { Font } from "./Font";
 
 export const textEdgeVertex = shader(`
 uniform vec2 resolution;
@@ -41,31 +43,14 @@ float lineDist(vec2 pt1, vec2 pt2, vec2 testPt) {
   return abs(dot(normalize(perpDir), dirToPt1));
 }
 
-const float SQRT_PHI = 1.2720196494944565;
-
-void main() {
-  mat4 m = projectionMatrix * viewMatrix;
-
-  int whichEdge = gl_VertexID / maxDigits;
-  int whichCharacter  = gl_VertexID % maxDigits;
-
-  float floatValue = texture(aux, indexUv(uint(whichEdge), auxSize))[auxChannel];
-  int value = int(floatBitsToUint(floatValue));
-
+void renderUnsignedInteger(int value, int whichCharacter, inout int characterToRender, inout float totalWidth, inout float totalOffset) {
   int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
 
-  float totalWidth = 0.0;
-  float totalOffset = 0.0;
-
-  int characterToRender = 0;
-
-
-  for(int i = 0; i < min(totalDigits, maxDigits); i++) {
-    int character = totalDigits <= maxDigits ? 52 + value % 10 : (int(floatBitsToUint(overflowString[i / 4])) >> (8 * (i % 4))) & 0xFF;
+  for(int i = 0; i < totalDigits; i++) {
+    int character = 52 + value % 10;
     vec4 data = texture(fontAtlasCoords, indexUv(12u * alphabetSize + uint(character), fontAtlasCoordsSize));
 
     totalWidth += data.z;
-    
 
     if(i == whichCharacter) {
       vFontCoords = data;
@@ -76,6 +61,95 @@ void main() {
 
     value /= 10;
   }
+}
+
+void renderSignedInteger(int value, int whichCharacter, inout int characterToRender, inout float totalWidth, inout float totalOffset) {
+  int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
+  renderUnsignedInteger(abs(value), whichCharacter, characterToRender, totalWidth, totalOffset);
+
+  if(sign(value) == -1) {
+    int character = ${Font.glslChar("-")};
+    vec4 data = texture(fontAtlasCoords, indexUv(12u * alphabetSize + uint(character), fontAtlasCoordsSize));
+    totalWidth += data.z;
+ 
+    if(whichCharacter == totalDigits + 1) {
+      vFontCoords = data;
+      characterToRender = character;
+
+      totalOffset = totalWidth;
+    }
+  }
+}
+
+void renderString(vec3 string, int whichCharacter, inout int characterToRender, inout float totalWidth, inout float totalOffset) {
+  for(int i = 0; i < int(string.z); i++) {
+    int character = (int(floatBitsToUint(string[i / 4])) >> (8 * (i % 4))) & 0xFF;
+    vec4 data = texture(fontAtlasCoords, indexUv(12u * alphabetSize + uint(character), fontAtlasCoordsSize));
+
+    totalWidth += data.z;
+
+    if(i == whichCharacter) {
+      vFontCoords = data;
+      characterToRender = character;
+
+      totalOffset = totalWidth;
+    }
+  }
+}
+
+const float SQRT_PHI = 1.2720196494944565;
+
+void main() {
+  mat4 m = projectionMatrix * viewMatrix;
+
+  int whichEdge = gl_VertexID / maxDigits;
+  int whichCharacter  = gl_VertexID % maxDigits;
+
+  float floatValue = texture(aux, indexUv(uint(whichEdge), auxSize))[auxChannel];
+  int signedValue = int(floatBitsToUint(floatValue));
+
+  // int value = int(floatBitsToUint(floatValue));
+  // int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
+
+  int sgn = sign(signedValue);
+  int value = abs(signedValue);
+
+  int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
+  int requiredDigits = totalDigits + (sgn == -1 ? 1 : 0);
+
+  float totalWidth = 0.0;
+  float totalOffset = 0.0;
+
+  int characterToRender = 0;
+
+
+  // for(int i = 0; i < min(totalDigits, maxDigits); i++) {
+  //   int character = totalDigits <= maxDigits ? 52 + value % 10 : (int(floatBitsToUint(overflowString[i / 4])) >> (8 * (i % 4))) & 0xFF;
+  //   vec4 data = texture(fontAtlasCoords, indexUv(12u * alphabetSize + uint(character), fontAtlasCoordsSize));
+
+  //   totalWidth += data.z;
+    
+
+  //   if(i == whichCharacter) {
+  //     vFontCoords = data;
+  //     characterToRender = character;
+
+  //     totalOffset = totalWidth;
+  //   }
+
+  //   value /= 10;
+  // }
+
+  if(signedValue == ${NULL}) {
+    renderString(${Font.glslString('Null')}, whichCharacter, characterToRender, totalWidth, totalOffset);
+  }
+  else if(requiredDigits <= maxDigits) {
+    renderSignedInteger(signedValue, whichCharacter, characterToRender, totalWidth, totalOffset);
+  }
+  else {
+    renderString(${Font.glslString('Overflow')}, whichCharacter, characterToRender, totalWidth, totalOffset);
+  }
+  
 
   float scale = min(1.0, vFontCoords.w / totalWidth) * 0.5;
   float offset = -8.0 * scale * (totalOffset - totalWidth / 2.0 - vFontCoords.z / 2.0) / vFontCoords.w;

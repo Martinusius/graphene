@@ -11,7 +11,6 @@ import type { Three } from "../Three";
 import { textFragment, textVertex } from "./text.glsl";
 import { textEdgeFragment, textEdgeVertex } from "./textEdge.glsl";
 
-import { uintBitsToFloat } from "../reinterpret";
 import type { AuxiliaryRef } from "../interface/Auxiliary";
 
 type CountInfo = { count: number };
@@ -20,18 +19,6 @@ export class GraphText {
   public static defaultMaxDigits = 8;
 
   private points: Points<BufferGeometry, ShaderMaterial>;
-
-  private encodeString(string: string) {
-    string = string.split("").reverse().join("");
-
-    const array = new Array(Math.ceil(string.length / 4));
-    for (let i = 0; i < string.length; i++) {
-      const char = this.font.letterIndices[string[i]];
-      array[Math.floor(i / 4)] |= char << (8 * (i % 4));
-    }
-
-    return new Vector2(uintBitsToFloat(array[0]), uintBitsToFloat(array[1]));
-  }
 
   // public auxBuffer: ComputeBuffer;
 
@@ -71,11 +58,11 @@ export class GraphText {
         edgeDataSize: { value: edgeData?.width ?? 0 },
         auxSize: { value: this.aux.buffer().width },
         fontAtlasCoordsSize: { value: 2048 },
-        alphabetSize: { value: 64 },
+        alphabetSize: { value: Font.alphabet.length },
         auxChannel: { value: this.aux.channel() },
         maxDigits: { value: GraphText.defaultMaxDigits },
         size: { value: 40 },
-        overflowString: { value: this.encodeString("Overflow") },
+        overflowString: { value: new Vector2(0) },
       },
       transparent: true,
       depthWrite: true,

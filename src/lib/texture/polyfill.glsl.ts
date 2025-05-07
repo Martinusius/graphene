@@ -1,12 +1,16 @@
-// Weird WebGL float bug. Cannot properly read uint encoded as floats. Fix: Add 2**30 while encoding and subtract it while decoding.
+// Weird WebGL float bug. Cannot properly read uint encoded as floats.
 
 const enabled = true;
 const bit = 26;
 
 const offset = 2**bit;
 
-const intLimit = 2**31 - offset;
+const intMax = 2**31 - offset;
 const intMin = -(2**31) + offset;
+
+export const INT_NULL = intMax - 1;
+export const INT_POSITIVE_INFINITY = intMax - 2;
+export const INT_NEGATIVE_INFINITY = intMin + 1;
 
 const polyfill = `
   uint floatBitsToUint_fixed(float value) {
@@ -52,7 +56,16 @@ export function getInt32Fix(value: number) {
 
 export function setInt32Fix(value: number) {
   if (!enabled) return value;
-  if (value < intMin) value = intLimit + (value - intMin);
-  if (value >= intLimit) value = intMin + (value - intLimit);
+  
+  if (value === INT_NULL || value === INT_POSITIVE_INFINITY || value === INT_NEGATIVE_INFINITY) {
+    return value + offset;
+  }
+  
+  if (value < intMin) value = intMax + (value - intMin);
+  if (value >= intMax) value = intMin + (value - intMax);
   return value + offset;
+}
+
+export function isSpecialIntValue(value: number): boolean {
+  return value === INT_NULL || value === INT_POSITIVE_INFINITY || value === INT_NEGATIVE_INFINITY;
 }

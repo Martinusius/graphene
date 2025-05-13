@@ -2,8 +2,6 @@ export const INTEGER_NULL = (1 << 30) + 1;
 export const INTEGER_POSITIVE_INIFNITY = 1 << 30;
 export const INTEGER_NEGATIVE_INIFNITY = -1 << 30;
 
-// export const VERTEX_NULL = 4227858431;
-// export const EDGE_NULL = 4227858431;
 export const VERTEX_NULL = (1 << 30) + 1;
 export const EDGE_NULL = (1 << 30) + 1;
 

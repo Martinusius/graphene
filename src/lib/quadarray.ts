@@ -8,9 +8,6 @@ export class QuadArray extends Float32Array {
   public setQuad(index: number, array: ArrayLike<number>) {
     const _array = Array.from(array);
 
-
-    // console.log(index * 4 * this.itemSize);
-
     this.set([
       ..._array.slice(0, this.itemSize),
       ..._array.slice(this.itemSize, this.itemSize * 2),

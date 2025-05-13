@@ -1,18 +1,11 @@
 import {
   BufferAttribute,
-  BufferGeometry,
-  InstancedBufferAttribute,
   InstancedBufferGeometry,
 } from "three";
 
 export class EdgeBuffer {
   public geometry = new InstancedBufferGeometry();
 
-  // instanced attribute, 2 uv coordinates of the vertices the edge connects
-  // also specifies direction arrows
-  // private vertices: Float32Array;
-
-  // defines which part of the edge the specific vertex is (processed in the shader)
   private position = new Float32Array(
     [
       [0, 0, 0],
@@ -31,7 +24,6 @@ export class EdgeBuffer {
     ].flat()
   );
 
-  // ordinary index array that defines triangles
   private indices = new Uint16Array(
     [
       [3, 1, 0],
@@ -49,7 +41,6 @@ export class EdgeBuffer {
 
   constructor() {
     this.geometry.instanceCount = 0;
-
 
     this.geometry.setAttribute(
       "position",

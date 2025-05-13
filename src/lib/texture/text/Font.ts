@@ -1,7 +1,10 @@
-import { CanvasTexture, LinearFilter, NearestFilter, Vector3 } from "three";
+import { CanvasTexture, LinearFilter } from "three";
 import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 import { uintBitsToFloat } from "../reinterpret";
+
+const DEBUG_SHOW_FONT_ATLAS = false;
+const DEBUG_RED_RECTANGLE = false;
 
 export type Letter = { x: number, y: number, width: number, height: number };
 
@@ -49,11 +52,6 @@ export class Font {
 
     let x = offset, y = offset;
 
-    // Font.alphabet.split("").forEach((letter, i) => {
-    //   this.letterIndices[letter] = i;
-    // });
-
-
     const fontSizes = [8, 10, 13, 16, 21, 27, 34, 43, 55, 70, 89, 113, 144];
 
     this.atlasCoords = compute.createBuffer(Font.alphabet.length * fontSizes.length);
@@ -79,9 +77,13 @@ export class Font {
           y += height + offset;
         }
 
-        // draw rectangle
-        // ctx.strokeStyle = "red";
-        // ctx.strokeRect(x, y, width, height);
+        if(DEBUG_RED_RECTANGLE) {
+          // draw red rectangle around characters
+          ctx.strokeStyle = "red";
+          ctx.strokeRect(x, y, width, height);
+        }
+
+       
 
         ctx.fillStyle = "black";
         ctx.fillText(letter, x, y + height - metrics.fontBoundingBoxDescent);
@@ -109,8 +111,10 @@ export class Font {
 
     this.ready = this.atlasCoords.write(data);
 
-    // display the canvas in the body
-    // canvas.classList.add('canvas');
-    // document.body.appendChild(canvas);
+    if(DEBUG_SHOW_FONT_ATLAS) {
+      // display the canvas in the body
+      canvas.classList.add('canvas');
+      document.body.appendChild(canvas);
+    }
   }
 }

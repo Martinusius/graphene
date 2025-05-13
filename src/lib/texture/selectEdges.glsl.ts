@@ -4,8 +4,6 @@ export const selectEdges = shader(`
 uniform buffer vertexData;
 uniform buffer edgeData;
 
-// uniform uvec2 vertexDataSize;
-
 uniform vec2 min;
 uniform vec2 max;
 

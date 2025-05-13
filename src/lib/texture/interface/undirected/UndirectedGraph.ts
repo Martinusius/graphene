@@ -17,10 +17,36 @@ function random(r: number) {
   return r * 2 * (Math.random() - 1);
 }
 
+// Terminology:
+// Index:
+// - Position of a vertex or an edge in the buffer
+// - Changes regularly during deletion
+// Id:
+// - Uniquely identifies a vertex or an edge
+// - Does not change during the lifetime of the vertex or edge
+// - After deletion of the vertex or edge, the id is free to be reused (not universally unique)
+
+// How the vertices and edges are stored in the buffer:
+// Vertex (16 bytes):
+// - Position x (4 bytes)
+// - Position y (4 bytes)
+// - Selection flags (4 bytes): isSelected, isTemporarilySelected (while dragging selection rectangle), isHovered, isDragged
+// - Id (4 bytes): Unique identifier of the vertex (as mentioned above)
+
+// Edge (16 bytes):
+// - U index (4 bytes): The index of the vertex the edge is coming from (2 LSB are used)
+// - V index (4 bytes): The index of the vertex the edge is going to
+// - Selection flags (4 bytes): isSelected, isTemporarilySelected (while dragging selection rectangle), isHovered, isDragged
+// - Id (4 bytes): Unique identifier of the edge (as mentioned above)
+
+// Note:
+// Changing other selection flags than isSelected is generally not recommended
+
 export class UndirectedGraph implements Graph {
   public isDirected = false;
 
-  // for each vertex index: map from neighbor id to edge id
+  // Incident edges of i-th vertex
+  // Neighbor vertex Id -> Edge Id
   public incidency: Map<number, number>[];
 
   public vertexCount = 0;

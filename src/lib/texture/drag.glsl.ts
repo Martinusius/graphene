@@ -6,8 +6,6 @@ uniform buffer edgeData;
 
 uniform int vertexCount;
 
-// uniform ivec2 edgeDataSize;
-// uniform ivec2 vertexDataSize;
 
 uniform vec2 offset;
 
@@ -16,7 +14,7 @@ void main() {
 
   if (gl_VertexID < vertexCount) {
     // drag vertex
-    vec4 vertex = ReadBuffer(vertexData, instanceId); //texture(vertexData, indexUv(gl_VertexID, vertexDataSize));
+    vec4 vertex = ReadBuffer(vertexData, instanceId);
 
     uint flags = floatBitsToUint(vertex.z);
     
@@ -26,7 +24,6 @@ void main() {
     vertex.z = uintBitsToFloat((flags & ~0b1000u) | ((flags & 1u) << 3)); // drag flag
 
     WriteOutput(instanceId, vertex);
-    //writeIndex(gl_VertexID, vertex);
   }
   else {
     // drag edge
@@ -50,8 +47,6 @@ void main() {
     position.z = uintBitsToFloat((vertexFlags & ~0b1000u) | ((edgeFlags & 1u) << 3)); // drag flag
 
     WriteOutput(int(vertex), position);
-
-    //writeIndexDepth(int(vertex), position, 1.0);
 
     if(selection < 0.5) Discard();
   }

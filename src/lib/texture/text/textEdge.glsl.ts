@@ -108,9 +108,6 @@ void main() {
   float floatValue = texture(aux, indexUv(uint(whichEdge), auxSize))[auxChannel];
   int signedValue = int(floatBitsToUint(floatValue));
 
-  // int value = int(floatBitsToUint(floatValue));
-  // int totalDigits = int(max(0.0, floor(log10(float(value))))) + 1;
-
   int sgn = sign(signedValue);
   int value = abs(signedValue);
 
@@ -121,24 +118,6 @@ void main() {
   float totalOffset = 0.0;
 
   int characterToRender = 0;
-
-
-  // for(int i = 0; i < min(totalDigits, maxDigits); i++) {
-  //   int character = totalDigits <= maxDigits ? 52 + value % 10 : (int(floatBitsToUint(overflowString[i / 4])) >> (8 * (i % 4))) & 0xFF;
-  //   vec4 data = texture(fontAtlasCoords, indexUv(12u * alphabetSize + uint(character), fontAtlasCoordsSize));
-
-  //   totalWidth += data.z;
-    
-
-  //   if(i == whichCharacter) {
-  //     vFontCoords = data;
-  //     characterToRender = character;
-
-  //     totalOffset = totalWidth;
-  //   }
-
-  //   value /= 10;
-  // }
 
   if(signedValue == ${NULL}) {
     renderString(${Font.glslString('Null')}, whichCharacter, characterToRender, totalWidth, totalOffset);

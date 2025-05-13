@@ -2,12 +2,9 @@ import { shader } from "./shader";
 
 export const hash = shader(`
 uniform buffer vertexData;
-// uniform uvec2 vertexDataSize;
 
 uniform float cellSize;
 uniform int hashModulo;
-
-// out vec4 color;
 
 const int primeA = 5499311;
 const int primeB = 1381747;
@@ -17,7 +14,7 @@ int modulo(int a, int b) {
 }
 
 float calculateHash(uint index) {
-  vec4 vertex = ReadBuffer(vertexData, index); //texture(vertexData, indexUv(index, vertexDataSize));
+  vec4 vertex = ReadBuffer(vertexData, index);
   
   ivec2 cellCoords = ivec2(vertex.xy / cellSize);
 
@@ -33,7 +30,7 @@ float calculateHash(uint index) {
 }
 
 void main() {
-  uint index = uint(instanceId); //uint(gl_FragCoord.x) + uint(gl_FragCoord.y) * uint(outputSize.x);
+  uint index = uint(instanceId);
 
   // calculate hashes for four vertices at once
   float r = calculateHash(index * 4u);
@@ -41,7 +38,6 @@ void main() {
   float b = calculateHash(index * 4u + 2u);
   float a = calculateHash(index * 4u + 3u);
 
-  // color = vec4(r, g, b, a);
   WriteOutput(index, vec4(r, g, b, a));
 }
 `);

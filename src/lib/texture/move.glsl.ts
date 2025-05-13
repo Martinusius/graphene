@@ -9,10 +9,8 @@ uniform float deltaTime;
 out vec4 color;
 
 void main() {
-  // vec2 uv = gl_FragCoord.xy / vec2(outputSize);
-
-  vec4 vertex = ReadBuffer(vertexData, instanceId); // texture(vertexData, uv);
-  vec2 velocity =  ReadBuffer(velocities, instanceId).xy; // texture(velocities, uv).xy;
+  vec4 vertex = ReadBuffer(vertexData, instanceId);
+  vec2 velocity =  ReadBuffer(velocities, instanceId).xy;
 
   float speed = min(50.0, length(velocity));
 
@@ -20,6 +18,5 @@ void main() {
     vertex.xy += normalize(velocity) * speed * deltaTime;
 
   WriteOutput(instanceId, vertex);
-  //color = vertex;
 }
 `);

@@ -53,17 +53,10 @@ export class GraphRenderer {
 
   private selectionOperationProgram: ComputeProgram;
 
-  // private countOnScreenProgram: ComputeProgram;
-  // private screenCountBuffer: ComputeTexture;
-
-  // public text: VertexText;
   public text: Text;
   private font: Font;
 
-
   public forces: Forces;
-
-  // private counter: Counter;
 
   private selectInfoProgram: ComputeProgram;
   private selectInfoBuffers: ComputeBuffer[] = [];
@@ -78,10 +71,6 @@ export class GraphRenderer {
     this.selectInfoProgram = this.compute.createProgram(selectInfo, { additive: true });
     this.selectInfoBuffers = [this.compute.createBuffer(1), this.compute.createBuffer(1)];
 
-    // this.counter = new Counter(this.compute);
-
-    // const verticesSize = Math.ceil(Math.sqrt(maxVertices));
-    // const edgesSize = Math.ceil(Math.sqrt(maxEdges));
 
     this.vertexData = this.compute.createBuffer(maxVertices);
 
@@ -109,26 +98,15 @@ export class GraphRenderer {
 
     this.selectionOperationProgram = this.compute.createProgram(selectionOperation);
 
-    // this.countOnScreenProgram = this.compute.createProgram(countOnScreen, true);
-    // this.screenCountBuffer = this.compute.createTextureBuffer(1);
-
     const algorithm = new EadesAlgorithm();
 
     algorithm.repulsionStrength = 3000;
     algorithm.springLength = 25;
 
-    // const algorithm = new FruchtermanReingoldAlgorithm();
-
-    // algorithm.springLength = 25;
-    // algorithm.factor = 0.05;
-
-
     this.forces = new Forces(algorithm, this.compute, this.vertices, this.edges, this.vertexData, this.edgeData);
 
     this.font = new Font(this.compute);
 
-    // this.text = new VertexText(this.three, this.compute, this.vertices, this.vertexData, this.edgeData, this.font);
-    //this.text = new Autotext(this.three, this.compute, this.vertices, this.vertexData, this.edgeData, this.font);
     this.text = new Text(this.three, this.font, this.vertices, this.edges, this.vertexData, this.edgeData);
   }
 
@@ -197,6 +175,10 @@ export class GraphRenderer {
   select(type: ObjectType, id: number, select = true) {
     this.flag(0, type, id, select, false);
     this.flag(1, type, id, select, false);
+  }
+
+  highlight(type: ObjectType, id: number) {
+    this.flag(3, type, id, true, true);
   }
 
   hover(type: ObjectType, id: number) {
@@ -408,25 +390,6 @@ export class GraphRenderer {
     await this.edgeData.write([...data].slice(0, j * 4));
     this.edges.count = j;
   }
-
-  // async countOnScreen() {
-  //   this.three.camera.updateMatrixWorld();
-
-  //   this.countOnScreenProgram.setUniform('vertexData', this.vertexData);
-
-  //   this.countOnScreenProgram.setUniform('projectionMatrix', this.three.camera.projectionMatrix);
-  //   this.countOnScreenProgram.setUniform('_viewMatrix', this.three.camera.matrixWorldInverse);
-  //   this.countOnScreenProgram.setUniform('screenResolution', this.three.resolution);
-  //   this.countOnScreenProgram.setUniform('size', this.three.camera.zoom * 400);
-
-
-  //   this.countOnScreenProgram.execute(this.vertexData.width * this.vertexData.height, this.screenCountBuffer);
-
-  //   const result = await this.screenCountBuffer.read(0, 0, 1, 1);
-  //   return result[0];
-  // }
-
-
 
   async selectionInfo() {
     this.selectInfoProgram.setUniform('isVertices', true);

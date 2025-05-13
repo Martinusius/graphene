@@ -57,7 +57,6 @@ export function onKeybind(keybind: string, callback: (event: KeyboardEvent) => v
     throw new Error('Only one regular key can be specified (you can use Ctrl, Shift, Alt and Meta as well)');
   }
 
-
   window.addEventListener('keydown', (event) => {
     const pressedSpecialKeys = specialKeys.filter(key => event[key + 'Key' as 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey']);
 

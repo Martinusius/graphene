@@ -23,6 +23,8 @@ The sidebar allows the user to view details of the current graph selection. For 
 
 Which single vertex/edge is selected the user can also edit the properties of the given object and select which property should be displayed as text. All vertices have the same set of properties. Same apllies to the edges.
 
+Currently there are three types of properties available: Integer, @Vertex, @Edge.
+
 ## Editor
 
 Navigation around the editor can be done either by right-click dragging and scrolling, or by using touch gestures.

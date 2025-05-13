@@ -61,8 +61,6 @@ void main() {
 
   vec3 selectionColor = vec3(0, 0.5, 1);
 
-  // if(bool(vSelection & 0b1000u)) selectionColor.gb = selectionColor.bg;
-
   vec3 colorFill = mix(vec3(0.9), selectionColor, float(vSelection & 1u));
 
   vec3 color = mix(vec3(white) * colorFill, vec3(1), float((vSelection & 0b100u) >> 2) * 0.4);

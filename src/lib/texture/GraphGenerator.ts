@@ -207,8 +207,6 @@ export class GraphGenerator {
           vertices[v].x = x;
           vertices[v].y = y;
 
-          // console.log('position', v, x, y, nodeWidths[v]);
-
           let offset = 0;
 
           for (const child of children[v]) {

@@ -15,14 +15,11 @@ uniform float size;
 uniform bool select;
 uniform bool preview;
 
-// out vec4 color;
 
 void main() {
   mat4 m = projectionMatrix * _viewMatrix;
   
-  // vec2 uv = gl_FragCoord.xy / vec2(outputSize);
-
-  vec4 vertex = ReadBuffer(vertexData, instanceId); //texture(vertexData, uv);
+  vec4 vertex = ReadBuffer(vertexData, instanceId);
 
   uint valid = floatBitsToUint(vertex.w);
   if(valid == 0u) {
@@ -49,6 +46,5 @@ void main() {
     new |= (previous & 0b10u) >> 1;
   }
 
-  // color = vec4(vertex.xy, uintBitsToFloat(new), 0);
   WriteOutput(instanceId, vec4(vertex.xy, uintBitsToFloat(new), vertex.w));
 }`);

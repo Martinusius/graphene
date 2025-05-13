@@ -8,7 +8,7 @@ uniform int channel;
 
 
 void main() {
-  vec4 data = ReadBuffer(flagData, instanceId); //texture(flagData, gl_FragCoord.xy / vec2(outputSize));
+  vec4 data = ReadBuffer(flagData, instanceId);
   uint value = floatBitsToUint(data.z);
   
   if(instanceId == id) {

@@ -5,9 +5,6 @@ uniform buffer vertexData;
 uniform buffer hashTable;
 uniform buffer offsets;
 
-// uniform uvec2 hashTableSize;
-// uniform uvec2 vertexDataSize;
-
 uniform float cellSize;
 uniform float strength;
 
@@ -16,14 +13,13 @@ uniform int hashModulo;
 const int primeA = 5499311;
 const int primeB = 1381747;
 
-// out vec4 color;
 
 int modulo(int a, int b) {
   return (b + (a % b)) % b;
 }
 
 uint calculateHash(uint index, ivec2 offset) {
-  vec4 vertex = ReadBuffer(vertexData, index); //texture(vertexData, indexUv(index, vertexDataSize));
+  vec4 vertex = ReadBuffer(vertexData, index);
   
   ivec2 cellCoords = ivec2(vertex.xy / cellSize) + offset;
 

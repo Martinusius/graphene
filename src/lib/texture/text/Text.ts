@@ -20,8 +20,6 @@ export class GraphText {
 
   private points: Points<BufferGeometry, ShaderMaterial>;
 
-  // public auxBuffer: ComputeBuffer;
-
   public defaultAux: AuxiliaryRef = {
     buffer: () => this.aux.buffer(),
     channel: () => this.aux.channel(),
@@ -36,8 +34,6 @@ export class GraphText {
     vertexData: ComputeBuffer,
     edgeData?: ComputeBuffer
   ) {
-    // this.auxBuffer = edgeData ?? vertexData;
-
     this.aux = this.defaultAux = {
       buffer: () => edgeData ?? vertexData,
       channel: () => 3,

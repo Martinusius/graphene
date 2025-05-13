@@ -89,7 +89,6 @@
 
     {@const onSave = (event: any) => {
       const value = Number((event.target as HTMLInputElement).value);
-      // console.log(value, setUint32Fix(value), propertyValues[propertyName]);
       const fixedValue = getUint32Fix(setUint32Fix(value));
       if(value != fixedValue) propertyValues[propertyName] = fixedValue;
       editor.transaction(() => {

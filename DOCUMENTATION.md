@@ -44,13 +44,26 @@ The text is rendered using a pre-rendered font texture atlas. The numeric values
 
 The editor allows running basic graph algorithms such as BFS, DFS and Dijkstra which read inputs and write outputs to the custom properties. The Dijkstra implementation uses [@tyriar/fibonacci-heap](https://www.npmjs.com/package/@tyriar/fibonacci-heap) for slightly better time complexity.
 
-### User interface
-
-The UI is built using components from [shadcn-svelte](https://next.shadcn-svelte.com/). Don't they just look amazing?
 
 ### Custom graph format and copy/paste
 
 The custom format for storing the graph is simply a JSON containing the properties and then the contents of the buffers in base 64. This format is used for both exporting/imporing the graph and  copy/pasting parts of the graph. Other import/export formats are also available although this one specifically retains all the information about the graph.
+
+### User interface
+
+The project is using the [svelte](https://svelte.dev/) framework.
+
+The UI is built using components from [shadcn-svelte](https://next.shadcn-svelte.com/). Don't they just look amazing?
+
+### Building the project
+
+The project uses [pnpm](https://pnpm.io/) to manage packages and [vite](https://vite.dev/) for bundling.
+
+How to run in dev mode:
+
+`pnpm install`
+
+`pnpm run dev`
 
 
 

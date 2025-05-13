@@ -10,9 +10,6 @@ export const computeFragment = `
 precision highp float;
 precision highp int;
 
-// precision highp sampler2D;
-// precision highp isampler2D;
-// precision highp usampler2D;
 
 uniform ivec2 outputSize;
 
@@ -36,9 +33,6 @@ export const specialComputeVertex = `
 precision highp float;
 precision highp int;
 
-// precision highp sampler2D;
-// precision highp isampler2D;
-// precision highp usampler2D;
 
 flat out vec4 writeColor;
 flat out int vDontDiscard;
@@ -102,10 +96,6 @@ void Discard() {
 export const specialComputeFragment = `
 precision highp float;
 precision highp int;
-
-// precision highp sampler2D;
-// precision highp isampler2D;
-// precision highp usampler2D;
 
 flat in vec4 writeColor;
 flat in int vDontDiscard;

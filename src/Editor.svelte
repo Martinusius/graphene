@@ -316,7 +316,6 @@
       async function roll() {
         await gi.transaction(() => {
 
-
           const currentProp = gi.vertices[0].getProperty("Test");
           
           console.log('last', lastProp, 'current', currentProp); 
@@ -324,10 +323,7 @@
             throw new Error('Not matching');
           }
 
-          // lastProp = Math.floor(Math.random() * 2**32) - 2**31 - 2**26;
-          // lastProp = Math.floor(Math.random() * 2**32) - 2**31;
           lastProp = -200;
-          // lastProp = 0;
 
 
           gi.vertices[0].setProperty("Test", lastProp);
@@ -336,8 +332,7 @@
         setTimeout(roll, 1);
       }
 
-      // setTimeout(roll, 1000);
-      // algorithms.dijkstra(gi.vertices[0], "EdgeLength", "Distance", "Previous");
+      algorithms.dijkstra(gi.vertices[0], "EdgeLength", "Distance", "Previous");
     });
 
     generator.clique(5);

@@ -139,6 +139,7 @@ export class ComputeBuffer {
     return data;
   }
 
+  // partially written rows will be overwritten with 0s
   async write(
     data: number[] | Float32Array,
     start = 0,
@@ -147,10 +148,7 @@ export class ComputeBuffer {
     if (length <= 0) throw new Error("length must be greater than 0");
     const end = start + length;
 
-
-
     if (end > this.capacity) throw new Error("end is greater than the buffer capacity");
-
 
     const sy = Math.floor(start / this.width);
     const ey = Math.ceil(end / this.width);
@@ -168,33 +166,6 @@ export class ComputeBuffer {
 
     for (let i = 0; i < 4 * length; i++)
       writeData[4 * (sx - x) + i] = data[i] ?? 0;
-
-    if (false /*ey - sy > 1 && (sx !== 0 || ex !== 0)*/) {
-      // if we are writing to multiple rows and the start and end are not aligned
-      // we need to read the current data to preserve the data that is not being overwritten
-
-      const buffer = new Float32Array(4 * width * height);
-      await this.globals.renderer.readRenderTargetPixelsAsync(
-        this.readable(),
-        x,
-        y,
-        width,
-        height,
-        buffer
-      );
-
-      // copy the data that is not being overwritten
-      for (let i = 0; i < 4 * sx; i++)
-        writeData[i] = buffer[i];
-
-      for (let i = 4 * (width * height - width + ex); i < 4 * (width * height); i++)
-        writeData[i] = buffer[i];
-    }
-
-    // console.log(width, height, x, y, this.readable().texture.image);
-    // if (width > (this.readable().width - x) || height > (this.readable().height - y)) {
-    //   console.error("ERROR");
-    // }
 
     const texture = new DataTexture(writeData, width, height, RGBAFormat, FloatType);
     texture.needsUpdate = true;

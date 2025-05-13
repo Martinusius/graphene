@@ -1,10 +1,10 @@
 import { FibonacciHeap, type INode } from "@tyriar/fibonacci-heap";
-import { ArrayQueue } from "./ArrayQueue";
-import type { DirectedEdge, DirectedVertex } from "./texture/interface/directed/DirectedGraph";
-import type { Edge, Graph, Vertex } from "./texture/interface/Graph";
-import type { UndirectedVertex } from "./texture/interface/undirected/UndirectedGraph";
-import { INTEGER_POSITIVE_INIFNITY, NULL, VERTEX_NULL } from "../Properties";
-import { alertError } from "./error";
+import { ArrayQueue } from "../ArrayQueue";
+import type { DirectedEdge, DirectedVertex } from "./interface/directed/DirectedGraph";
+import type { Edge, Graph, Vertex } from "./interface/Graph";
+import type { UndirectedVertex } from "./interface/undirected/UndirectedGraph";
+import { INTEGER_POSITIVE_INIFNITY, NULL, VERTEX_NULL } from "../../Properties";
+import { alertError } from "../error";
 
 export class GraphAlgorithms {
   constructor(public graph: Graph) {}

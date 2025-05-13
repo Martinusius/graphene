@@ -6,21 +6,21 @@
   import { initGrid } from "./lib/grid";
   import { getMousePosition, isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
   import { Draw } from "./lib/Draw";
-  import { GraphRenderer } from "./lib/texture/GraphRenderer";
-  import { Three } from "./lib/texture/Three";
-  import { Task } from "./lib/texture/Task";
-  import { UndirectedGraph } from "./lib/texture/interface/undirected/UndirectedGraph";
-  import { floatBitsToUint } from "./lib/texture/reinterpret";
-  import { GraphGenerator } from "./lib/texture/GraphGenerator";
-  import { DynamicArray } from "./lib/texture/DynamicArray";
+  import { GraphRenderer } from "./lib/core/GraphRenderer";
+  import { Three } from "./lib/core/Three";
+  import { Task } from "./lib/core/Task";
+  import { UndirectedGraph } from "./lib/core/interface/undirected/UndirectedGraph";
+  import { floatBitsToUint } from "./lib/core/reinterpret";
+  import { GraphGenerator } from "./lib/core/GraphGenerator";
+  import { DynamicArray } from "./lib/core/DynamicArray";
   import { DragState, type EditorInterface } from "./EditorInterface";
   import { toByteArray, fromByteArray } from "base64-js";
-  import { GraphAlgorithms } from "$lib/GraphAlgorithms";
+  import { GraphAlgorithms } from "$lib/core/GraphAlgorithms";
   import { INTEGER_NULL } from "./Properties";
-  import { GraphExporter } from "$lib/texture/GraphExporter";
-  import { GraphImporter } from "$lib/texture/GraphImporter";
-  import { DirectedGraph } from "$lib/texture/interface/directed/DirectedGraph";
-  import { SelectionOperation } from "$lib/texture/SelectionOperation";
+  import { GraphExporter } from "$lib/core/GraphExporter";
+  import { GraphImporter } from "$lib/core/GraphImporter";
+  import { DirectedGraph } from "$lib/core/interface/directed/DirectedGraph";
+  import { SelectionOperation } from "$lib/core/SelectionOperation";
 
   let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
 

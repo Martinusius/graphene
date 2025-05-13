@@ -10,7 +10,7 @@ import {
 import type { Three } from "./Three";
 import { edgeFragment, edgeVertex } from "./edge.glsl";
 import type { ComputeBuffer } from "./compute/ComputeBuffer";
-import { EdgeBuffer } from "../EdgeBuffer";
+import { EdgeBuffer } from "./edgebuffer";
 
 export class Edges {
   private edges: Mesh<InstancedBufferGeometry, ShaderMaterial>;

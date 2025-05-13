@@ -44,7 +44,7 @@
   import AlgorithmDfs from "./AlgorithmDfs.svelte";
   import AlgorithmBfs from "./AlgorithmBfs.svelte";
   import { onMount } from "svelte";
-  import { SelectionOperation } from "$lib/texture/SelectionOperation";
+  import { SelectionOperation } from "$lib/core/SelectionOperation";
   import NewGraphPopup from "./NewGraphPopup.svelte";
   import { fileUpload } from "$lib/upload";
   import AlgorithmDijkstra from "./AlgorithmDijkstra.svelte";

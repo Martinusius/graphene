@@ -13,7 +13,7 @@
   import { propertyTypes } from "./Properties";
   import type { EditorInterface } from "./EditorInterface";
   import { onDestroy, onMount } from "svelte";
-  import { getUint32Fix, setUint32Fix } from "$lib/texture/polyfill.glsl";
+  import { getUint32Fix, setUint32Fix } from "$lib/core/polyfill.glsl";
 
   let { selection, updateSelected, editor } = $props() as {
     selection: any;

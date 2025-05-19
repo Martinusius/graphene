@@ -1,9 +1,7 @@
-import type { format } from "path/posix";
 import { propertyTypes } from "../../../Properties";
 import type { Compute } from "../compute/Compute";
 import type { ComputeBuffer } from "../compute/ComputeBuffer";
 import { DynamicArray } from "../DynamicArray";
-import { intBitsToFloat, intBitsToUint } from "../reinterpret";
 
 export type AuxiliaryType = 'integer' | 'vertex' | 'edge';
 
@@ -12,11 +10,6 @@ export type AuxiliaryProperty = {
   type: AuxiliaryType;
   index: number;
 };
-
-function log<T>(t: T, ...args: any[]) {
-  console.log(t, args);
-  return t;
-}
 
 export class Auxiliary {
   propertyNames: string[] = [];
@@ -39,7 +32,11 @@ export class Auxiliary {
     this.arrays.forEach(array => {
       for (let i = 0; i < 4; i++)
         array.pushUint32(0);
-    })
+    });
+
+    this.propertyNames.forEach((name) => {
+      this.setProperty(name, this.objectCount - 1, propertyTypes[this.properties[name].type].null);
+    });
   }
 
   popObject() {

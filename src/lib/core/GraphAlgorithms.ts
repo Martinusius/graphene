@@ -4,7 +4,6 @@ import type { DirectedEdge, DirectedVertex } from "./interface/directed/Directed
 import type { Edge, Graph, Vertex } from "./interface/Graph";
 import type { UndirectedVertex } from "./interface/undirected/UndirectedGraph";
 import { INTEGER_POSITIVE_INIFNITY, NULL, VERTEX_NULL } from "../../Properties";
-import { alertError } from "../error";
 
 export class GraphAlgorithms {
   constructor(public graph: Graph) {}
@@ -129,8 +128,8 @@ export class GraphAlgorithms {
           const neighborNode = nodes[neighbor.index];
 
           const edgeDistance = edge.getProperty(edgeDistanceProperty);
-          if(edgeDistance === NULL) alertError("Edge distance is NULL");
-          if(edgeDistance < 0) alertError("Edge distance is negative")
+          if(edgeDistance === NULL) throw new Error("Edge distance is NULL");
+          if(edgeDistance < 0) throw new Error("Edge distance is negative")
 
           const totalDistance = distance + edgeDistance;
 

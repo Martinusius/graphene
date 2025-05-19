@@ -27,8 +27,6 @@
       editor.reactive(react);
       react();
 
-      console.log("open");
-
       editor.transaction(() => {
         for (const vertex of editor.graph.vertices) {
           if (rootId === undefined) rootId = vertex.id;
@@ -109,9 +107,10 @@
       <Dialog.Close class={buttonVariants({ variant: "outline" })}>Cancel</Dialog.Close>
       <Dialog.Close
         class={buttonVariants({ variant: "default" })}
-        onclick={async () => {
+        onclick={(event) => {
           if (!rootId) {
             alert("Root vertex not selected");
+            event.preventDefault();
             return;
           }
 
@@ -119,10 +118,19 @@
 
           if (!root) {
             alert("Root vertex not found");
+            event.preventDefault();
             return;
           }
 
-          await editor.algorithms.dijkstra(root, edgeDistanceProperty!, pathDistanceProperty, previousVertexProperty);
+          if (!edgeDistanceProperty) {
+            alert("Edge distance property not selected");
+            event.preventDefault();
+            return;
+          }
+
+          editor.algorithms.dijkstra(root, edgeDistanceProperty!, pathDistanceProperty, previousVertexProperty).catch((error) => {
+            alert(`Dijkstra: ${error}`);
+          });
         }}
         >Run
       </Dialog.Close>

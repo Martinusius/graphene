@@ -77,7 +77,7 @@
 
     let gi: UndirectedGraph | DirectedGraph = new DirectedGraph(graph);
 
-    const generator = new GraphGenerator(gi);
+    let generator = new GraphGenerator(gi);
 
     let lastSelection: any;
 
@@ -284,6 +284,7 @@
         exporter = new GraphExporter(gi);
         importer = new GraphImporter(gi);
         algorithms = new GraphAlgorithms(gi);
+        generator = new GraphGenerator(gi);
       },
     } as EditorInterface;
 

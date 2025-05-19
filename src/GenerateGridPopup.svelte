@@ -46,8 +46,9 @@
       </div>
     </div>
     
+    <Label>Edges</Label>
     <Select.Root type="single" bind:value={edges}>
-      <Select.Trigger class="w-[140px]">
+      <Select.Trigger class="w-full">
         {@const edgesOption = edgesOptions[edges as keyof typeof edgesOptions]}
         <span>{edgesOption.label}</span>
       </Select.Trigger>

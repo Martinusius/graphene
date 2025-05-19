@@ -35,9 +35,15 @@ To create a new vertex the `Q` shortcut can be used which creates a new vertex a
 
 To create edges the `E` shortcut can be used which connects all selected vertices to the currently hovered vertex.
 
-## Quirks
+## Quirks and recommendations
 
 1. Selecting and dragging is not classified as an edit operation and therefore does not constitude an undo step. Adding/removing objects or editing their custom properties however all do count and can be undone.
 
 2. Integer-based custom properties (currently all of them) have a non-standard range in order to support inconsistent WebGL implementations. Using values close to the maximum or minimum or relying on overflow behavior is not recommended.
+
+3. Graphene currently runs best on Firefox, though Chrome should work fine for reasonably sized graphs (m + n < 100000). Larger graphs can be problematic because Chrome does something weird with the GPU during user interactions (most noticable during scrolling) which slows everything down and results in big FPS drops.
+
+4. Editing larger graphs than your computer can handle might sometimes result in hover/selection issues caused by CPU-GPU desync.
+
+
 

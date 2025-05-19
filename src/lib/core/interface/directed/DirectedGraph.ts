@@ -370,10 +370,11 @@ export class DirectedGraph implements Graph {
   private transactions: Transaction[] = [];
 
   transaction(callback: () => void, options: TransactionOptions = {}) {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       this.transactions.push({
         callback,
         resolve,
+        reject,
         ...options,
       });
     });
@@ -409,7 +410,12 @@ export class DirectedGraph implements Graph {
       this.versioner.precommit();
     }
 
-    await transaction.callback();
+    try {
+      await transaction.callback();
+    }
+    catch (e) {
+      return () => transaction.reject(e);
+    }
 
     if (!transaction.undo && !transaction.redo) {
       this.versioner.commit();

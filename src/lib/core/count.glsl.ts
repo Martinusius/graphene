@@ -16,7 +16,6 @@ void main() {
 
   uint value = floatBitsToUint(data.z);
 
-
   uint set = (value >> id) & 1u;
   
   WriteOutput(0, vec4(float(set), 0, 0, 0));

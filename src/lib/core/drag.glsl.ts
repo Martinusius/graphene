@@ -6,7 +6,6 @@ uniform buffer edgeData;
 
 uniform int vertexCount;
 
-
 uniform vec2 offset;
 
 void main() {

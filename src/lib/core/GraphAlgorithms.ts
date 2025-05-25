@@ -129,7 +129,7 @@ export class GraphAlgorithms {
 
           const edgeDistance = edge.getProperty(edgeDistanceProperty);
           if(edgeDistance === NULL) throw new Error("Edge distance is NULL");
-          if(edgeDistance < 0) throw new Error("Edge distance is negative")
+          if(edgeDistance < 0) throw new Error("Edge distance is negative");
 
           const totalDistance = distance + edgeDistance;
 

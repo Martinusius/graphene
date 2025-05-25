@@ -51,8 +51,13 @@ export class GraphImporter {
   async graphene(data: string, offset = new Vector2()) {
     await this.graph.transaction(async () => {
       try {
+        const { isDirected, vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(data);
+        if(isDirected !== this.graph.isDirected) {
+          const from = isDirected ? 'a directed' : 'an undirected'
+          const to = this.graph.isDirected ? 'a directed' : 'an undirected';
 
-        const { vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(data);
+          throw new Error(`Cannot import ${from} graph into ${to} graph`);
+        }
 
         function rectifyProperties(aux: Auxiliary, properties: { name: string, type: AuxiliaryType }[]) {
           for (const { name, type } of properties) {

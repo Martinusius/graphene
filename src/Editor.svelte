@@ -5,18 +5,15 @@
   import { OrbitControls } from "./lib/OrbitControls";
   import { initGrid } from "./lib/grid";
   import { getMousePosition, isMousePressed, LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./lib/input";
-  import { Draw } from "./lib/Draw";
+  import { Draw } from "./lib/draw";
   import { GraphRenderer } from "./lib/core/GraphRenderer";
   import { Three } from "./lib/core/Three";
   import { Task } from "./lib/core/Task";
   import { UndirectedGraph } from "./lib/core/interface/undirected/UndirectedGraph";
   import { floatBitsToUint } from "./lib/core/reinterpret";
   import { GraphGenerator } from "./lib/core/GraphGenerator";
-  import { DynamicArray } from "./lib/core/DynamicArray";
   import { DragState, type EditorInterface } from "./EditorInterface";
-  import { toByteArray, fromByteArray } from "base64-js";
   import { GraphAlgorithms } from "$lib/core/GraphAlgorithms";
-  import { INTEGER_NULL } from "./Properties";
   import { GraphExporter } from "$lib/core/GraphExporter";
   import { GraphImporter } from "$lib/core/GraphImporter";
   import { DirectedGraph } from "$lib/core/interface/directed/DirectedGraph";
@@ -45,7 +42,7 @@
     );
     camera.position.set(0, 0, 50);
     camera.lookAt(0, 0, 0);
-    camera.zoom = 1 / 20;
+    camera.zoom = 1 / 5;
     camera.updateProjectionMatrix();
 
     const controls = new OrbitControls(camera, container);
@@ -288,55 +285,7 @@
       },
     } as EditorInterface;
 
-    generator.grid(4).then(() => {
-      generator.grid(3);
-
-      editor.transaction(() => {
-        editor.vertexProperties.createProperty("Distance", "integer");
-        editor.vertexProperties.createProperty("Previous", "vertex");
-
-        for (const vertex of gi.vertices) {
-          // vertex.setProperty("Distance", INTEGER_NULL);
-        }
-
-        editor.edgeProperties.createProperty("EdgeLength", "integer");
-        for (const edge of gi.edges) {
-          edge.setProperty("EdgeLength", Math.floor(Math.random() * 10));
-        }
-      });
-
-      editor.vertexProperties.createProperty("Test", "integer");
-
-      editor.edgeProperties.createProperty("Test", "integer");
-
-
-      let lastProp = null as null | number;
-
-      editor.vertexDisplayProperty = "Test";
-
-      async function roll() {
-        await gi.transaction(() => {
-
-          const currentProp = gi.vertices[0].getProperty("Test");
-          
-          console.log('last', lastProp, 'current', currentProp); 
-          if(lastProp != null && lastProp !== currentProp) {
-            throw new Error('Not matching');
-          }
-
-          lastProp = -200;
-
-
-          gi.vertices[0].setProperty("Test", lastProp);
-        });
-
-        setTimeout(roll, 1);
-      }
-
-      algorithms.dijkstra(gi.vertices[0], "EdgeLength", "Distance", "Previous");
-    });
-
-    generator.clique(5);
+    generator.cycle(6);
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "q") {

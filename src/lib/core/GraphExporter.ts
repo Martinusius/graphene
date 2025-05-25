@@ -86,6 +86,7 @@ export class GraphExporter {
       }
 
       const finalJson = {
+        isDirected: this.graph.isDirected,
         vertexProperties,
         edgeProperties,
         vertexData: fromByteArray(vertexData.toArray()),

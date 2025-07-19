@@ -18,6 +18,10 @@ export type Operations = {
   copy(): void;
   paste(): void;
   cut(): void;
+
+  addVertex(x: number, y: number): Promise<void>;
+  addVertexAndConnect(x: number, y: number): Promise<void>;
+  connectVertex(vertexId: number): Promise<void>;
 };
 
 export type Flags = {

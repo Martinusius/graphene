@@ -3,6 +3,7 @@
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import Editor from "./Editor.svelte";
   import * as Menubar from "$lib/components/ui/menubar/index.js";
+  import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
 
   import Atom from "lucide-svelte/icons/atom";
 
@@ -36,7 +37,7 @@
 
   import PanelLeft from "lucide-svelte/icons/panel-left";
 
-  import { onKeybind } from "$lib/input";
+  import { getMousePosition, onKeybind } from "$lib/input";
   import type { EditorInterface } from "./EditorInterface";
   import GenerateEmptyPopup from "./GenerateEmptyPopup.svelte";
   import GenerateGridPopup from "./GenerateGridPopup.svelte";
@@ -48,6 +49,7 @@
   import NewGraphPopup from "./NewGraphPopup.svelte";
   import { fileUpload } from "$lib/upload";
   import AlgorithmDijkstra from "./AlgorithmDijkstra.svelte";
+  import type { HoverState } from "$lib/core/types";
 
   let openSidebar = $state(true);
 
@@ -62,9 +64,10 @@
   });
 
   function isFocused() {
-    return document.activeElement === document.body; 
+    return (
+      document.activeElement?.contains(document.querySelector("canvas")) || document.activeElement?.tagName === "CANVAS"
+    );
   }
-
 
   onKeybind("X", () => isFocused() && editor.operations.delete());
   onKeybind("Delete", () => isFocused() && editor.operations.delete());
@@ -104,6 +107,12 @@
   let openAlgorithmDfs = $state(false);
   let openAlgorithmBfs = $state(false);
   let openAlgorithmDijkstra = $state(false);
+
+  let openContextMenu = $state(false);
+
+  let hoverState = $state(null as HoverState | null);
+  let hoverStateOnContextMenu = $state(null as HoverState | null);
+  let mousePositionOnContextMenu = $state({ x: 0, y: 0 });
 
   function download(filename: string, text: string) {
     const element = document.createElement("a");
@@ -374,7 +383,46 @@
   </Menubar.Root>
 
   <div class="relative flex-1">
-    <Editor onselect={(info: any) => (selection = info)} bind:updateSelected bind:editor />
+    <ContextMenu.Root
+      bind:open={openContextMenu}
+      onOpenChange={(open) => {
+        if (open) {
+          hoverStateOnContextMenu = hoverState;
+          mousePositionOnContextMenu = getMousePosition();
+        }
+      }}
+    >
+      <ContextMenu.Trigger
+        onmousedown={(e: MouseEvent) => {
+          if (e.button === 1) {
+            openContextMenu = false;
+          }
+        }}
+        onwheel={() => (openContextMenu = false)}
+      >
+        <Editor onselect={(info: any) => (selection = info)} bind:updateSelected bind:editor bind:hoverState />
+      </ContextMenu.Trigger>
+      <ContextMenu.Content>
+        {#if hoverStateOnContextMenu?.type !== "vertex"}
+          <ContextMenu.Item
+            onclick={() => editor.operations.addVertex(mousePositionOnContextMenu.x, mousePositionOnContextMenu.y)}
+          >
+            Add vertex
+          </ContextMenu.Item>
+          <ContextMenu.Item
+            onclick={() =>
+              editor.operations.addVertexAndConnect(mousePositionOnContextMenu.x, mousePositionOnContextMenu.y)}
+          >
+            Add vertex & connect
+          </ContextMenu.Item>
+        {:else}
+          <ContextMenu.Item onclick={() => editor.operations.connectVertex(hoverStateOnContextMenu!.id)}>
+            Connect vertex
+          </ContextMenu.Item>
+        {/if}
+      </ContextMenu.Content>
+    </ContextMenu.Root>
+
     <Sidebar.Provider open={openSidebar} onOpenChange={(open) => (openSidebar = open)}>
       <AppSidebar {selection} {updateSelected} {editor} />
     </Sidebar.Provider>

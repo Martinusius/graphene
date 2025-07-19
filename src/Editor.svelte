@@ -18,8 +18,14 @@
   import { GraphImporter } from "$lib/core/GraphImporter";
   import { DirectedGraph } from "$lib/core/interface/directed/DirectedGraph";
   import { SelectionOperation } from "$lib/core/SelectionOperation";
+  import type { HoverState } from "$lib/core/types";
 
-  let { onselect, updateSelected = $bindable(), editor = $bindable() as EditorInterface } = $props();
+  let {
+    onselect,
+    updateSelected = $bindable(),
+    editor = $bindable() as EditorInterface,
+    hoverState = $bindable(null as HoverState | null),
+  } = $props();
 
   let container: HTMLDivElement;
 
@@ -221,6 +227,57 @@
         paste() {
           paste();
         },
+        addVertex(mouseX: number, mouseY: number) {
+          const { x, y } = worldCoords({
+            clientX: mouseX,
+            clientY: mouseY,
+          } as any);
+
+          return gi.transaction(() => {
+            const vertex = gi.addVertex(x, y);
+            vertex.isSelected = true;
+          });
+        },
+        addVertexAndConnect(mouseX: number, mouseY: number) {
+          const { x, y } = worldCoords({
+            clientX: mouseX,
+            clientY: mouseY,
+          } as any);
+
+          return gi.transaction(() => {
+            const newVertex = gi.addVertex(x, y);
+
+            const vertices = gi.vertices;
+
+            for (const vertex of vertices) {
+              if (vertex.isSelected && vertex.id !== newVertex.id) {
+                try {
+                  gi.addEdge(vertex as any, newVertex as any);
+                } catch (_) {} // If already exists (we don't really need to log this)
+              }
+
+              vertex.isSelected = vertex.id === newVertex.id;
+            }
+          });
+        },
+        connectVertex(vertexId: number) {
+          return gi.transaction(async () => {
+            const vertices = gi.vertices;
+
+            const hoveredVertex = gi.getVertex(vertexId);
+            if (!hoveredVertex) return;
+
+            for (const vertex of vertices) {
+              if (vertex.isSelected) {
+                try {
+                  gi.addEdge(vertex as any, hoveredVertex as any);
+                } catch (_) {} // If already exists (we don't really need to log this)
+              }
+
+              vertex.isSelected = vertex.id === hoveredVertex.id;
+            }
+          });
+        },
       },
       selectionOperation(operation: SelectionOperation) {
         graph.selectionOperation(operation);
@@ -287,49 +344,15 @@
 
     generator.cycle(6);
 
-    window.addEventListener("keydown", (event) => {
+    window.addEventListener("keydown", async (event) => {
       if (event.key === "q") {
         const coords = getMousePosition();
-        const { x, y } = worldCoords({
-          clientX: coords.x,
-          clientY: coords.y,
-        } as any);
 
-        gi.transaction(() => {
-          const newVertex = gi.addVertex(x, y);
-
-          const vertices = gi.vertices;
-
-          for (const vertex of vertices) {
-            if (vertex.isSelected && vertex.id !== newVertex.id) {
-              try {
-                gi.addEdge(vertex as any, newVertex as any);
-              } catch (_) {} // If already exists (we don't really need to log this)
-            }
-
-            vertex.isSelected = vertex.id === newVertex.id;
-          }
-        });
+        await editor.operations.addVertexAndConnect(coords.x, coords.y);
       } else if (event.key === "e") {
-        if (hoveredType !== "vertex") return;
-        const hoveredId = gi.vertexAt(hoveredIndex)?.id;
-
-        gi.transaction(async () => {
-          const vertices = gi.vertices;
-
-          const hoveredVertex = gi.getVertex(hoveredId);
-          if (!hoveredVertex) return;
-
-          for (const vertex of vertices) {
-            if (vertex.isSelected) {
-              try {
-                gi.addEdge(vertex as any, hoveredVertex as any);
-              } catch (_) {} // If already exists (we don't really need to log this)
-            }
-
-            vertex.isSelected = vertex.id === hoveredVertex.id;
-          }
-        });
+        if (hoverState && hoveredType === "vertex") {
+          await editor.operations.connectVertex(hoverState.id);
+        }
       }
     });
 
@@ -427,6 +450,8 @@
           graph.unhover();
 
           hovering = false;
+          hoverState = null;
+
           return;
         }
 
@@ -441,6 +466,11 @@
         if (type === "edge") {
           graph.hover("edge", index);
         }
+
+        hoverState = {
+          type,
+          id: type === "vertex" ? (gi.vertexAt(index)?.id ?? -1) : (gi.edgeAt(index)?.id ?? -1),
+        };
 
         hoveredType = type;
         hoveredIndex = index;

@@ -143,7 +143,7 @@
     async function copy(cut = false) {
       const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
 
-      const graphene = await exporter.graphene(false, cut, mouseWorld);
+      const graphene = await exporter.grapheneB64(false, cut, mouseWorld);
 
       await navigator.clipboard.writeText(graphene);
     }
@@ -155,7 +155,7 @@
 
       const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
 
-      await importer.graphene(text, mouseWorld);
+      await importer.grapheneB64(text, mouseWorld);
     }
 
     editor = {
@@ -234,8 +234,13 @@
           } as any);
 
           return gi.transaction(() => {
-            const vertex = gi.addVertex(x, y);
-            vertex.isSelected = true;
+            const newVertex = gi.addVertex(x, y);
+
+            const vertices = gi.vertices;
+
+            for (const vertex of vertices) {
+              vertex.isSelected = vertex.id === newVertex.id;
+            }
           });
         },
         addVertexAndConnect(mouseX: number, mouseY: number) {
@@ -345,6 +350,8 @@
     generator.cycle(6);
 
     window.addEventListener("keydown", async (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+
       if (event.key === "q") {
         const coords = getMousePosition();
 
@@ -353,6 +360,10 @@
         if (hoverState && hoveredType === "vertex") {
           await editor.operations.connectVertex(hoverState.id);
         }
+      }
+      if (event.key === "v") {
+        const coords = getMousePosition();
+        await editor.operations.addVertex(coords.x, coords.y);
       }
     });
 

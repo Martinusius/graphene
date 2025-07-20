@@ -173,8 +173,14 @@
             <Menubar.Item
               class="cursor-pointer"
               onclick={async () => {
-                await editor.importer.graphene(await fileUpload(".ene"));
-              }}>Graphene (.ene)</Menubar.Item
+                await editor.importer.grapheneB64(await fileUpload(".ene"));
+              }}>Graphene B64 (.ene)</Menubar.Item
+            >
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => {
+                await editor.importer.grapheneJSON(await fileUpload(".json"));
+              }}>Graphene JSON (.json)</Menubar.Item
             >
           </Menubar.SubContent>
         </Menubar.Sub>
@@ -197,8 +203,14 @@
             >
             <Menubar.Item
               class="cursor-pointer"
-              onclick={async () => download("graph.ene", await editor.exporter.graphene(true))}
-              >Graphene (.ene)</Menubar.Item
+              onclick={async () => download("graph.ene", await editor.exporter.grapheneB64(true))}
+              >Graphene B64 (.ene)</Menubar.Item
+            >
+
+            <Menubar.Item
+              class="cursor-pointer"
+              onclick={async () => download("graph.ene.json", await editor.exporter.grapheneJSON(true))}
+              >Graphene JSON (.json)</Menubar.Item
             >
           </Menubar.SubContent>
         </Menubar.Sub>
@@ -408,16 +420,22 @@
             onclick={() => editor.operations.addVertex(mousePositionOnContextMenu.x, mousePositionOnContextMenu.y)}
           >
             Add vertex
+            <span class="mx-2"></span>
+            <ContextMenu.Shortcut>V</ContextMenu.Shortcut>
           </ContextMenu.Item>
           <ContextMenu.Item
             onclick={() =>
               editor.operations.addVertexAndConnect(mousePositionOnContextMenu.x, mousePositionOnContextMenu.y)}
           >
             Add vertex & connect
+            <span class="mx-2"></span>
+            <ContextMenu.Shortcut>Q</ContextMenu.Shortcut>
           </ContextMenu.Item>
         {:else}
           <ContextMenu.Item onclick={() => editor.operations.connectVertex(hoverStateOnContextMenu!.id)}>
             Connect vertex
+            <span class="mx-2"></span>
+            <ContextMenu.Shortcut>E</ContextMenu.Shortcut>
           </ContextMenu.Item>
         {/if}
       </ContextMenu.Content>

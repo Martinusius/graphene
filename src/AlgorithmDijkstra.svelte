@@ -46,7 +46,7 @@
 <Dialog.Root bind:open>
   <Dialog.Content>
     <Dialog.Header>
-      <Dialog.Title>Depth-first search</Dialog.Title>
+      <Dialog.Title>Dijkstra</Dialog.Title>
     </Dialog.Header>
 
     <Label>Root Vertex ID</Label>
@@ -128,9 +128,11 @@
             return;
           }
 
-          editor.algorithms.dijkstra(root, edgeDistanceProperty!, pathDistanceProperty, previousVertexProperty).catch((error) => {
-            alert(`Dijkstra: ${error}`);
-          });
+          editor.algorithms
+            .dijkstra(root, edgeDistanceProperty!, pathDistanceProperty, previousVertexProperty)
+            .catch((error) => {
+              alert(`Dijkstra: ${error}`);
+            });
         }}
         >Run
       </Dialog.Close>

@@ -11,6 +11,8 @@
   let { open = $bindable<boolean>(), editor }: { open: boolean; editor: EditorInterface } = $props();
 
   let depthProperty = $state(undefined);
+  let previousVertexProperty = $state(undefined as string | undefined);
+
   let rootId: number | undefined = $state(undefined);
 
   let properties = $state({} as Record<string, any>);
@@ -50,7 +52,7 @@
     <Input type="number" bind:value={rootId} />
 
     <Label>
-      Depth property
+      Distance property
       <Badge class="ml-2">Output</Badge>
     </Label>
     <Select.Root type="single" bind:value={depthProperty}>
@@ -59,6 +61,23 @@
       </Select.Trigger>
       <Select.Content>
         {#each getPropertyOfTypeNames(editor.vertexProperties, "integer") as propertyName}
+          <Select.Item value={propertyName}>
+            {propertyName}
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+
+    <Label>
+      Previous vertex property
+      <Badge class="ml-2">Output</Badge>
+    </Label>
+    <Select.Root type="single" bind:value={previousVertexProperty}>
+      <Select.Trigger>
+        <span>{previousVertexProperty || "Select a property"}</span>
+      </Select.Trigger>
+      <Select.Content>
+        {#each getPropertyOfTypeNames(editor.vertexProperties, "vertex") as propertyName}
           <Select.Item value={propertyName}>
             {propertyName}
           </Select.Item>
@@ -83,7 +102,7 @@
             return;
           }
 
-          await editor.algorithms.bfs(root, depthProperty);
+          await editor.algorithms.bfs(root, depthProperty, previousVertexProperty);
         }}
         >Run
       </Dialog.Close>

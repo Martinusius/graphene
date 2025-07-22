@@ -6,9 +6,9 @@ import type { UndirectedVertex } from "./interface/undirected/UndirectedGraph";
 import { INTEGER_POSITIVE_INIFNITY, NULL, VERTEX_NULL } from "../../Properties";
 
 export class GraphAlgorithms {
-  constructor(public graph: Graph) {}
+  constructor(public graph: Graph) { }
 
-  dfs(root: Vertex, depthProperty?: string) {
+  dfs(root: Vertex, depthProperty?: string, previousVertexProperty?: string) {
     return this.graph.transaction(() => {
       if (depthProperty) {
         this.graph.vertices.forEach((vertex) => {
@@ -16,16 +16,21 @@ export class GraphAlgorithms {
         });
       }
 
+      if (previousVertexProperty) {
+        this.graph.vertices.forEach((vertex) => {
+          vertex.setProperty(previousVertexProperty, VERTEX_NULL);
+        });
+      }
+
       const visited = new Set<number>();
-      const stack = [root];
-      let depth = 0;
+      const stack: [Vertex, number][] = [[root, 0]];
 
       while (stack.length > 0) {
-        const vertex = stack.pop()!;
+        const [vertex, depth] = stack.pop()!;
         if (visited.has(vertex.id)) continue;
 
         visited.add(vertex.id);
-        if (depthProperty) vertex.setProperty(depthProperty, depth++);
+        if (depthProperty) vertex.setProperty(depthProperty, depth);
 
         let edges: Edge[] = [];
         let to: (edge: Edge) => Vertex;
@@ -41,17 +46,26 @@ export class GraphAlgorithms {
 
         for (const edge of edges) {
           const neighbor = to(edge);
-          stack.push(neighbor);
+          if (!visited.has(neighbor.id)) {
+            stack.push([neighbor, depth + 1]);
+            if (previousVertexProperty) neighbor.setProperty(previousVertexProperty, vertex.id);
+          }
         }
       }
     });
   }
 
-  bfs(root: Vertex, depthProperty?: string) {
+  bfs(root: Vertex, depthProperty?: string, previousVertexProperty?: string) {
     return this.graph.transaction(() => {
       if (depthProperty) {
         this.graph.vertices.forEach((vertex) => {
           vertex.setProperty(depthProperty, INTEGER_POSITIVE_INIFNITY);
+        });
+      }
+
+      if (previousVertexProperty) {
+        this.graph.vertices.forEach((vertex) => {
+          vertex.setProperty(previousVertexProperty, VERTEX_NULL);
         });
       }
 
@@ -79,7 +93,10 @@ export class GraphAlgorithms {
 
         for (const edge of edges) {
           const neighbor = to(edge);
-          queue.push([neighbor, depth + 1]);
+          if (!visited.has(neighbor.id)) {
+            queue.push([neighbor, depth + 1]);
+            if (previousVertexProperty) neighbor.setProperty(previousVertexProperty, vertex.id);
+          }
         }
       }
     });
@@ -128,8 +145,8 @@ export class GraphAlgorithms {
           const neighborNode = nodes[neighbor.index];
 
           const edgeDistance = edge.getProperty(edgeDistanceProperty);
-          if(edgeDistance === NULL) throw new Error("Edge distance is NULL");
-          if(edgeDistance < 0) throw new Error("Edge distance is negative");
+          if (edgeDistance === NULL) throw new Error("Edge distance is NULL");
+          if (edgeDistance < 0) throw new Error("Edge distance is negative");
 
           const totalDistance = distance + edgeDistance;
 

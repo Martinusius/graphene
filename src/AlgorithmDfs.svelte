@@ -11,6 +11,8 @@
   let { open = $bindable<boolean>(), editor }: { open: boolean; editor: EditorInterface } = $props();
 
   let depthProperty = $state(undefined);
+  let previousVertexProperty = $state(undefined as string | undefined);
+
   let rootId: number | undefined = $state(undefined);
 
   let properties = $state({} as Record<string, any>);
@@ -68,6 +70,23 @@
       </Select.Content>
     </Select.Root>
 
+    <Label>
+      Previous vertex property
+      <Badge class="ml-2">Output</Badge>
+    </Label>
+    <Select.Root type="single" bind:value={previousVertexProperty}>
+      <Select.Trigger>
+        <span>{previousVertexProperty || "Select a property"}</span>
+      </Select.Trigger>
+      <Select.Content>
+        {#each getPropertyOfTypeNames(editor.vertexProperties, "vertex") as propertyName}
+          <Select.Item value={propertyName}>
+            {propertyName}
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+
     <Dialog.Footer>
       <Dialog.Close class={buttonVariants({ variant: "outline" })}>Cancel</Dialog.Close>
       <Dialog.Close
@@ -85,7 +104,7 @@
             return;
           }
 
-          await editor.algorithms.dfs(root, depthProperty);
+          await editor.algorithms.dfs(root, depthProperty, previousVertexProperty);
         }}
         >Run
       </Dialog.Close>

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "upload": "vite build -- --base=/graphene/ && powershell -Command \"(Get-Content dist/index.html) -replace '/assets','./assets' | Set-Content dist/index.html\" && xcopy /E /Y /I dist \"\\\\NETSERVER\\www\\graphene\"",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json"
   },

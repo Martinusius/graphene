@@ -13,11 +13,11 @@ export type GrapheneJSON = {
     x: number;
     y: number;
     id: number;
-    properties: { [key: string]: number };
+    properties: { [key: string]: any };
   }[];
   edgeData: {
     u: number;
     v: number;
-    properties: { [key: string]: number };
+    properties: { [key: string]: any };
   }[];
 };

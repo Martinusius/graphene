@@ -48,7 +48,7 @@
     );
     camera.position.set(0, 0, 50);
     camera.lookAt(0, 0, 0);
-    camera.zoom = 1 / 5;
+    camera.zoom = 1 / 10;
     camera.updateProjectionMatrix();
 
     const controls = new OrbitControls(camera, container);
@@ -349,23 +349,23 @@
 
     generator.cycle(6);
 
-    window.addEventListener("keydown", async (event) => {
-      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    // window.addEventListener("keydown", async (event) => {
+    //   if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
-      if (event.key === "q") {
-        const coords = getMousePosition();
+    //   if (event.key === "q") {
+    //     const coords = getMousePosition();
 
-        await editor.operations.addVertexAndConnect(coords.x, coords.y);
-      } else if (event.key === "e") {
-        if (hoverState && hoveredType === "vertex") {
-          await editor.operations.connectVertex(hoverState.id);
-        }
-      }
-      if (event.key === "v") {
-        const coords = getMousePosition();
-        await editor.operations.addVertex(coords.x, coords.y);
-      }
-    });
+    //     await editor.operations.addVertexAndConnect(coords.x, coords.y);
+    //   } else if (event.key === "e") {
+    //     if (hoverState && hoveredType === "vertex") {
+    //       await editor.operations.connectVertex(hoverState.id);
+    //     }
+    //   }
+    //   if (event.key === "v") {
+    //     const coords = getMousePosition();
+    //     await editor.operations.addVertex(coords.x, coords.y);
+    //   }
+    // });
 
     const loop = async () => {
       const resolveTask = await gi.tick();

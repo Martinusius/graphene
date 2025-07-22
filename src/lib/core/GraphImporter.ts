@@ -4,6 +4,7 @@ import { toByteArray } from "base64-js";
 import { DynamicArray } from "./DynamicArray";
 import type { Auxiliary, AuxiliaryType } from "./interface/Auxiliary";
 import type { GrapheneJSON } from "./types";
+import { valueFromJSON } from "../../Properties";
 
 export class GraphImporter {
   constructor(public readonly graph: Graph) { }
@@ -150,7 +151,8 @@ export class GraphImporter {
           vertexIdConversion.set(vertex.id, v.id);
 
           for (const property of vertexProperties) {
-            this.graph.vertexAuxiliary.setProperty(property.name, v.index, vertex.properties[property.name]);
+            const value = valueFromJSON(vertex.properties[property.name], property.type);
+            this.graph.vertexAuxiliary.setProperty(property.name, v.index, value);
           }
         }
 
@@ -162,7 +164,8 @@ export class GraphImporter {
             const e = this.graph.addEdge(u!, v!);
 
             for (const property of edgeProperties) {
-              this.graph.edgeAuxiliary.setProperty(property.name, e.index, edge.properties[property.name]);
+              const value = valueFromJSON(edge.properties[property.name], property.type);
+              this.graph.edgeAuxiliary.setProperty(property.name, e.index, value);
             }
           }
         }

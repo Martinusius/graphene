@@ -14,6 +14,7 @@
   import type { EditorInterface } from "./EditorInterface";
   import { onDestroy, onMount } from "svelte";
   import { getUint32Fix, setUint32Fix } from "$lib/core/polyfill.glsl";
+  import { preventDefault } from "svelte/legacy";
 
   let { selection, updateSelected, editor } = $props() as {
     selection: any;
@@ -22,6 +23,7 @@
   };
 
   let rename = $state("");
+  let openRename = $state(false);
 
   let propertyValues = $state({} as Record<string, number>);
   let properties = $state({} as Record<string, any>);
@@ -47,7 +49,6 @@
   onDestroy(() => {
     editor.unreactive(react);
   });
-
 </script>
 
 <Sidebar.Header class="flex flex-row">
@@ -90,13 +91,9 @@
     {@const onSave = (event: any) => {
       const value = Number((event.target as HTMLInputElement).value);
       const fixedValue = getUint32Fix(setUint32Fix(value));
-      if(value != fixedValue) propertyValues[propertyName] = fixedValue;
+      if (value != fixedValue) propertyValues[propertyName] = fixedValue;
       editor.transaction(() => {
-        editor.vertexProperties.setProperty(
-          propertyName,
-          selection.vertex.index,
-          value
-        );
+        editor.vertexProperties.setProperty(propertyName, selection.vertex.index, value);
 
         propertyValues[propertyName] = editor.vertexProperties.getProperty(propertyName, selection.vertex.index);
       });
@@ -106,10 +103,10 @@
       <Input
         class="mt-2"
         type="number"
-        placeholder={typeStyle.special[propertyValues[propertyName]]}
-        value={typeStyle.special[propertyValues[propertyName]] ? "" : propertyValues[propertyName]}
+        placeholder={typeStyle.special[propertyValues[propertyName]]?.label}
+        value={typeStyle.special[propertyValues[propertyName]]?.label ? "" : propertyValues[propertyName]}
         onblur={onSave}
-        onkeydown={(event) => event.key === 'Enter' && onSave(event)}
+        onkeydown={(event) => event.key === "Enter" && onSave(event)}
       />
     </div>
   {/each}
@@ -128,14 +125,17 @@
           {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes]}
 
           <div class="flex flex-row gap-3">
-            <Dialog.Root
-              onOpenChange={(open) => {
-                if (open) rename = propertyName;
-              }}
-            >
-              <Dialog.Trigger class="flex-1">
-                <Input value={propertyName} oninput={(event) => event.preventDefault()} />
-              </Dialog.Trigger>
+            <Dialog.Root bind:open={openRename} overlay={false}>
+              <Input
+                value={propertyName}
+                onfocus={(event) => {
+                  (event.target as HTMLInputElement).blur();
+                }}
+                onclick={() => {
+                  openRename = true;
+                  rename = propertyName;
+                }}
+              />
               <Dialog.Content>
                 <Dialog.Header>
                   <Dialog.Title>Rename Property</Dialog.Title>

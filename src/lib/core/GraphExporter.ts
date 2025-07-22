@@ -4,6 +4,7 @@ import { getMousePosition } from "$lib/input";
 import { Vector2 } from "three";
 import { DynamicArray } from "./DynamicArray";
 import type { GrapheneJSON } from "./types";
+import { propertyTypes, valueToJSON } from "../../Properties";
 
 
 
@@ -145,7 +146,8 @@ export class GraphExporter {
         });
 
         for (const property of vertexProperties) {
-          json.vertexData[json.vertexData.length - 1].properties[property.name] = this.graph.vertexAuxiliary.getProperty(property.name, vertex.index);
+          const value = this.graph.vertexAuxiliary.getProperty(property.name, vertex.index);
+          json.vertexData[json.vertexData.length - 1].properties[property.name] = valueToJSON(value, property.type);
         }
       }
 
@@ -161,7 +163,8 @@ export class GraphExporter {
         });
 
         for (const property of edgeProperties) {
-          json.edgeData[json.edgeData.length - 1].properties[property.name] = this.graph.edgeAuxiliary.getProperty(property.name, edge.index);
+          const value = this.graph.edgeAuxiliary.getProperty(property.name, edge.index);
+          json.edgeData[json.edgeData.length - 1].properties[property.name] = valueToJSON(value, property.type);
         }
       }
 

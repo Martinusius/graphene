@@ -16,6 +16,7 @@
   let { selection, editor } = $props();
 
   let rename = $state("");
+  let openRename = $state(false);
 
   let propertyValues = $state({} as Record<string, number>);
   let properties = $state({} as Record<string, any>);
@@ -74,8 +75,8 @@
       <Input
         class="mt-2"
         type="number"
-        placeholder={typeStyle.special[propertyValues[propertyName]]}
-        value={typeStyle.special[propertyValues[propertyName]] ? "" : propertyValues[propertyName]}
+        placeholder={typeStyle.special[propertyValues[propertyName]]?.label}
+        value={typeStyle.special[propertyValues[propertyName]]?.label ? "" : propertyValues[propertyName]}
         oninput={(event) => {
           editor.transaction(() => {
             propertyValues[propertyName] = Number((event.target as HTMLInputElement).value);
@@ -106,14 +107,17 @@
           {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes]}
 
           <div class="flex flex-row gap-3">
-            <Dialog.Root
-              onOpenChange={(open) => {
-                if (open) rename = propertyName;
-              }}
-            >
-              <Dialog.Trigger class="flex-1">
-                <Input value={propertyName} oninput={(event) => event.preventDefault()} />
-              </Dialog.Trigger>
+            <Dialog.Root bind:open={openRename}>
+              <Input
+                value={propertyName}
+                onfocus={(event) => {
+                  (event.target as HTMLInputElement).blur();
+                }}
+                onclick={() => {
+                  openRename = true;
+                  rename = propertyName;
+                }}
+              />
               <Dialog.Content>
                 <Dialog.Header>
                   <Dialog.Title>Rename Property</Dialog.Title>

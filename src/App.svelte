@@ -88,11 +88,27 @@
   onKeybind("Ctrl+Shift+V", () => isFocused() && editor.selectionOperation(SelectionOperation.ONLY_VERTICES));
   onKeybind("Ctrl+Shift+E", () => isFocused() && editor.selectionOperation(SelectionOperation.ONLY_EDGES));
 
+  onKeybind("Q", async () => {
+    const coords = getMousePosition();
+    await editor.operations.addVertexAndConnect(coords.x, coords.y);
+  });
+
+  onKeybind("E", async () => {
+    if (hoverState && hoverState.type === "vertex") {
+      await editor.operations.connectVertex(hoverState.id);
+    }
+  });
+
+  onKeybind("V", async () => {
+    const coords = getMousePosition();
+    await editor.operations.addVertex(coords.x, coords.y);
+  });
+
   let areForcesEnabled = $state(false);
   let isGridShown = $state(true);
 
-  onKeybind("F", () => (areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled));
-  onKeybind("G", () => (isGridShown = editor.isGridShown = !isGridShown));
+  onKeybind("F", () => isFocused() && (areForcesEnabled = editor.areForcesEnabled = !areForcesEnabled));
+  onKeybind("G", () => isFocused() && (isGridShown = editor.isGridShown = !isGridShown));
 
   onKeybind("Ctrl+Shift+X", () => {
     console.log("pressed Ctrl+Shift+X");
@@ -209,7 +225,7 @@
 
             <Menubar.Item
               class="cursor-pointer"
-              onclick={async () => download("graph.ene.json", await editor.exporter.grapheneJSON(true))}
+              onclick={async () => download("graph.json", await editor.exporter.grapheneJSON(true))}
               >Graphene JSON (.json)</Menubar.Item
             >
           </Menubar.SubContent>

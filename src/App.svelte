@@ -83,23 +83,32 @@
   onKeybind("Ctrl+V", () => isFocused() && editor.operations.paste());
   onKeybind("Ctrl+X", () => isFocused() && editor.operations.cut());
 
-  onKeybind("Ctrl+A", () => isFocused() && editor.selectionOperation(SelectionOperation.SELECT_ALL));
+  onKeybind(
+    "Ctrl+A",
+    (event) => isFocused() && (editor.selectionOperation(SelectionOperation.SELECT_ALL)! || event.preventDefault())
+  );
   onKeybind("Ctrl+I", () => isFocused() && editor.selectionOperation(SelectionOperation.INVERT_SELECTION));
   onKeybind("Ctrl+Shift+V", () => isFocused() && editor.selectionOperation(SelectionOperation.ONLY_VERTICES));
   onKeybind("Ctrl+Shift+E", () => isFocused() && editor.selectionOperation(SelectionOperation.ONLY_EDGES));
 
   onKeybind("Q", async () => {
+    if (!isFocused()) return;
+
     const coords = getMousePosition();
     await editor.operations.addVertexAndConnect(coords.x, coords.y);
   });
 
   onKeybind("E", async () => {
+    if (!isFocused()) return;
+
     if (hoverState && hoverState.type === "vertex") {
       await editor.operations.connectVertex(hoverState.id);
     }
   });
 
   onKeybind("V", async () => {
+    if (!isFocused()) return;
+
     const coords = getMousePosition();
     await editor.operations.addVertex(coords.x, coords.y);
   });

@@ -112,7 +112,7 @@ export class DynamicArray {
 
 
     this.array.set(
-      new Uint8Array(sourceArray.buffer).subarray(srcIndex, srcIndex + length),
+      new Uint8Array(sourceArray.buffer, sourceArray.byteOffset).subarray(srcIndex, srcIndex + length),
       destIndex
     );
   }
@@ -123,7 +123,7 @@ export class DynamicArray {
 
     const sourceArray = array instanceof DynamicArray ? array.array : array;
     this.array.set(
-      new Uint8Array(sourceArray.buffer).subarray(srcIndex, srcIndex + length),
+      new Uint8Array(sourceArray.buffer, sourceArray.byteOffset).subarray(srcIndex, srcIndex + length),
       this._length
     );
     this._length += length;

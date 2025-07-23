@@ -1,10 +1,10 @@
 import { Vector2 } from "three";
 import type { Graph, Vertex } from "./interface/Graph";
-import { toByteArray } from "base64-js";
 import { DynamicArray } from "./DynamicArray";
 import type { Auxiliary, AuxiliaryType } from "./interface/Auxiliary";
-import type { GrapheneJSON } from "./types";
 import { valueFromJSON } from "../../Properties";
+import { BSON } from "bson";
+import { z } from "zod";
 
 export class GraphImporter {
   constructor(public readonly graph: Graph) { }
@@ -33,6 +33,10 @@ export class GraphImporter {
     return this.graph.transaction(() => {
       const indexToVertex: Vertex[] = [];
 
+      if (!this.graph.edgeAuxiliary.properties[weightProperty]) {
+        this.graph.edgeAuxiliary.createProperty(weightProperty, 'integer');
+      }
+
       data.split('\n').forEach(line => {
         const [u, v, weight] = line.split(' ').map(Number);
 
@@ -50,10 +54,21 @@ export class GraphImporter {
     });
   }
 
-  async grapheneB64(data: string, offset = new Vector2()) {
+  private rectifyProperties(aux: Auxiliary, properties: { name: string, type: AuxiliaryType }[]) {
+    for (const { name, type } of properties) {
+      if (!aux.properties[name]) {
+        aux.createProperty(name, type);
+      }
+      else if (aux.properties[name].type !== type) {
+        throw Error(`Property ${name} already exists with a different type`);
+      }
+    }
+  }
+
+  async grapheneBinary(data: Uint8Array, offset = new Vector2()) {
     await this.graph.transaction(async () => {
       try {
-        const { isDirected, vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(data);
+        const { isDirected, vertexProperties, edgeProperties, vertexData, edgeData } = BSON.deserialize(data);
         if (isDirected !== this.graph.isDirected) {
           const from = isDirected ? 'a directed' : 'an undirected'
           const to = this.graph.isDirected ? 'a directed' : 'an undirected';
@@ -61,22 +76,11 @@ export class GraphImporter {
           throw new Error(`Cannot import ${from} graph into ${to} graph`);
         }
 
-        function rectifyProperties(aux: Auxiliary, properties: { name: string, type: AuxiliaryType }[]) {
-          for (const { name, type } of properties) {
-            if (!aux.properties[name]) {
-              aux.createProperty(name, type);
-            }
-            else if (aux.properties[name].type !== type) {
-              throw Error(`Property ${name} already exists with a different type`);
-            }
-          }
-        }
+        this.rectifyProperties(this.graph.vertexAuxiliary, vertexProperties);
+        this.rectifyProperties(this.graph.edgeAuxiliary, edgeProperties);
 
-        rectifyProperties(this.graph.vertexAuxiliary, vertexProperties);
-        rectifyProperties(this.graph.edgeAuxiliary, edgeProperties);
-
-        const vertexDataArray = toByteArray(vertexData);
-        const edgeDataArray = toByteArray(edgeData);
+        const vertexDataArray = vertexData.buffer as Uint8Array;
+        const edgeDataArray = edgeData.buffer as Uint8Array;
 
         const vertexSize = 12 + vertexProperties.length * 4;
         const edgeSize = 8 + edgeProperties.length * 4;
@@ -97,7 +101,7 @@ export class GraphImporter {
           }
         }
 
-        for (let i = 0; i < edgeData.length; i += edgeSize) {
+        for (let i = 0; i < edgeDataArray.length; i += edgeSize) {
           const array = new DynamicArray(edgeSize);
           array.pushFrom(edgeDataArray, i, edgeSize);
 
@@ -122,7 +126,31 @@ export class GraphImporter {
   async grapheneJSON(data: string, offset = new Vector2()) {
     await this.graph.transaction(async () => {
       try {
-        const { isDirected, vertexProperties, edgeProperties, vertexData, edgeData } = JSON.parse(data) as GrapheneJSON;
+        const grapheneJSONSchema = z.object({
+          isDirected: z.boolean(),
+          vertexProperties: z.array(z.object({
+            name: z.string(),
+            type: z.union([z.literal('integer'), z.literal('vertex'), z.literal('edge')]),
+          })),
+          edgeProperties: z.array(z.object({
+            name: z.string(),
+            type: z.union([z.literal('integer'), z.literal('vertex'), z.literal('edge')]),
+          })),
+          vertexData: z.array(z.object({
+            id: z.number(),
+            x: z.number(),
+            y: z.number(),
+            properties: z.record(z.string(), z.union([z.number(), z.null()])),
+          })),
+          edgeData: z.array(z.object({
+            u: z.number(),
+            v: z.number(),
+            properties: z.record(z.string(), z.union([z.number(), z.null()])),
+          })),
+        });
+
+        const parsed = grapheneJSONSchema.parse(JSON.parse(data));
+        const { isDirected, vertexProperties, edgeProperties, vertexData, edgeData } = parsed;
         if (isDirected !== this.graph.isDirected) {
           const from = isDirected ? 'a directed' : 'an undirected'
           const to = this.graph.isDirected ? 'a directed' : 'an undirected';
@@ -130,19 +158,10 @@ export class GraphImporter {
           throw new Error(`Cannot import ${from} graph into ${to} graph`);
         }
 
-        function rectifyProperties(aux: Auxiliary, properties: { name: string, type: AuxiliaryType }[]) {
-          for (const { name, type } of properties) {
-            if (!aux.properties[name]) {
-              aux.createProperty(name, type);
-            }
-            else if (aux.properties[name].type !== type) {
-              throw Error(`Property ${name} already exists with a different type`);
-            }
-          }
-        }
 
-        rectifyProperties(this.graph.vertexAuxiliary, vertexProperties);
-        rectifyProperties(this.graph.edgeAuxiliary, edgeProperties);
+
+        this.rectifyProperties(this.graph.vertexAuxiliary, vertexProperties);
+        this.rectifyProperties(this.graph.edgeAuxiliary, edgeProperties);
 
         const vertexIdConversion = new Map<number, number>();
 

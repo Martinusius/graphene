@@ -14,12 +14,11 @@
     updateSelected,
     editor,
     open = $bindable(),
-  } = $props() as {
+  } = $props<{
     selection: any;
     updateSelected: any;
     editor: EditorInterface;
-    open: boolean;
-  };
+  }>();
 
   let position = $state({ x: 0, y: 0 });
 

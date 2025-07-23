@@ -19,6 +19,7 @@
   import { DirectedGraph } from "$lib/core/interface/directed/DirectedGraph";
   import { SelectionOperation } from "$lib/core/SelectionOperation";
   import type { HoverState } from "$lib/core/types";
+  import { fromByteArray, toByteArray } from "base64-js";
 
   let {
     onselect,
@@ -143,9 +144,9 @@
     async function copy(cut = false) {
       const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
 
-      const graphene = await exporter.grapheneB64(false, cut, mouseWorld);
+      const graphene = await exporter.grapheneBinary(false, cut, mouseWorld);
 
-      await navigator.clipboard.writeText(graphene);
+      await navigator.clipboard.writeText(fromByteArray(graphene));
     }
 
     async function paste() {
@@ -155,7 +156,7 @@
 
       const mouseWorld = worldCoords({ clientX: getMousePosition().x, clientY: getMousePosition().y } as any);
 
-      await importer.grapheneB64(text, mouseWorld);
+      await importer.grapheneBinary(toByteArray(text), mouseWorld);
     }
 
     editor = {

@@ -35,8 +35,10 @@
     "@lume/three-meshline": "^4.0.5",
     "@tyriar/fibonacci-heap": "^2.0.9",
     "base64-js": "^1.5.1",
+    "bson": "^6.10.4",
     "three": "^0.170.0",
     "two.js": "^0.8.14",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "zod": "^4.0.5"
   }
 }

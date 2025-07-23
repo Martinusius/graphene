@@ -51,6 +51,15 @@ To create a new vertex the `Q` shortcut can be used which creates a new vertex a
 
 To create edges the `E` shortcut can be used which connects all selected vertices to the currently hovered vertex.
 
+## Import & Export
+
+Graphene provides 4 import/export formats:
+
+1. Edge list - A .txt file containing pairs of vertex indices that are connected by an edge. This format preserves the basic graph structure (isomorphism) but nothing else.
+2. Weighted edge list - A .txt file similar to the Edge list but for every edge there is also a third property called weight. The property has to be named "Weight" otherwise it will not be exported.
+3. Graphene JSON - A simple JSON format containing all the information about the graph that is available in the editor, including positions of vertices and all vertex/edge properties.
+4. Graphene Binary - A binary format that also contains all the information but is approximately 5x smaller than the JSON format. On the other hand it is more difficult to read or edit it with other programs.
+
 ## Quirks and recommendations
 
 1. Selecting and dragging is not classified as an edit operation and therefore does not constitude an undo step. Adding/removing objects or editing their custom properties however all do count and can be undone.

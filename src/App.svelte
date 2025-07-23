@@ -139,17 +139,30 @@
   let hoverStateOnContextMenu = $state(null as HoverState | null);
   let mousePositionOnContextMenu = $state({ x: 0, y: 0 });
 
-  function download(filename: string, text: string) {
-    const element = document.createElement("a");
-    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
-    element.setAttribute("download", filename);
+  function download(filename: string, data: string | Uint8Array) {
+    let element = document.createElement("a");
+    let url: string;
 
+    if (typeof data === "string") {
+      url = "data:text/plain;charset=utf-8," + encodeURIComponent(data);
+    } else {
+      // Binary data
+      const blob = new Blob([data], { type: "application/octet-stream" });
+      url = URL.createObjectURL(blob);
+    }
+
+    element.setAttribute("href", url);
+    element.setAttribute("download", filename);
     element.style.display = "none";
     document.body.appendChild(element);
 
     element.click();
 
     document.body.removeChild(element);
+
+    if (typeof data !== "string") {
+      URL.revokeObjectURL(url);
+    }
   }
 </script>
 
@@ -186,25 +199,25 @@
             <Menubar.Item
               class="cursor-pointer"
               onclick={async () => {
-                await editor.importer.edgeList(await fileUpload("text/plain"));
+                await editor.importer.edgeList((await fileUpload("text/plain")) as string);
               }}>Edge List (.txt)</Menubar.Item
             >
             <Menubar.Item
               class="cursor-pointer"
               onclick={async () => {
-                await editor.importer.weightedEdgeList(await fileUpload("text/plain"));
+                await editor.importer.weightedEdgeList((await fileUpload("text/plain")) as string);
               }}>Weighted Edge List (.txt)</Menubar.Item
             >
             <Menubar.Item
               class="cursor-pointer"
               onclick={async () => {
-                await editor.importer.grapheneB64(await fileUpload(".ene"));
-              }}>Graphene B64 (.ene)</Menubar.Item
+                await editor.importer.grapheneBinary((await fileUpload(".ene")) as Uint8Array);
+              }}>Graphene Binary (.ene)</Menubar.Item
             >
             <Menubar.Item
               class="cursor-pointer"
               onclick={async () => {
-                await editor.importer.grapheneJSON(await fileUpload(".json"));
+                await editor.importer.grapheneJSON((await fileUpload(".json")) as string);
               }}>Graphene JSON (.json)</Menubar.Item
             >
           </Menubar.SubContent>
@@ -228,8 +241,8 @@
             >
             <Menubar.Item
               class="cursor-pointer"
-              onclick={async () => download("graph.ene", await editor.exporter.grapheneB64(true))}
-              >Graphene B64 (.ene)</Menubar.Item
+              onclick={async () => download("graph.ene", await editor.exporter.grapheneBinary(true))}
+              >Graphene Binary (.ene)</Menubar.Item
             >
 
             <Menubar.Item

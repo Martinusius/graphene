@@ -14,13 +14,12 @@
   import type { EditorInterface } from "./EditorInterface";
   import { onDestroy, onMount } from "svelte";
   import { getUint32Fix, setUint32Fix } from "$lib/core/polyfill.glsl";
-  import { preventDefault } from "svelte/legacy";
 
-  let { selection, updateSelected, editor } = $props() as {
+  let { selection, updateSelected, editor } = $props<{
     selection: any;
     updateSelected: any;
     editor: EditorInterface;
-  };
+  }>();
 
   let rename = $state("");
   let openRename = $state(false);
@@ -125,7 +124,7 @@
           {@const typeStyle = propertyTypes[property.type as keyof typeof propertyTypes]}
 
           <div class="flex flex-row gap-3">
-            <Dialog.Root bind:open={openRename} overlay={false}>
+            <Dialog.Root bind:open={openRename}>
               <Input
                 value={propertyName}
                 onfocus={(event) => {

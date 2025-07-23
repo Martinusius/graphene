@@ -1,12 +1,10 @@
-import { fromByteArray } from "base64-js";
 import type { Graph } from "./interface/Graph";
-import { getMousePosition } from "$lib/input";
 import { Vector2 } from "three";
 import { DynamicArray } from "./DynamicArray";
 import type { GrapheneJSON } from "./types";
-import { propertyTypes, valueToJSON } from "../../Properties";
+import { valueToJSON } from "../../Properties";
 
-
+import { BSON } from "bson";
 
 export class GraphExporter {
   constructor(public readonly graph: Graph) { }
@@ -34,6 +32,10 @@ export class GraphExporter {
     await this.graph.transaction(() => {
       const edges: string[] = [];
 
+      if (!this.graph.edgeAuxiliary.properties[weightProperty]) {
+        throw new Error(`Edge property "${weightProperty}" does not exist.`);
+      }
+
       this.graph.edges.forEach(edge => {
         const { u, v } = edge;
         const weight = edge.getProperty(weightProperty);
@@ -48,8 +50,8 @@ export class GraphExporter {
   }
 
 
-  async grapheneB64(all = true, cut = false, offset = new Vector2()) {
-    let result = '';
+  async grapheneBinary(all = true, cut = false, offset = new Vector2()) {
+    let result: Uint8Array = new Uint8Array();
 
     await this.graph.transaction(async () => {
       const vertexProperties = Object.entries(this.graph.vertexAuxiliary.properties)
@@ -93,10 +95,9 @@ export class GraphExporter {
         isDirected: this.graph.isDirected,
         vertexProperties,
         edgeProperties,
-        vertexData: fromByteArray(vertexData.toArray()),
-        edgeData: fromByteArray(edgeData.toArray()),
+        vertexData: vertexData.toArray(),
+        edgeData: edgeData.toArray(),
       };
-
 
       if (cut) {
         for (const edge of edges) {
@@ -108,7 +109,7 @@ export class GraphExporter {
         }
       }
 
-      result = JSON.stringify(finalJson);
+      result = BSON.serialize(finalJson);
     });
 
     return result;

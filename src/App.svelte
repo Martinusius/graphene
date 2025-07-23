@@ -184,7 +184,6 @@
         <Menubar.Item class="cursor-pointer" onclick={() => (openNewGraph = true)}>
           <File strokeWidth="1" class="mr-2" size="16" />
           New
-          <Menubar.Shortcut>Ctrl+N</Menubar.Shortcut>
         </Menubar.Item>
         <!-- <Menubar.Item class="cursor-pointer" disabled>
         

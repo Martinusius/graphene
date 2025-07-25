@@ -61,11 +61,17 @@
         <span>{edgeDistanceProperty || "Select a property"}</span>
       </Select.Trigger>
       <Select.Content>
-        {#each getPropertyOfTypeNames(editor.edgeProperties, "integer") as propertyName}
-          <Select.Item value={propertyName}>
-            {propertyName}
-          </Select.Item>
-        {/each}
+        {#if getPropertyOfTypeNames(editor.edgeProperties, "integer").length === 0}
+          <div class="px-2 py-1 text-muted-foreground text-sm">
+            No suitable properties found. You can create them in the sidebar.
+          </div>
+        {:else}
+          {#each getPropertyOfTypeNames(editor.edgeProperties, "integer") as propertyName}
+            <Select.Item value={propertyName}>
+              {propertyName}
+            </Select.Item>
+          {/each}
+        {/if}
       </Select.Content>
     </Select.Root>
 
@@ -78,11 +84,17 @@
         <span>{pathDistanceProperty || "Select a property"}</span>
       </Select.Trigger>
       <Select.Content>
-        {#each getPropertyOfTypeNames(editor.vertexProperties, "integer") as propertyName}
-          <Select.Item value={propertyName}>
-            {propertyName}
-          </Select.Item>
-        {/each}
+        {#if getPropertyOfTypeNames(editor.vertexProperties, "integer").length === 0}
+          <div class="px-2 py-1 text-muted-foreground text-sm">
+            No suitable properties found. You can create them in the sidebar.
+          </div>
+        {:else}
+          {#each getPropertyOfTypeNames(editor.vertexProperties, "integer") as propertyName}
+            <Select.Item value={propertyName}>
+              {propertyName}
+            </Select.Item>
+          {/each}
+        {/if}
       </Select.Content>
     </Select.Root>
 
@@ -95,11 +107,17 @@
         <span>{previousVertexProperty || "Select a property"}</span>
       </Select.Trigger>
       <Select.Content>
-        {#each getPropertyOfTypeNames(editor.vertexProperties, "vertex") as propertyName}
-          <Select.Item value={propertyName}>
-            {propertyName}
-          </Select.Item>
-        {/each}
+        {#if getPropertyOfTypeNames(editor.vertexProperties, "vertex").length === 0}
+          <div class="px-2 py-1 text-muted-foreground text-sm">
+            No suitable properties found. You can create them in the sidebar.
+          </div>
+        {:else}
+          {#each getPropertyOfTypeNames(editor.vertexProperties, "vertex") as propertyName}
+            <Select.Item value={propertyName}>
+              {propertyName}
+            </Select.Item>
+          {/each}
+        {/if}
       </Select.Content>
     </Select.Root>
 
